@@ -101,7 +101,7 @@ describe("pim_role_azure list tools", () => {
       const res = await call(pimRoleAzureRequestListTool, config);
       expect(res.content[0]?.text).toContain("Owner");
       expect(res.content[0]?.text).toContain("req-1");
-      // status is surfaced inline (mirrors pimctl's REQUEST STATUS column) and
+      // status is surfaced inline in the REQUEST STATUS column and
       // the heading must NOT claim everything is "Pending" — the request
       // listing is not status-filtered server-side for ARM.
       expect(res.content[0]?.text).toContain("status=PendingApproval");

@@ -5,8 +5,6 @@
 // and returns the `maximumDuration` from the
 // `Expiration_EndUser_Assignment` rule. This is the upper bound the
 // requester flow uses to clamp the user's chosen activation duration.
-//
-// Mirrors `pimctl/internal/graph/pim_group.go::PIMGroupGetMaximumExpirationByGroupID`.
 
 import { z } from "zod";
 
@@ -90,7 +88,6 @@ export async function getGroupMaxDuration(
  * the directory-scoped Entra role `roleDefinitionId` allows for end-user
  * activation requests.
  *
- * Mirrors `pimctl/internal/graph/pim_entra_role.go::PIMEntraRoleGetMaximumExpirationByRoleID`.
  * The directory-scope id is the tenant root `'/'`.
  */
 export async function getDirectoryRoleMaxDuration(

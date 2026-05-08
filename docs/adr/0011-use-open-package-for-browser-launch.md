@@ -19,11 +19,9 @@ superseded_by: ""
 pimdo-ts opens the system browser from several places:
 
 - The MSAL login loopback page (ADR-0003, ADR-0008).
-- The picker page used by `todo_select_list` and the markdown
-  workspace selector (ADR-0008).
+- The PIM browser flows (`requester`, `approver`, `confirmer`) used to
+  confirm privilege changes (ADR-0008).
 - The logout confirmation page (ADR-0008).
-- The `markdown_preview_file` tool, which deep-links into the
-  SharePoint OneDrive web preview for the user's file.
 
 All of these go through a single platform shim, `src/browser/open.ts`
 (`openBrowser(url)`), per the architecture in ADR-0008. Until this
@@ -109,8 +107,7 @@ signature, same dependency-injection thread through
 2. `await open(url)` — let the upstream package handle platform,
    spawning, and quoting.
 3. Wrap any rejection as `Failed to open browser: <message>` so the
-   external contract callers depend on (e.g. `markdown_preview_file`'s
-   "could not open browser" fallback path) is unchanged.
+   external contract callers depend on is unchanged.
 
 We do **not** move the validation into a wrapper around `open` or
 expose `open` directly. The single seam in `src/browser/open.ts`
@@ -176,9 +173,9 @@ Rejected for the same reason as A — fixes the Windows symptom but
 keeps us in the cross-platform browser-launch business. Also less
 robust to bizarre URL inputs than PowerShell `Start-Process`.
 
-### C. Status quo with workaround in `markdown_preview_file`
+### C. Status quo with per-call-site workaround
 
-Quote-escape `&` for cmd.exe in `markdown_preview_file` only, leave
+Quote-escape `&` for cmd.exe in individual callers only, leave
 everything else alone.
 
 Rejected. The bug is in the platform shim, not in any individual

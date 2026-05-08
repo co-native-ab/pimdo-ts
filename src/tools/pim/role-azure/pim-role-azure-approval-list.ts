@@ -18,7 +18,7 @@ const def: ToolDef = {
   title: "List PIM Azure-role approvals assigned to me",
   description:
     "List PIM Azure-role activation requests where the signed-in user " +
-    "is an approver. Mirrors `pimctl` and does not filter by status — surface " +
+    "is an approver. Does not filter by status — surface " +
     "the full approver-side queue.",
   requiredScopes: [GraphScope.ArmUserImpersonation],
 };

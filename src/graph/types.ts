@@ -2,7 +2,7 @@
 //
 // Type definitions are paired with `loose()` zod schemas so we validate
 // the wire shape we actually depend on while ignoring fields Graph
-// adds in the future. Mirrors the pattern in graphdo-ts/src/graph/types.ts.
+// adds in the future.
 
 import { z } from "zod";
 

@@ -5,8 +5,6 @@
 // and returns the `maximumDuration` from the
 // `Expiration_EndUser_Assignment` rule. This is the upper bound the
 // requester flow uses to clamp the user's chosen activation duration.
-//
-// Mirrors `pimctl/internal/azurerm/azurerm.go::PIMAzureRoleGetMaximumExpirationByRoleID`.
 
 import { ArmClient, HttpMethod, parseResponse } from "./client.js";
 import {
@@ -33,7 +31,7 @@ export const ARM_API_VERSION = "2020-10-01";
  *
  * @param scope ARM scope (e.g. `/subscriptions/{id}` or
  *   `/subscriptions/{id}/resourceGroups/{rg}`). Must not include a leading
- *   provider segment — pimctl passes the raw scope unchanged.
+ *   provider segment; the raw scope is passed unchanged.
  */
 export async function getAzureRoleMaxDuration(
   client: ArmClient,

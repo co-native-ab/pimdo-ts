@@ -15,8 +15,6 @@ pimdo is an MCP server. AI agents that speak MCP can connect to it and use the e
 
 The agent acts as the signed-in human user — it never holds standing privileges. Every PIM action goes through the same approval and audit pipeline as a manual `aka.ms/myaccess` flow.
 
-pimdo borrows its authentication, browser-loopback, and HTTP-client architecture from [`graphdo-ts`](https://github.com/co-native-ab/graphdo-ts) and is informed by the [`pimctl`](https://github.com/co-native-ab/pimctl) CLI.
-
 ## Installation
 
 pimdo-ts is distributed in three formats from [GitHub Releases](https://github.com/co-native-ab/pimdo-ts/releases/latest):
@@ -60,11 +58,11 @@ node pimdo-ts-vX.Y.Z.js
 
 ### Authentication
 
-| Tool          | Purpose                                                          |
-| ------------- | ---------------------------------------------------------------- |
-| `login`       | Interactive browser sign-in; selects scopes for the PIM surfaces |
-| `logout`      | Browser-confirmed sign-out and token cache clear                 |
-| `auth_status` | Report current sign-in state and granted scopes                  |
+| Tool          | Purpose                                          |
+| ------------- | ------------------------------------------------ |
+| `login`       | Interactive browser sign-in to Microsoft Entra   |
+| `logout`      | Browser-confirmed sign-out and token cache clear |
+| `auth_status` | Report current sign-in state and granted scopes  |
 
 ### PIM for Entra Groups
 
@@ -92,7 +90,7 @@ The four read tools return plain text the AI can summarise. The three write tool
 | `pim_role_entra_approval_list`   | List pending PIM Entra-role approvals assigned to the signed-in user as approver                 |
 | `pim_role_entra_approval_review` | Open a browser form to Approve / Deny / Skip pending PIM Entra-role approvals                    |
 
-The Entra-role approval read/PATCH operations target the Microsoft Graph **`beta`** endpoint for parity with [`pimctl`](https://github.com/co-native-ab/pimctl); the rest of the surface uses `v1.0`.
+The Entra-role approval read/PATCH operations target the Microsoft Graph **`beta`** endpoint, since that is currently the only channel exposing the assignment-approvals surface; the rest of the surface uses `v1.0`.
 
 ### PIM for Azure roles
 
@@ -106,7 +104,7 @@ The Entra-role approval read/PATCH operations target the Microsoft Graph **`beta
 | `pim_role_azure_approval_list`   | List pending PIM Azure-role approvals assigned to the signed-in user as approver                      |
 | `pim_role_azure_approval_review` | Open a browser form to Approve / Deny / Skip pending PIM Azure-role approvals                         |
 
-The Azure-role surface talks to the Azure Resource Manager (ARM) API instead of Microsoft Graph. It uses API version `2020-10-01` for the `Microsoft.Authorization/role*` resources, `2021-01-01-preview` for the `roleAssignmentApprovals/.../stages` PUT, and posts approvals via the `2020-06-01` `/batch` endpoint — matching [`pimctl`](https://github.com/co-native-ab/pimctl).
+The Azure-role surface talks to the Azure Resource Manager (ARM) API instead of Microsoft Graph. It uses API version `2020-10-01` for the `Microsoft.Authorization/role*` resources, `2021-01-01-preview` for the `roleAssignmentApprovals/.../stages` PUT, and posts approvals via the `2020-06-01` `/batch` endpoint.
 
 JSON Schemas for every tool's input are generated under [`schemas/tools/`](./schemas/tools) from the Zod definitions in `src/tools/` (see `npm run schemas:generate` and the `schemas:check` CI gate).
 
@@ -118,7 +116,7 @@ pimdo uses MSAL (`@azure/msal-node`) to authenticate with Microsoft. When the ag
 2. You click "Sign in with Microsoft", authenticate against Microsoft's OAuth endpoint, and the redirect lands back on the loopback server.
 3. Login completes immediately — no manual code entry needed.
 
-If a browser cannot be opened automatically, the tool returns the login URL as an error message. You can copy and paste this URL into any browser to complete authentication.
+pimdo requires a working browser on the workstation it runs on. If pimdo cannot launch a browser, the `login` tool fails with an error — there is no manual URL fallback, no device code, and no headless mode. pimdo-ts is a workstation tool by design; SSH sessions, containers, and other environments without a browser are not supported.
 
 The same login produces tokens for **both** Microsoft Graph and Azure Resource Manager — pimdo calls `Authenticator.tokenForResource(resource, signal)` per request and lets MSAL refresh them silently. To sign out and clear cached tokens, call the `logout` tool.
 
@@ -147,13 +145,13 @@ pimdo authenticates against **two resources** from the same login:
 | `RoleManagementPolicy.Read.Directory`                  | Graph    | reading Entra-role activation policy (max duration etc.) — required by `pim_role_entra_request` |
 | `https://management.azure.com/user_impersonation`      | ARM      | all Azure resource role operations                                                              |
 
-The MCP server starts with no PIM tools enabled. As the user consents to additional scopes during interactive login, the corresponding tools light up automatically.
+The MCP server starts with no PIM tools enabled. As the tenant grants the scopes listed above (typically through admin consent), the corresponding tools light up automatically on the next login.
 
 ## Manual Entra app registration
 
-pimdo-ts ships with a default multi-tenant Entra application client ID — `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff`, published by Co-native AB — so most users do **not** need to register their own app. The first interactive sign-in will prompt for the PIM scopes; an administrator may need to grant tenant-wide consent before non-admin users can sign in.
+pimdo-ts ships with a default multi-tenant Entra application client ID — `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff`, published by Co-native AB — so most users do **not** need to register their own app. An administrator may need to grant tenant-wide consent for the scopes listed above before non-admin users can sign in.
 
-If your organization requires its own app registration (for example to lock down which tenants can use it, or to pre-consent custom scopes), register a multi-tenant Entra application yourself:
+If your organization requires its own app registration (for example to lock down which tenants can use it), register a multi-tenant Entra application yourself:
 
 1. In the Microsoft Entra admin center, register a new application:
    - **Supported account types:** _Accounts in any organizational directory (multitenant)_.
@@ -184,7 +182,7 @@ If your organization requires its own app registration (for example to lock down
 
 - **No standing access.** pimdo only ever holds tokens scoped to the granted permissions and acts as the signed-in user.
 - **Human-in-the-loop for every privilege change.** `request`, `deactivate`, and `approval_review` always open a loopback browser form so you confirm or override the AI's intent before pimdo issues the API call.
-- **Loopback hardening.** The browser flow ships CSRF + Content-Security-Policy + strict header parsing identical to graphdo-ts's picker primitive (see `src/browser/security.ts`).
+- **Loopback hardening.** The browser flow ships CSRF + Content-Security-Policy + strict header parsing (see `src/browser/security.ts`).
 - **Tool gating.** Every PIM tool declares the scopes it needs; the registry enables a tool only when all required scopes are present in the granted set, then re-syncs after every login.
 
 ## Development
@@ -209,7 +207,7 @@ node dist/index.js     # starts the MCP server on stdio
 
 **Can I use a personal Microsoft account?** No — Entra PIM is a work/school feature. Use a tenant where PIM is enabled.
 
-**Why do some tools target Microsoft Graph `beta`?** The Entra-role assignment-approvals surface is currently only available on `beta`, matching what `pimctl` does. Everything else uses `v1.0`.
+**Why do some tools target Microsoft Graph `beta`?** The Entra-role assignment-approvals surface is currently only available on `beta`. Everything else uses `v1.0`.
 
 ## License
 

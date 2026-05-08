@@ -18,10 +18,6 @@
 //
 // State is mutable and seedable; tests assert on `state.submittedRequests`
 // and `state.patchedStages` to verify outbound calls.
-//
-// Mirrors the route-table style of `graphdo-ts/test/mock-graph.ts` but
-// is much smaller — the PIM surface is narrower than the OneDrive +
-// To-Do + Mail surface graphdo covers.
 
 import http from "node:http";
 
