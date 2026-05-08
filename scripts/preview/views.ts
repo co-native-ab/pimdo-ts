@@ -27,7 +27,7 @@ export interface ViewScenario {
 }
 
 export interface ViewPreview {
-  /** Stable identifier used as the directory name under docs/preview/views. */
+  /** Stable identifier used as the directory name under <out>/views/. */
   name: string;
   /** Surface family for the index sidebar. */
   family: "Auth" | "Group" | "Entra Role" | "Azure Role";

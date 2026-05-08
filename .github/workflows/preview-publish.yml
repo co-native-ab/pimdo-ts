@@ -6,7 +6,10 @@ name: Preview Publish
 #
 # Runs in the context of the default branch (workflow_run always uses
 # the workflow definition from the default branch), so the elevated
-# token cannot be exfiltrated by PR code.
+# token cannot be exfiltrated by PR code. All artifact-derived values
+# are validated against strict regexes before use, and are passed
+# through `env:` rather than inline `${{ }}` interpolation in shell
+# bodies, to make injection impossible by construction.
 
 on:
   workflow_run:
@@ -35,22 +38,47 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Read metadata
+      # Untrusted: the contents of artifact/.preview-meta/* were written
+      # by the build job, which may have run on a fork PR's HEAD. Read
+      # the values, validate against strict patterns, and only THEN
+      # surface them as step outputs. Anything that fails validation
+      # aborts the publish.
+      - name: Read & validate metadata
         id: meta
         run: |
-          kind=$(cat artifact/.preview-meta/kind)
-          id=$(cat artifact/.preview-meta/id)
-          sha=$(cat artifact/.preview-meta/sha)
+          set -euo pipefail
+          kind=$(tr -d '\n' < artifact/.preview-meta/kind)
+          id=$(tr -d '\n' < artifact/.preview-meta/id)
+          sha=$(tr -d '\n' < artifact/.preview-meta/sha)
+
+          case "$kind" in
+            pr|main) ;;
+            *) echo "::error::Invalid kind: '$kind'"; exit 1 ;;
+          esac
+
           if [ "$kind" = "pr" ]; then
-            echo "dir=preview/pr/${id}" >> "$GITHUB_OUTPUT"
-            echo "label=PR #${id}" >> "$GITHUB_OUTPUT"
+            if ! [[ "$id" =~ ^[1-9][0-9]{0,9}$ ]]; then
+              echo "::error::Invalid PR number: '$id'"; exit 1
+            fi
+            dir="preview/pr/${id}"
+            label="PR #${id}"
             echo "is_pr=true" >> "$GITHUB_OUTPUT"
             echo "pr_number=${id}" >> "$GITHUB_OUTPUT"
           else
-            echo "dir=preview/main" >> "$GITHUB_OUTPUT"
-            echo "label=main" >> "$GITHUB_OUTPUT"
+            if [ "$id" != "main" ]; then
+              echo "::error::Invalid id for kind=main: '$id'"; exit 1
+            fi
+            dir="preview/main"
+            label="main"
             echo "is_pr=false" >> "$GITHUB_OUTPUT"
           fi
+
+          if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Invalid sha: '$sha'"; exit 1
+          fi
+
+          echo "dir=${dir}" >> "$GITHUB_OUTPUT"
+          echo "label=${label}" >> "$GITHUB_OUTPUT"
           echo "sha=${sha}" >> "$GITHUB_OUTPUT"
 
       - name: Publish to gh-pages
@@ -68,14 +96,22 @@ jobs:
 
       - name: Compute preview URL
         id: url
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          DEST_DIR: ${{ steps.meta.outputs.dir }}
         run: |
-          owner_lower="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
-          repo="${GITHUB_REPOSITORY##*/}"
-          echo "url=https://${owner_lower}.github.io/${repo}/${{ steps.meta.outputs.dir }}/" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          owner_lower="$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')"
+          echo "url=https://${owner_lower}.github.io/${REPO}/${DEST_DIR}/" >> "$GITHUB_OUTPUT"
 
       - name: Step summary
+        env:
+          LABEL: ${{ steps.meta.outputs.label }}
+          URL: ${{ steps.url.outputs.url }}
         run: |
-          echo "Preview published: [${{ steps.meta.outputs.label }}](${{ steps.url.outputs.url }})" >> "$GITHUB_STEP_SUMMARY"
+          set -euo pipefail
+          printf 'Preview published: [%s](%s)\n' "$LABEL" "$URL" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upsert PR comment
         if: steps.meta.outputs.is_pr == 'true'

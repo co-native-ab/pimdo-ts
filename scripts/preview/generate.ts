@@ -1,11 +1,15 @@
-// Generates the deterministic preview-site artefacts under
-// `docs/preview/`. Single source of truth for the directory; never
-// hand-edit anything inside it (`scripts/preview/check.ts` enforces
-// this with a `git diff --exit-code` style verification).
+// Generates the deterministic preview-site artefacts.
+//
+// Output directory:
+//   default: `.preview/` at the repo root (gitignored)
+//   override: `PREVIEW_OUT_DIR` env var (used by CI to stage for Pages)
+//
+// The generated tree is never committed — it is published to GitHub
+// Pages by the `preview` / `preview-publish` workflows. See ADR-0012.
 //
 // Usage:
-//   npm run preview          # write artefacts
-//   npm run preview:check    # verify (see check.ts)
+//   npm run preview          # write artefacts to .preview/
+//   npm run preview:check    # registration + source coverage (see check.ts)
 //
 // The generator is intentionally small: it just walks the registries in
 // `views.ts` and `tools.ts` and writes output. All rendering logic

@@ -2,7 +2,7 @@
 // confirmer flows. The same rows feed all three flows so the preview
 // reads as a coherent story across surfaces.
 
-import type { ListScenarioId } from "../scenarios.js";
+import type { ListScenarioId } from "../../scenarios.js";
 
 export interface PreviewRow {
   id: string;

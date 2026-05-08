@@ -25,7 +25,7 @@ npm run format       # Format code with Prettier
 npm run format:check # Check formatting without writing
 npm run check        # format:check + icons:check + schemas:check + preview:check + lint + typecheck + test
 npm run build        # Build with esbuild (dist/index.js)
-npm run preview      # Regenerate the static preview site (docs/preview/index.html)
+npm run preview      # Regenerate the static preview site (.preview/index.html)
 ```
 
 Always run `npm run check` before submitting a PR.
