@@ -683,3 +683,159 @@ export const NAVIGATOR_STYLE = `
         color: ${purple.minus1};
       }
     }`;
+
+// ---------------------------------------------------------------------------
+// Row-form styles (shared by requester / approver / confirmer flows)
+// ---------------------------------------------------------------------------
+
+export const ROW_FORM_STYLE = `
+    .container { max-width: 640px; }
+    .card { text-align: left; }
+    .card h1 { text-align: center; }
+    .subtitle { text-align: center; }
+    .bulk-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: ${spacing.sm};
+      justify-content: center;
+      margin-bottom: ${spacing.md};
+    }
+    .bulk-btn {
+      padding: 8px 14px;
+      background: ${grey.white};
+      border: 1.5px solid ${grey.grey2};
+      border-radius: ${borderRadius.md};
+      color: ${purple.brand};
+      font-family: ${fontFamily};
+      font-size: ${fontSize.sm};
+      font-weight: ${fontWeight.semibold};
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .bulk-btn:hover { border-color: ${purple.brand}; background: ${purple.minus3}; }
+    .row-list { display: flex; flex-direction: column; gap: ${spacing.md}; }
+    .row {
+      border: 1.5px solid ${grey.grey2};
+      border-radius: ${borderRadius.lg};
+      padding: ${spacing.md};
+      background: ${grey.white};
+      transition: all 0.15s ease;
+    }
+    .row.skipped { opacity: 0.55; }
+    .row-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: ${spacing.sm};
+      margin-bottom: ${spacing.sm};
+    }
+    .row-label { font-weight: ${fontWeight.semibold}; color: ${purple.plus2}; }
+    .row-subtitle { font-size: ${fontSize.sm}; color: ${grey.grey4}; }
+    .row-meta { font-size: ${fontSize.sm}; color: ${grey.grey4}; }
+    .row-controls {
+      display: flex;
+      flex-direction: column;
+      gap: ${spacing.sm};
+    }
+    .row-controls label {
+      display: block;
+      font-size: ${fontSize.sm};
+      font-weight: ${fontWeight.semibold};
+      color: ${grey.grey4};
+      margin-bottom: 4px;
+    }
+    .row-controls textarea,
+    .row-controls input[type="number"],
+    .row-controls input[type="text"],
+    .row-controls select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1.5px solid ${grey.grey2};
+      border-radius: ${borderRadius.md};
+      font-family: ${fontFamily};
+      font-size: ${fontSize.sm};
+      background: ${grey.white};
+      color: inherit;
+      outline: none;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+    .row-controls textarea:focus,
+    .row-controls input:focus,
+    .row-controls select:focus { border-color: ${purple.brand}; }
+    .duration-group { display: flex; gap: ${spacing.sm}; }
+    .duration-group input { flex: 1; }
+    .duration-group select { flex: 0 0 110px; }
+    .decision-group {
+      display: flex;
+      gap: ${spacing.sm};
+      flex-wrap: wrap;
+    }
+    .decision-group label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border: 1.5px solid ${grey.grey2};
+      border-radius: ${borderRadius.md};
+      cursor: pointer;
+      font-size: ${fontSize.sm};
+      margin-bottom: 0;
+      color: ${grey.grey4};
+    }
+    .decision-group input[type="radio"] { margin: 0; accent-color: ${purple.brand}; }
+    .row-error {
+      color: ${complementary.peach.base};
+      font-size: ${fontSize.sm};
+      margin-top: 6px;
+    }
+    .form-actions {
+      display: flex;
+      gap: ${spacing.sm};
+      margin-top: ${spacing.lg};
+    }
+    .form-actions .submit-btn {
+      flex: 1;
+      padding: 14px;
+      background: ${purple.brand};
+      color: ${grey.white};
+      border: none;
+      border-radius: ${borderRadius.lg};
+      font-family: ${fontFamily};
+      font-size: ${fontSize.md};
+      font-weight: ${fontWeight.semibold};
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .form-actions .submit-btn:hover { background: ${purple.plus1}; }
+    .form-actions .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-actions .cancel-btn { flex: 0 0 110px; }
+    .empty-state {
+      text-align: center;
+      color: ${grey.grey4};
+      padding: ${spacing.lg} 0;
+    }
+    .done { text-align: center; }
+    .done h1 { color: ${complementary.teal.base}; }
+    #manual-close { margin-top: ${spacing.lg}; color: ${grey.grey4}; font-size: ${fontSize.base}; }
+    .error-banner {
+      color: ${complementary.peach.base};
+      text-align: center;
+      margin-top: ${spacing.md};
+      font-size: ${fontSize.sm};
+    }
+    @media (prefers-color-scheme: dark) {
+      .row, .bulk-btn,
+      .row-controls textarea,
+      .row-controls input,
+      .row-controls select,
+      .decision-group label {
+        background: ${dark.surface};
+        border-color: ${dark.border};
+        color: ${dark.text};
+      }
+      .bulk-btn { color: ${purple.minus1}; }
+      .bulk-btn:hover, .row-controls textarea:focus,
+      .row-controls input:focus, .row-controls select:focus { border-color: ${purple.brand}; }
+      .row-subtitle, .row-meta, .empty-state, #manual-close { color: ${dark.text}; }
+    }`;

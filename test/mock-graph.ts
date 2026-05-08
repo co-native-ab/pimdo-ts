@@ -1,0 +1,361 @@
+// PIM-focused HTTP-level fake of Microsoft Graph.
+//
+// Stands in for graph.microsoft.com in tests by serving the small slice
+// of endpoints the PIM-Group surface drives in phase 2:
+//
+//   - GET    /me
+//   - GET    /identityGovernance/privilegedAccess/group/eligibilitySchedules/
+//              filterByCurrentUser(on='principal')
+//   - GET    /identityGovernance/privilegedAccess/group/assignmentScheduleInstances/
+//              filterByCurrentUser(on='principal')
+//   - GET    /identityGovernance/privilegedAccess/group/assignmentScheduleRequests/
+//              filterByCurrentUser(on='principal'|'approver')
+//   - POST   /identityGovernance/privilegedAccess/group/assignmentScheduleRequests
+//   - GET    /identityGovernance/privilegedAccess/group/assignmentApprovals/{id}
+//   - PATCH  /identityGovernance/privilegedAccess/group/assignmentApprovals/{id}/
+//              stages/{stageId}
+//   - GET    /policies/roleManagementPolicyAssignments
+//
+// State is mutable and seedable; tests assert on `state.submittedRequests`
+// and `state.patchedStages` to verify outbound calls.
+//
+// Mirrors the route-table style of `graphdo-ts/test/mock-graph.ts` but
+// is much smaller — the PIM surface is narrower than the OneDrive +
+// To-Do + Mail surface graphdo covers.
+
+import http from "node:http";
+
+import type {
+  AssignmentApproval,
+  AssignmentApprovalStage,
+  GraphErrorEnvelope,
+  GroupActiveAssignment,
+  GroupAssignmentRequest,
+  GroupEligibleAssignment,
+  User,
+} from "../src/graph/types.js";
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+/** A submitted POST body captured for assertions. */
+export interface SubmittedRequest {
+  body: Record<string, unknown>;
+  method: string;
+  path: string;
+}
+
+/** A patched approval stage captured for assertions. */
+export interface PatchedStage {
+  approvalId: string;
+  stageId: string;
+  body: Record<string, unknown>;
+}
+
+/** A role-management policy assignment + the rules visible via $expand. */
+export interface MockPolicyAssignment {
+  groupId: string;
+  /** ISO-8601, e.g. "PT8H". */
+  maximumDuration: string;
+  /** Override the rule id used in the response (defaults to `Expiration_EndUser_Assignment`). */
+  ruleId?: string;
+  isExpirationRequired?: boolean;
+}
+
+export class MockGraphState {
+  /** Returned by `GET /me`. */
+  me: User = {
+    id: "me-id",
+    displayName: "Test User",
+    mail: "test@example.com",
+    userPrincipalName: "test@example.com",
+  };
+
+  /** Returned for filterByCurrentUser(on='principal') eligibility schedules. */
+  eligibilitySchedules: GroupEligibleAssignment[] = [];
+
+  /** Returned for filterByCurrentUser(on='principal') assignment-schedule instances. */
+  assignmentScheduleInstances: GroupActiveAssignment[] = [];
+
+  /** Returned for filterByCurrentUser(on='principal') assignment-schedule requests. */
+  myRequests: GroupAssignmentRequest[] = [];
+
+  /** Returned for filterByCurrentUser(on='approver') assignment-schedule requests. */
+  approverRequests: GroupAssignmentRequest[] = [];
+
+  /** Approvals keyed by id. */
+  approvals = new Map<string, AssignmentApproval>();
+
+  /** Policy assignments keyed by groupId + roleDefinitionId=member. */
+  policyAssignments: MockPolicyAssignment[] = [];
+
+  /** Captured POST bodies (assignmentScheduleRequests). */
+  submittedRequests: SubmittedRequest[] = [];
+
+  /** Captured PATCH bodies (assignment approval stages). */
+  patchedStages: PatchedStage[] = [];
+
+  private nextId = 1;
+
+  genId(prefix = "mock"): string {
+    const id = `${prefix}-${String(this.nextId)}`;
+    this.nextId++;
+    return id;
+  }
+
+  /** Convenience: seed a single eligibility entry returning the created object. */
+  seedEligibility(
+    partial: Partial<GroupEligibleAssignment> & { groupId: string },
+  ): GroupEligibleAssignment {
+    const e: GroupEligibleAssignment = {
+      id: partial.id ?? this.genId("elig"),
+      groupId: partial.groupId,
+      principalId: partial.principalId ?? this.me.id,
+      memberType: partial.memberType ?? "Direct",
+      accessId: partial.accessId ?? "member",
+      status: partial.status ?? "Provisioned",
+      scheduleInfo: partial.scheduleInfo,
+      group: partial.group,
+      principal: partial.principal,
+    };
+    this.eligibilitySchedules.push(e);
+    return e;
+  }
+
+  /** Convenience: seed a single approver-side pending request + matching approval. */
+  seedPendingApproval(partial: {
+    groupId: string;
+    requesterPrincipalId?: string;
+    requesterDisplayName?: string;
+    justification?: string;
+    groupDisplayName?: string;
+    stage?: Partial<AssignmentApprovalStage>;
+  }): { request: GroupAssignmentRequest; approval: AssignmentApproval } {
+    const approvalId = this.genId("approval");
+    const stageId = this.genId("stage");
+    const stage: AssignmentApprovalStage = {
+      id: stageId,
+      assignedToMe: true,
+      reviewResult: "NotReviewed",
+      status: "InProgress",
+      ...partial.stage,
+    };
+    const approval: AssignmentApproval = { id: approvalId, stages: [stage] };
+    this.approvals.set(approvalId, approval);
+
+    const request: GroupAssignmentRequest = {
+      id: this.genId("req"),
+      groupId: partial.groupId,
+      principalId: partial.requesterPrincipalId ?? "other-user",
+      accessId: "member",
+      action: "selfActivate",
+      approvalId,
+      status: "PendingApproval",
+      justification: partial.justification ?? "needs access",
+      group: { id: partial.groupId, displayName: partial.groupDisplayName ?? "Mock Group" },
+      principal: {
+        id: partial.requesterPrincipalId ?? "other-user",
+        displayName: partial.requesterDisplayName ?? "Other User",
+        mail: "other@example.com",
+        userPrincipalName: "other@example.com",
+      },
+    };
+    this.approverRequests.push(request);
+    return { request, approval };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// HTTP server
+// ---------------------------------------------------------------------------
+
+export function createMockGraphServer(
+  state: MockGraphState,
+): Promise<{ server: http.Server; url: string }> {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      void handleRequest(state, req, res).catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        if (!res.headersSent) errorResponse(res, 500, "InternalError", message);
+        else res.end();
+      });
+    });
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const addr = server.address();
+      if (addr === null || typeof addr === "string") {
+        reject(new Error("unexpected server address"));
+        return;
+      }
+      resolve({ server, url: `http://127.0.0.1:${addr.port}` });
+    });
+  });
+}
+
+async function handleRequest(
+  state: MockGraphState,
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+): Promise<void> {
+  const rawUrl = req.url ?? "/";
+  const parsed = new URL(rawUrl, "http://127.0.0.1");
+  const pathname = decodeURIComponent(parsed.pathname);
+  const method = req.method ?? "GET";
+
+  // GET /me
+  if (method === "GET" && pathname === "/me") {
+    return jsonResponse(res, 200, state.me);
+  }
+
+  // /identityGovernance/privilegedAccess/group/...
+  const PIM = "/identityGovernance/privilegedAccess/group";
+
+  if (
+    method === "GET" &&
+    pathname === `${PIM}/eligibilitySchedules/filterByCurrentUser(on='principal')`
+  ) {
+    return jsonResponse(res, 200, { value: state.eligibilitySchedules });
+  }
+
+  if (
+    method === "GET" &&
+    pathname === `${PIM}/assignmentScheduleInstances/filterByCurrentUser(on='principal')`
+  ) {
+    return jsonResponse(res, 200, { value: state.assignmentScheduleInstances });
+  }
+
+  // assignmentScheduleRequests/filterByCurrentUser(on='principal'|'approver')
+  const reqListMatch =
+    /^\/identityGovernance\/privilegedAccess\/group\/assignmentScheduleRequests\/filterByCurrentUser\(on='(principal|approver)'\)$/.exec(
+      pathname,
+    );
+  if (method === "GET" && reqListMatch) {
+    const on = reqListMatch[1] as "principal" | "approver";
+    const all = on === "principal" ? state.myRequests : state.approverRequests;
+    const filter = parsed.searchParams.get("$filter");
+    const filtered = applyStatusFilter(all, filter);
+    return jsonResponse(res, 200, { value: filtered });
+  }
+
+  // POST assignmentScheduleRequests
+  if (method === "POST" && pathname === `${PIM}/assignmentScheduleRequests`) {
+    const body = await readJson(req);
+    state.submittedRequests.push({ body, method, path: pathname });
+    const created: GroupAssignmentRequest = {
+      id: state.genId("req"),
+      groupId: stringField(body, "groupId") ?? "",
+      principalId: stringField(body, "principalId") ?? "",
+      accessId: stringField(body, "accessId"),
+      action: stringField(body, "action"),
+      status: "Granted",
+      justification: stringField(body, "justification"),
+      scheduleInfo: body["scheduleInfo"] as GroupAssignmentRequest["scheduleInfo"],
+    };
+    return jsonResponse(res, 201, created);
+  }
+
+  // GET / PATCH assignmentApprovals/{id}/...
+  const approvalGet =
+    /^\/identityGovernance\/privilegedAccess\/group\/assignmentApprovals\/([^/]+)$/.exec(pathname);
+  if (method === "GET" && approvalGet) {
+    const approvalId = approvalGet[1] ?? "";
+    const approval = state.approvals.get(approvalId);
+    if (!approval) return errorResponse(res, 404, "NotFound", `approval ${approvalId} not found`);
+    return jsonResponse(res, 200, approval);
+  }
+
+  const stagePatch =
+    /^\/identityGovernance\/privilegedAccess\/group\/assignmentApprovals\/([^/]+)\/stages\/([^/]+)$/.exec(
+      pathname,
+    );
+  if (method === "PATCH" && stagePatch) {
+    const approvalId = stagePatch[1] ?? "";
+    const stageId = stagePatch[2] ?? "";
+    const approval = state.approvals.get(approvalId);
+    if (!approval) return errorResponse(res, 404, "NotFound", `approval ${approvalId} not found`);
+    const stage = approval.stages.find((s) => s.id === stageId);
+    if (!stage) return errorResponse(res, 404, "NotFound", `stage ${stageId} not found`);
+    const body = await readJson(req);
+    state.patchedStages.push({ approvalId, stageId, body });
+    if (typeof body["reviewResult"] === "string") stage.reviewResult = body["reviewResult"];
+    if (typeof body["justification"] === "string") stage.justification = body["justification"];
+    stage.status = "Completed";
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // GET /policies/roleManagementPolicyAssignments?$filter=...
+  if (method === "GET" && pathname === "/policies/roleManagementPolicyAssignments") {
+    const filter = parsed.searchParams.get("$filter") ?? "";
+    const groupId = extractGroupIdFromPolicyFilter(filter);
+    const matches = groupId
+      ? state.policyAssignments.filter((p) => p.groupId === groupId)
+      : state.policyAssignments;
+    const value = matches.map((m) => ({
+      id: `assignment-${m.groupId}`,
+      policy: {
+        id: `policy-${m.groupId}`,
+        rules: [
+          {
+            id: m.ruleId ?? "Expiration_EndUser_Assignment",
+            isExpirationRequired: m.isExpirationRequired ?? true,
+            maximumDuration: m.maximumDuration,
+          },
+        ],
+      },
+    }));
+    return jsonResponse(res, 200, { value });
+  }
+
+  errorResponse(res, 404, "NotFound", `mock graph: no route for ${method} ${pathname}`);
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function jsonResponse(res: http.ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(body));
+}
+
+function errorResponse(
+  res: http.ServerResponse,
+  status: number,
+  code: string,
+  message: string,
+): void {
+  const env: GraphErrorEnvelope = { error: { code, message } };
+  jsonResponse(res, status, env);
+}
+
+async function readJson(req: http.IncomingMessage): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(chunk as Buffer);
+  const text = Buffer.concat(chunks).toString("utf-8");
+  if (text.length === 0) return {};
+  return JSON.parse(text) as Record<string, unknown>;
+}
+
+function stringField(body: Record<string, unknown>, key: string): string | undefined {
+  const v = body[key];
+  return typeof v === "string" ? v : undefined;
+}
+
+function applyStatusFilter(
+  items: GroupAssignmentRequest[],
+  filter: string | null,
+): GroupAssignmentRequest[] {
+  if (!filter) return items;
+  const m = /^status eq '([^']+)'$/.exec(filter);
+  if (!m) return items;
+  return items.filter((r) => r.status === m[1]);
+}
+
+/** Extract `<groupId>` from `scopeId eq '<groupId>' and ...`. */
+function extractGroupIdFromPolicyFilter(filter: string): string | null {
+  const m = /scopeId eq '([^']+)'/.exec(filter);
+  return m ? (m[1] ?? null) : null;
+}

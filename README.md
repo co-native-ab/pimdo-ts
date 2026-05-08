@@ -2,7 +2,7 @@
 
 Local MCP server (Model Context Protocol) written in TypeScript that gives an AI assistant scoped access to **Microsoft Entra Privileged Identity Management (PIM)** — for groups, Entra roles, and Azure resource roles — without granting it standing access.
 
-> **Phase 1 status:** This release only ships the authentication tools (`login`, `logout`, `auth_status`). The PIM-specific surfaces (eligible/active assignments, request-elevation, approve, confirm) are implemented in later phases as outlined in `.tmp/roadmap.md`.
+> **Phase 2 status:** Ships the seven `pim_group_*` tools end-to-end. The Entra-role and Azure-role surfaces are still pending (phases 3 & 4 in `.tmp/roadmap.md`).
 
 ## What pimdo does
 
@@ -16,6 +16,30 @@ pimdo is an MCP server. AI agents that speak MCP can connect to it and use the e
 The agent acts as the signed-in human user — it never holds standing privileges. Every PIM action goes through the same approval and audit pipeline as a manual `aka.ms/myaccess` flow.
 
 pimdo borrows its authentication, browser-loopback, and HTTP-client architecture from [`graphdo-ts`](https://github.com/co-native-ab/graphdo-ts) and is informed by the [`pimctl`](https://github.com/co-native-ab/pimctl) CLI.
+
+## Tools
+
+### Authentication
+
+| Tool          | Purpose                                                          |
+| ------------- | ---------------------------------------------------------------- |
+| `login`       | Interactive browser sign-in; selects scopes for the PIM surfaces |
+| `logout`      | Browser-confirmed sign-out and token cache clear                 |
+| `auth_status` | Report current sign-in state and granted scopes                  |
+
+### PIM for Entra Groups (phase 2)
+
+| Tool                        | Purpose                                                                                 |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| `pim_group_eligible_list`   | List groups the signed-in user is eligible to activate                                  |
+| `pim_group_active_list`     | List groups the signed-in user has currently activated                                  |
+| `pim_group_request_list`    | List pending PIM group requests submitted by the signed-in user                         |
+| `pim_group_request`         | Open a browser form to confirm activation of one or more groups (clamped to policy max) |
+| `pim_group_deactivate`      | Open a browser form to confirm deactivation of one or more active group assignments     |
+| `pim_group_approval_list`   | List pending PIM group approvals assigned to the signed-in user as approver             |
+| `pim_group_approval_review` | Open a browser form to Approve / Deny / Skip pending PIM group approvals                |
+
+The four read tools return plain text the AI can summarise. The three write tools open a loopback browser form ("requester", "approver", "confirmer") so the human always confirms a privilege change before pimdo posts it to Graph.
 
 ## Required scopes
 
