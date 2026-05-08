@@ -190,6 +190,11 @@ export class GraphClient {
 
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
+      // Node's undici fetch defaults Accept-Language to "*", which Microsoft
+      // Graph rejects on some endpoints (e.g. PIM eligibilitySchedules) with
+      // "CultureNotFoundException: * is an invalid culture identifier". Pin
+      // an explicit, well-formed value. Callers may override via extraHeaders.
+      "Accept-Language": "en",
       ...extraHeaders,
     };
 

@@ -89,6 +89,29 @@ describe("GraphClient transport", () => {
     }
   });
 
+  // Regression: Node's undici fetch defaults Accept-Language to "*", which
+  // Microsoft Graph rejects on PIM endpoints with "CultureNotFoundException:
+  // * is an invalid culture identifier". The client must override that.
+  it("sends a well-formed Accept-Language header (not undici's default '*')", async () => {
+    let captured: string | undefined;
+    const { server, url } = await makeServer([
+      (req, res) => {
+        captured = req.headers["accept-language"];
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end("{}");
+      },
+    ]);
+    try {
+      const client = new GraphClient(url, "tok");
+      await client.request(HttpMethod.GET, "/me", testSignal());
+      expect(captured).toBeDefined();
+      expect(captured).not.toBe("*");
+      expect(captured).toBe("en");
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("throws GraphRequestError on 4xx with proper code/message/method/path", async () => {
     const { server, url } = await makeServer([
       (_req, res) => {

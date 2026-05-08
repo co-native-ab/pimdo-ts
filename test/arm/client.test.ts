@@ -96,6 +96,28 @@ describe("ArmClient transport", () => {
     }
   });
 
+  // Mirrors the GraphClient regression: undici's default Accept-Language
+  // of "*" is rejected by some Microsoft endpoints as an invalid culture.
+  it("sends a well-formed Accept-Language header (not undici's default '*')", async () => {
+    let captured: string | undefined;
+    const { server, url } = await makeServer([
+      (req, res) => {
+        captured = req.headers["accept-language"];
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end("{}");
+      },
+    ]);
+    try {
+      const client = new ArmClient(url, "arm-token");
+      await client.request(HttpMethod.GET, "/subscriptions?api-version=2022-12-01", testSignal());
+      expect(captured).toBeDefined();
+      expect(captured).not.toBe("*");
+      expect(captured).toBe("en");
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("strips trailing slashes from baseUrl", async () => {
     let capturedPath: string | undefined;
     const { server, url } = await makeServer([

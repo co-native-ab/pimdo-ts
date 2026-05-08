@@ -182,7 +182,7 @@ export interface GroupAssignmentRequest {
   approvalId?: string | null;
   status?: string;
   justification?: string | null;
-  scheduleInfo?: ScheduleInfo;
+  scheduleInfo?: ScheduleInfo | null;
   createdDateTime?: string | null;
   completedDateTime?: string | null;
   group?: Group;
@@ -199,7 +199,7 @@ export const GroupAssignmentRequestSchema: z.ZodType<GroupAssignmentRequest> = z
     approvalId: z.string().nullish(),
     status: z.string().optional(),
     justification: z.string().nullish(),
-    scheduleInfo: ScheduleInfoSchema.optional(),
+    scheduleInfo: ScheduleInfoSchema.nullish(),
     createdDateTime: z.string().nullish(),
     completedDateTime: z.string().nullish(),
     group: GroupSchema.optional(),
@@ -304,10 +304,10 @@ export interface RoleEntraAssignmentRequest {
   approvalId?: string | null;
   status?: string;
   justification?: string | null;
-  scheduleInfo?: ScheduleInfo;
+  scheduleInfo?: ScheduleInfo | null;
   createdDateTime?: string | null;
   completedDateTime?: string | null;
-  targetScheduleId?: string;
+  targetScheduleId?: string | null;
   roleDefinition?: RoleDefinition;
   principal?: User;
 }
@@ -322,10 +322,10 @@ export const RoleEntraAssignmentRequestSchema: z.ZodType<RoleEntraAssignmentRequ
     approvalId: z.string().nullish(),
     status: z.string().optional(),
     justification: z.string().nullish(),
-    scheduleInfo: ScheduleInfoSchema.optional(),
+    scheduleInfo: ScheduleInfoSchema.nullish(),
     createdDateTime: z.string().nullish(),
     completedDateTime: z.string().nullish(),
-    targetScheduleId: z.string().optional(),
+    targetScheduleId: z.string().nullish(),
     roleDefinition: RoleDefinitionSchema.optional(),
     principal: UserSchema.optional(),
   })

@@ -237,7 +237,7 @@ export interface RoleAzureAssignmentRequest {
     status?: string;
     justification?: string | null;
     condition?: string | null;
-    scheduleInfo?: ArmScheduleInfo;
+    scheduleInfo?: ArmScheduleInfo | null;
     /** Approval id (relative resource path) when an approval is required. */
     approvalId?: string | null;
     createdOn?: string | null;
@@ -259,7 +259,7 @@ export const RoleAzureAssignmentRequestSchema: z.ZodType<RoleAzureAssignmentRequ
         status: z.string().optional(),
         justification: z.string().nullish(),
         condition: z.string().nullish(),
-        scheduleInfo: ArmScheduleInfoSchema.optional(),
+        scheduleInfo: ArmScheduleInfoSchema.nullish(),
         approvalId: z.string().nullish(),
         createdOn: z.string().nullish(),
         expandedProperties: ArmExpandedPropertiesSchema.optional(),

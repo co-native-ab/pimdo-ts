@@ -183,6 +183,10 @@ export class ArmClient {
 
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
+      // Node's undici fetch defaults Accept-Language to "*", which some
+      // Azure Resource Manager endpoints reject as an invalid culture. Pin
+      // an explicit, well-formed value. Callers may override via extraHeaders.
+      "Accept-Language": "en",
       ...extraHeaders,
     };
 
