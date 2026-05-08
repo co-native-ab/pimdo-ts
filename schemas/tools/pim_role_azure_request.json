@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "items": {
+      "description": "Optional preselected eligibilities. When omitted the user picks from all eligibilities in the browser form.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "eligibilityId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The eligibility schedule id from pim_role_azure_eligible_list."
+          },
+          "justification": {
+            "description": "Optional pre-filled justification shown in the browser form.",
+            "type": "string"
+          },
+          "duration": {
+            "description": "Optional ISO-8601 duration prefilled in the form (clamped to policy max).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "eligibilityId"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

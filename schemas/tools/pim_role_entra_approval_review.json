@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "items": {
+      "description": "Optional preselected approvals. When omitted all pending approvals assigned to the current user are shown in the browser form.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "approvalId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The approval id from pim_role_entra_approval_list."
+          },
+          "decision": {
+            "description": "Optional pre-selected decision.",
+            "type": "string",
+            "enum": [
+              "Approve",
+              "Deny",
+              "Skip"
+            ]
+          },
+          "justification": {
+            "description": "Optional pre-filled reviewer justification.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "approvalId"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

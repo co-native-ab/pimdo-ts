@@ -7,8 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-05-08
+
+First publishable release. Ships the full PIM tool surface end-to-end:
+3 auth tools + 21 PIM tools (7 each for groups, Entra roles, Azure
+resource roles).
+
 ### Added
 
+- Phase 5: Per-tool JSON Schemas generated from each MCP tool's Zod
+  `inputSchema` into `schemas/tools/<tool-name>.json`. New
+  `scripts/generate-schemas.ts` plus `npm run schemas:generate` /
+  `npm run schemas:check` scripts; `schemas:check` is gated by
+  `npm run check` and CI.
+- Phase 5: GitHub Actions CI workflow runs `format:check`, `icons:check`,
+  `schemas:check`, lint, typecheck, tests with coverage, build, and
+  MCPB bundle smoke-build on every push / PR.
+- Phase 5: GitHub Actions release workflow stamps the version into
+  `package.json` + `manifest.json`, runs the full check, builds
+  `pimdo-ts-vX.Y.Z.mcpb` and `pimdo-ts-vX.Y.Z.js`, attests provenance,
+  uploads release artifacts, and publishes
+  `@co-native-ab/pimdo-ts` to npm via OIDC trusted publishing.
+- Phase 5: README rewritten for v0.1.0 — install via MCPB / npm /
+  standalone JS, full 24-tool listing, manual Entra app-registration
+  steps, configuration and security model, FAQ.
 - Phase 4: PIM Azure-role tool surface (`pim_role_azure_eligible_list`, `pim_role_azure_active_list`, `pim_role_azure_request_list`, `pim_role_azure_request`, `pim_role_azure_deactivate`, `pim_role_azure_approval_list`, `pim_role_azure_approval_review`). All seven tools speak Azure Resource Manager (ARM) instead of Microsoft Graph and are gated by the single ARM `user_impersonation` scope.
 - ARM PIM domain layer (`src/arm/pim-role-azure.ts`) wrapping `roleEligibilityScheduleInstances`, `roleAssignmentScheduleInstances`, `roleAssignmentScheduleRequests`, and the `roleAssignmentApprovals/.../stages` PUT (delivered through the `2020-06-01` `/batch` endpoint, mirroring `pimctl`).
 - `src/arm/types.ts` — zod schemas for the ARM PIM resources (eligibility/active schedule instances, schedule requests, role-management policy assignments + effective rules, expanded properties).

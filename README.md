@@ -2,7 +2,7 @@
 
 Local MCP server (Model Context Protocol) written in TypeScript that gives an AI assistant scoped access to **Microsoft Entra Privileged Identity Management (PIM)** — for groups, Entra roles, and Azure resource roles — without granting it standing access.
 
-> **Phase 4 status:** Ships the full PIM surface end-to-end — seven `pim_group_*`, seven `pim_role_entra_*`, and seven `pim_role_azure_*` tools (21 PIM tools + 3 auth tools = 24 total).
+> **Status:** v0.1.0 candidate — full PIM surface end-to-end. Seven `pim_group_*`, seven `pim_role_entra_*`, and seven `pim_role_azure_*` tools (21 PIM tools + 3 auth tools = 24 total).
 
 ## What pimdo does
 
@@ -17,6 +17,45 @@ The agent acts as the signed-in human user — it never holds standing privilege
 
 pimdo borrows its authentication, browser-loopback, and HTTP-client architecture from [`graphdo-ts`](https://github.com/co-native-ab/graphdo-ts) and is informed by the [`pimctl`](https://github.com/co-native-ab/pimctl) CLI.
 
+## Installation
+
+pimdo-ts is distributed in three formats from [GitHub Releases](https://github.com/co-native-ab/pimdo-ts/releases/latest):
+
+### MCPB Bundle (Recommended for Claude Desktop)
+
+The [MCPB](https://github.com/modelcontextprotocol/mcpb) bundle is self-contained — it includes the server and a bundled Node.js runtime. No separate Node.js installation is required.
+
+Download the latest `pimdo-ts-vX.Y.Z.mcpb` file from GitHub Releases.
+
+**Claude Desktop:** Double-click the `.mcpb` file, or open Claude Desktop → **Settings** → **Extensions** → **Install Extension** and select the file.
+
+After installation, `pimdo` appears in your extensions list. Configure optional settings (debug logging, custom client ID, tenant ID) via the extension settings UI.
+
+### npm (Recommended for other MCP clients)
+
+Requires [Node.js](https://nodejs.org/) 22 or later.
+
+```bash
+npx @co-native-ab/pimdo-ts
+```
+
+Configure in your MCP client:
+
+```json
+{
+  "command": "npx",
+  "args": ["@co-native-ab/pimdo-ts"]
+}
+```
+
+### Standalone JS bundle
+
+Download `pimdo-ts-vX.Y.Z.js` from GitHub Releases and run directly with Node.js 22+:
+
+```bash
+node pimdo-ts-vX.Y.Z.js
+```
+
 ## Tools
 
 ### Authentication
@@ -27,7 +66,7 @@ pimdo borrows its authentication, browser-loopback, and HTTP-client architecture
 | `logout`      | Browser-confirmed sign-out and token cache clear                 |
 | `auth_status` | Report current sign-in state and granted scopes                  |
 
-### PIM for Entra Groups (phase 2)
+### PIM for Entra Groups
 
 | Tool                        | Purpose                                                                                 |
 | --------------------------- | --------------------------------------------------------------------------------------- |
@@ -41,7 +80,7 @@ pimdo borrows its authentication, browser-loopback, and HTTP-client architecture
 
 The four read tools return plain text the AI can summarise. The three write tools open a loopback browser form ("requester", "approver", "confirmer") so the human always confirms a privilege change before pimdo posts it to Graph.
 
-### PIM for Entra roles (phase 3)
+### PIM for Entra roles
 
 | Tool                             | Purpose                                                                                          |
 | -------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -55,7 +94,7 @@ The four read tools return plain text the AI can summarise. The three write tool
 
 The Entra-role approval read/PATCH operations target the Microsoft Graph **`beta`** endpoint for parity with [`pimctl`](https://github.com/co-native-ab/pimctl); the rest of the surface uses `v1.0`.
 
-### PIM for Azure roles (phase 4)
+### PIM for Azure roles
 
 | Tool                             | Purpose                                                                                               |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -69,6 +108,22 @@ The Entra-role approval read/PATCH operations target the Microsoft Graph **`beta
 
 The Azure-role surface talks to the Azure Resource Manager (ARM) API instead of Microsoft Graph. It uses API version `2020-10-01` for the `Microsoft.Authorization/role*` resources, `2021-01-01-preview` for the `roleAssignmentApprovals/.../stages` PUT, and posts approvals via the `2020-06-01` `/batch` endpoint — matching [`pimctl`](https://github.com/co-native-ab/pimctl).
 
+JSON Schemas for every tool's input are generated under [`schemas/tools/`](./schemas/tools) from the Zod definitions in `src/tools/` (see `npm run schemas:generate` and the `schemas:check` CI gate).
+
+## Authentication
+
+pimdo uses MSAL (`@azure/msal-node`) to authenticate with Microsoft. When the agent calls the `login` tool:
+
+1. The tool starts a local loopback HTTP server with a branded landing page and opens it in your browser.
+2. You click "Sign in with Microsoft", authenticate against Microsoft's OAuth endpoint, and the redirect lands back on the loopback server.
+3. Login completes immediately — no manual code entry needed.
+
+If a browser cannot be opened automatically, the tool returns the login URL as an error message. You can copy and paste this URL into any browser to complete authentication.
+
+The same login produces tokens for **both** Microsoft Graph and Azure Resource Manager — pimdo calls `Authenticator.tokenForResource(resource, signal)` per request and lets MSAL refresh them silently. To sign out and clear cached tokens, call the `logout` tool.
+
+Use the `auth_status` tool to check whether you are logged in and see the current user, granted scopes, and server version.
+
 ## Required scopes
 
 pimdo authenticates against **two resources** from the same login:
@@ -76,37 +131,81 @@ pimdo authenticates against **two resources** from the same login:
 - **Microsoft Graph** (`https://graph.microsoft.com`) — used for PIM groups and Entra role assignments.
 - **Azure Resource Manager** (`https://management.azure.com`) — used for Azure resource role assignments.
 
-| Scope                                             | Resource | When required                                  |
-| ------------------------------------------------- | -------- | ---------------------------------------------- |
-| `User.Read`                                       | Graph    | always (sign-in identity)                      |
-| `offline_access`                                  | Graph    | always (refresh tokens)                        |
-| `PrivilegedAccess.Read.AzureADGroup`              | Graph    | reading group eligibility / active assignments |
-| `PrivilegedAccess.ReadWrite.AzureADGroup`         | Graph    | requesting / approving group elevations        |
-| `RoleManagement.Read.Directory`                   | Graph    | reading Entra role assignments                 |
-| `RoleManagement.ReadWrite.Directory`              | Graph    | requesting / approving Entra role elevations   |
-| `RoleAssignmentSchedule.ReadWrite.Directory`      | Graph    | scheduled Entra role activations               |
-| `RoleEligibilitySchedule.Read.Directory`          | Graph    | reading Entra eligibility schedules            |
-| `https://management.azure.com/user_impersonation` | ARM      | all Azure resource role operations             |
+| Scope                                                  | Resource | When required                                      |
+| ------------------------------------------------------ | -------- | -------------------------------------------------- |
+| `User.Read`                                            | Graph    | always (sign-in identity)                          |
+| `offline_access`                                       | Graph    | always (refresh tokens)                            |
+| `PrivilegedAccess.Read.AzureADGroup`                   | Graph    | reading group eligibility / active assignments     |
+| `PrivilegedAccess.ReadWrite.AzureADGroup`              | Graph    | requesting / approving group elevations            |
+| `PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup`  | Graph    | submitting group activation/deactivation schedules |
+| `PrivilegedEligibilitySchedule.ReadWrite.AzureADGroup` | Graph    | reading/managing group eligibility schedules       |
+| `RoleManagement.Read.Directory`                        | Graph    | reading Entra role assignments                     |
+| `RoleManagement.ReadWrite.Directory`                   | Graph    | requesting / approving Entra role elevations       |
+| `RoleAssignmentSchedule.ReadWrite.Directory`           | Graph    | scheduled Entra role activations                   |
+| `RoleEligibilitySchedule.Read.Directory`               | Graph    | reading Entra eligibility schedules                |
+| `https://management.azure.com/user_impersonation`      | ARM      | all Azure resource role operations                 |
 
 The MCP server starts with no PIM tools enabled. As the user consents to additional scopes during interactive login, the corresponding tools light up automatically.
 
-## Manual Entra app registration (phase 1)
+## Manual Entra app registration
 
-Phase 1 does **not** ship a pre-published app registration. Until that lands you must register a multi-tenant Entra application yourself and pre-consent the scopes above for your tenant:
+pimdo-ts v0.1.0 does **not** ship a pre-published Entra application — there is no shared multi-tenant client ID baked into the manifest. Each install must register its own multi-tenant Entra application and pre-consent the scopes above for its tenant.
 
-1. In the Microsoft Entra admin center, register a new application (multi-tenant, public client / native).
-2. Under **API permissions**, add the delegated permissions listed above for **Microsoft Graph** and **Azure Service Management** (`user_impersonation`).
-3. Grant admin consent for your tenant.
-4. Set `PIMDO_CLIENT_ID` (or the `client_id` user config in the MCP manifest) to your application's client ID, and `PIMDO_TENANT_ID` to your tenant GUID (or `organizations`).
+1. In the Microsoft Entra admin center, register a new application:
+   - **Supported account types:** _Accounts in any organizational directory (multitenant)_.
+   - **Platform:** _Mobile and desktop applications_ / public client (no client secret).
+   - **Redirect URI:** `http://localhost` — pimdo's loopback server picks an ephemeral port at runtime, and Microsoft accepts any `http://localhost:<port>` redirect under the registered `http://localhost` entry.
+   - Enable **"Allow public client flows"** under _Authentication_ (required for the loopback PKCE flow).
+2. Under **API permissions**, add the **delegated** permissions listed above for **Microsoft Graph** and **Azure Service Management** (`user_impersonation`).
+3. Click **Grant admin consent for [your tenant]** so users can sign in without each individually consenting.
+4. Copy the application (client) ID. Provide it to pimdo via:
+   - the **Client ID** field in the MCPB extension settings (Claude Desktop), **or**
+   - the `PIMDO_CLIENT_ID` environment variable.
+   - Optionally set `PIMDO_TENANT_ID` to your tenant GUID (or `organizations`); defaults to `common`.
 
-## Installation & build
+## Configuration
+
+| Environment variable   | Default                              | Purpose                                                                                                                                                          |
+| ---------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PIMDO_CLIENT_ID`      | placeholder GUID (you must override) | Entra application client ID                                                                                                                                      |
+| `PIMDO_TENANT_ID`      | `common`                             | Entra tenant ID (`common` / `organizations` / GUID)                                                                                                              |
+| `PIMDO_DEBUG`          | unset                                | Set to `true` for verbose stderr logging                                                                                                                         |
+| `PIMDO_CONFIG_DIR`     | OS-default config dir                | Override the on-disk config / token-cache location (Linux: `~/.config/pimdo-ts`, macOS: `~/Library/Application Support/pimdo-ts`, Windows: `%APPDATA%/pimdo-ts`) |
+| `PIMDO_GRAPH_URL`      | `https://graph.microsoft.com/v1.0`   | Override Microsoft Graph base URL (sovereign clouds, testing)                                                                                                    |
+| `PIMDO_GRAPH_BETA_URL` | `https://graph.microsoft.com/beta`   | Override Microsoft Graph beta base URL                                                                                                                           |
+| `PIMDO_ARM_URL`        | `https://management.azure.com`       | Override Azure Resource Manager base URL                                                                                                                         |
+| `PIMDO_ACCESS_TOKEN`   | unset                                | Static access token for testing (bypasses MSAL); not for production use                                                                                          |
+
+## Security model
+
+- **No standing access.** pimdo only ever holds tokens scoped to the granted permissions and acts as the signed-in user.
+- **Human-in-the-loop for every privilege change.** `request`, `deactivate`, and `approval_review` always open a loopback browser form so you confirm or override the AI's intent before pimdo issues the API call.
+- **Loopback hardening.** The browser flow ships CSRF + Content-Security-Policy + strict header parsing identical to graphdo-ts's picker primitive (see `src/browser/security.ts`).
+- **Tool gating.** Every PIM tool declares the scopes it needs; the registry enables a tool only when all required scopes are present in the granted set, then re-syncs after every login.
+
+## Development
 
 ```sh
 npm install
-npm run build       # produces dist/index.js
-npm run check       # format + lint + typecheck + tests
-node dist/index.js  # starts the MCP server on stdio
+npm run check          # format + icons + schemas + lint + typecheck + tests
+npm run build          # produces dist/index.js
+npm run mcpb           # produces pimdo.mcpb (uses dist/)
+node dist/index.js     # starts the MCP server on stdio
 ```
+
+`npm run schemas:generate` regenerates `schemas/tools/*.json` from the Zod input schemas in `src/tools/`. The matching `schemas:check` runs in CI to detect drift.
+
+## FAQ
+
+**Why is there no shared pimdo Entra app registration?** PIM is privileged; we deliberately do _not_ ship a multi-tenant Co-native app for v0.1.0. Each install registers its own app, consents the scopes itself, and stays in control of who can sign in. A future release may publish a shared registration with documented scopes.
+
+**Does pimdo store any of my data?** It caches MSAL tokens (encrypted by MSAL) in your OS config dir under `pimdo-ts/`. No PIM resources, no listings, no approvals. Logout clears the token cache.
+
+**Why both Graph and ARM tokens?** Entra Groups and Entra Roles live in Microsoft Graph; Azure resource roles live in Azure Resource Manager. The same MSAL account gets a token for each resource silently, so login is still one click.
+
+**Can I use a personal Microsoft account?** No — Entra PIM is a work/school feature. Use a tenant where PIM is enabled.
+
+**Why do some tools target Microsoft Graph `beta`?** The Entra-role assignment-approvals surface is currently only available on `beta`, matching what `pimctl` does. Everything else uses `v1.0`.
 
 ## License
 

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "items": {
+      "description": "Optional preselected active instances. When omitted the user picks from all active assignments in the browser form.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "instanceId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The active assignment instance id from pim_role_entra_active_list."
+          },
+          "reason": {
+            "description": "Optional pre-filled reason shown in the browser form.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "instanceId"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
