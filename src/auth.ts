@@ -354,6 +354,16 @@ export class MsalAuthenticator implements Authenticator {
         scopes: this.cachedScopes.join(", "),
       });
 
+      // Probe every other resource silently. The interactive Graph login
+      // returns a refresh token that can be exchanged for tokens against
+      // any audience the user (or admin) has previously consented to for
+      // this app — including Azure Resource Manager. Without this probe,
+      // ARM-gated tools would stay disabled until the next manual login
+      // even though the refresh token can mint an ARM token on demand.
+      // Failures here are intentionally swallowed: a missing ARM consent
+      // simply means ARM tools remain disabled until consent is granted.
+      await this.probeAdditionalResources(signal);
+
       return {
         message: `Logged in as ${result.account.username}`,
         grantedScopes: this.cachedScopes,
@@ -361,6 +371,36 @@ export class MsalAuthenticator implements Authenticator {
     } finally {
       clearTimeout(timeoutId);
       loopback.closeServer();
+    }
+  }
+
+  /**
+   * Silently probe every non-Graph resource and merge any returned
+   * scopes into {@link cachedScopes}. The Graph probe is intentionally
+   * skipped because it has already happened (interactive at login or
+   * silent at startup) by the time this is called. Per-resource failures
+   * are swallowed — they only mean "user has not consented to that
+   * resource yet" and the corresponding tools simply stay disabled.
+   */
+  private async probeAdditionalResources(signal: AbortSignal): Promise<void> {
+    for (const resource of Object.values(Resource)) {
+      if (resource === Resource.Graph) continue;
+      try {
+        await this.tokenForResource(resource, signal);
+        logger.debug("silent probe succeeded", { resource });
+      } catch (err: unknown) {
+        if (err instanceof AuthenticationRequiredError) {
+          logger.debug("silent probe skipped (consent required)", { resource });
+          continue;
+        }
+        // Unexpected errors (network, etc.) are non-fatal here — the user
+        // is already logged in for Graph and can retry the ARM-gated tool
+        // later, which will surface a clearer error then.
+        logger.debug("silent probe failed", {
+          resource,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
   }
 
@@ -472,16 +512,20 @@ export class MsalAuthenticator implements Authenticator {
   }
 
   async grantedScopes(signal: AbortSignal): Promise<GraphScope[]> {
-    if (this.cachedScopes.length > 0) {
-      return this.cachedScopes;
-    }
-    // Try a silent token acquisition to discover scopes
+    // Always probe every resource silently so cachedScopes reflects the
+    // full set of audiences the cached refresh token can mint tokens
+    // for, not just the most-recently-used one. Without this, an MCP
+    // server restart against an existing cache would leave ARM tools
+    // disabled even though a silent ARM token is reachable.
     try {
       await this.token(signal);
-      return this.cachedScopes;
     } catch {
+      // Graph silent acquisition failed — user is not authenticated for
+      // any resource.
       return [];
     }
+    await this.probeAdditionalResources(signal);
+    return this.cachedScopes;
   }
 }
 

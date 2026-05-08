@@ -564,3 +564,86 @@ describe("MsalAuthenticator.accountInfo", () => {
     expect(info).toBeNull();
   });
 });
+
+// =========================================================================
+// MsalAuthenticator — multi-resource silent probe (refresh-token reuse)
+// =========================================================================
+
+describe("MsalAuthenticator multi-resource silent probe", () => {
+  const ARM_SCOPE = "https://management.azure.com/user_impersonation";
+
+  it("login probes ARM silently and exposes ARM scope in grantedScopes when consent exists", async () => {
+    const dir = getTempDir();
+    const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
+    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+
+    const fakePCA = installFakePCA();
+    fakePCA.acquireTokenInteractive.mockResolvedValue(
+      authResult({ scopes: ["User.Read", "RoleManagement.Read.Directory"] }),
+    );
+    // Simulates azidentity-style refresh-token reuse: the same login session
+    // can mint an ARM token silently because the user previously consented
+    // to the ARM permission for this app.
+    fakePCA.acquireTokenSilent.mockResolvedValue(
+      authResult({ scopes: [ARM_SCOPE], accessToken: "arm-token" }),
+    );
+
+    const result = await auth.login(testSignal());
+
+    expect(fakePCA.acquireTokenSilent).toHaveBeenCalledWith(
+      expect.objectContaining({ scopes: [ARM_SCOPE] }),
+    );
+    expect(result.grantedScopes).toContain("User.Read");
+    expect(result.grantedScopes).toContain("RoleManagement.Read.Directory");
+    expect(result.grantedScopes).toContain(ARM_SCOPE);
+  });
+
+  it("login still succeeds when the ARM silent probe needs interaction", async () => {
+    const dir = getTempDir();
+    const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
+    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+
+    const fakePCA = installFakePCA();
+    fakePCA.acquireTokenInteractive.mockResolvedValue(authResult({ scopes: ["User.Read"] }));
+    fakePCA.acquireTokenSilent.mockRejectedValue(
+      new msal.InteractionRequiredAuthError("interaction_required"),
+    );
+
+    const result = await auth.login(testSignal());
+
+    // ARM consent is missing — ARM scope must NOT be in the granted set,
+    // but login itself must still succeed and Graph scopes are intact.
+    expect(result.grantedScopes).toContain("User.Read");
+    expect(result.grantedScopes).not.toContain(ARM_SCOPE);
+  });
+
+  it("grantedScopes probes ARM silently after a server restart", async () => {
+    const dir = getTempDir();
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      path.join(dir, "account.json"),
+      JSON.stringify({
+        homeAccountId: "home-1",
+        environment: "login.microsoftonline.com",
+        tenantId: "tid-1",
+        username: "user@example.com",
+        localAccountId: "local-1",
+      }),
+    );
+
+    const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
+    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+
+    const fakePCA = installFakePCA();
+    // First call: Graph silent probe (scopes from cache).
+    // Second call: ARM silent probe (refresh-token reuse).
+    fakePCA.acquireTokenSilent
+      .mockResolvedValueOnce(authResult({ scopes: ["User.Read"] }))
+      .mockResolvedValueOnce(authResult({ scopes: [ARM_SCOPE], accessToken: "arm" }));
+
+    const scopes = await auth.grantedScopes(testSignal());
+
+    expect(scopes).toContain("User.Read");
+    expect(scopes).toContain(ARM_SCOPE);
+  });
+});
