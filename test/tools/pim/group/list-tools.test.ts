@@ -111,3 +111,34 @@ describe("pim_group list tools", () => {
     });
   });
 });
+
+describe("pim_group list tools error paths", () => {
+  // Build a config whose graph client points at a closed port so every
+  // outbound request fails. This exercises the catch branch in each list
+  // tool's handler (formatError).
+  function brokenConfig(): ServerConfig {
+    const dead = "http://127.0.0.1:1";
+    return {
+      authenticator: new StaticAuthenticator("fake-token"),
+      graphBaseUrl: dead,
+      graphBetaBaseUrl: dead,
+      armBaseUrl: dead,
+      configDir: "/tmp/pimdo-list-tests-broken",
+      graphClient: new GraphClient(dead, "fake-token"),
+      graphBetaClient: new GraphClient(dead, "fake-token"),
+      armClient: new ArmClient(dead, "fake-token"),
+      openBrowser: () => Promise.resolve(),
+    };
+  }
+
+  it.each([
+    ["eligible_list", pimGroupEligibleListTool],
+    ["active_list", pimGroupActiveListTool],
+    ["request_list", pimGroupRequestListTool],
+    ["approval_list", pimGroupApprovalListTool],
+  ] as const)("%s surfaces an isError result when Graph is unreachable", async (_name, tool) => {
+    const res = await call(tool, brokenConfig());
+    expect(res.isError).toBe(true);
+    expect(res.content[0]?.text).toMatch(/fetch failed|ECONNREFUSED/i);
+  });
+});

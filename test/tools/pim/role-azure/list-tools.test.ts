@@ -144,3 +144,31 @@ describe("pim_role_azure list tools", () => {
     });
   });
 });
+
+describe("pim_role_azure list tools error paths", () => {
+  function brokenConfig(): ServerConfig {
+    const dead = "http://127.0.0.1:1";
+    return {
+      authenticator: new StaticAuthenticator("fake-token"),
+      graphBaseUrl: dead,
+      graphBetaBaseUrl: dead,
+      armBaseUrl: dead,
+      configDir: "/tmp/pimdo-role-azure-list-tests-broken",
+      graphClient: new GraphClient(dead, "fake-token"),
+      graphBetaClient: new GraphClient(dead, "fake-token"),
+      armClient: new ArmClient(dead, "fake-token"),
+      openBrowser: () => Promise.resolve(),
+    };
+  }
+
+  it.each([
+    ["eligible_list", pimRoleAzureEligibleListTool],
+    ["active_list", pimRoleAzureActiveListTool],
+    ["request_list", pimRoleAzureRequestListTool],
+    ["approval_list", pimRoleAzureApprovalListTool],
+  ] as const)("%s surfaces an isError result when ARM is unreachable", async (_name, tool) => {
+    const res = await call(tool, brokenConfig());
+    expect(res.isError).toBe(true);
+    expect(res.content[0]?.text).toMatch(/fetch failed|ECONNREFUSED/i);
+  });
+});
