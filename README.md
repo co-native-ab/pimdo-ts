@@ -2,7 +2,7 @@
 
 Local MCP server (Model Context Protocol) written in TypeScript that gives an AI assistant scoped access to **Microsoft Entra Privileged Identity Management (PIM)** — for groups, Entra roles, and Azure resource roles — without granting it standing access.
 
-> **Phase 2 status:** Ships the seven `pim_group_*` tools end-to-end. The Entra-role and Azure-role surfaces are still pending (phases 3 & 4 in `.tmp/roadmap.md`).
+> **Phase 3 status:** Ships the seven `pim_group_*` and seven `pim_role_entra_*` tools end-to-end (14 PIM tools + 3 auth tools). The Azure-role surface is still pending (phase 4 in `.tmp/roadmap.md`).
 
 ## What pimdo does
 
@@ -40,6 +40,20 @@ pimdo borrows its authentication, browser-loopback, and HTTP-client architecture
 | `pim_group_approval_review` | Open a browser form to Approve / Deny / Skip pending PIM group approvals                |
 
 The four read tools return plain text the AI can summarise. The three write tools open a loopback browser form ("requester", "approver", "confirmer") so the human always confirms a privilege change before pimdo posts it to Graph.
+
+### PIM for Entra roles (phase 3)
+
+| Tool                             | Purpose                                                                                          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `pim_role_entra_eligible_list`   | List directory roles the signed-in user is eligible to activate                                  |
+| `pim_role_entra_active_list`     | List directory roles the signed-in user has currently activated                                  |
+| `pim_role_entra_request_list`    | List pending PIM Entra-role requests submitted by the signed-in user                             |
+| `pim_role_entra_request`         | Open a browser form to confirm activation of one or more directory roles (clamped to policy max) |
+| `pim_role_entra_deactivate`      | Open a browser form to confirm deactivation of one or more active Entra-role assignments         |
+| `pim_role_entra_approval_list`   | List pending PIM Entra-role approvals assigned to the signed-in user as approver                 |
+| `pim_role_entra_approval_review` | Open a browser form to Approve / Deny / Skip pending PIM Entra-role approvals                    |
+
+The Entra-role approval read/PATCH operations target the Microsoft Graph **`beta`** endpoint for parity with [`pimctl`](https://github.com/co-native-ab/pimctl); the rest of the surface uses `v1.0`.
 
 ## Required scopes
 

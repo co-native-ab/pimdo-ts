@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Phase 3: PIM Entra-role tool surface (`pim_role_entra_eligible_list`, `pim_role_entra_active_list`, `pim_role_entra_request_list`, `pim_role_entra_request`, `pim_role_entra_deactivate`, `pim_role_entra_approval_list`, `pim_role_entra_approval_review`).
+- Graph layer for PIM Entra roles (`src/graph/pim-role-entra.ts`) wrapping `roleEligibilitySchedules`, `roleAssignmentScheduleInstances`, `roleAssignmentScheduleRequests`, and `roleAssignmentApprovals` (beta) for parity with `pimctl`.
+- `getDirectoryRoleMaxDuration` in `src/graph/policies.ts` for directory-scoped role-management policy lookups.
+- Beta-channel Microsoft Graph client wired through `ServerConfig.graphBetaClient`, configurable via `PIMDO_GRAPH_BETA_URL` (default `https://graph.microsoft.com/beta`). Used only by the Entra-role assignment-approvals surface.
+- PIM mock-graph extended with Entra-role state, seed helpers (`seedRoleEntraEligibility`, `seedRoleEntraPendingApproval`), and routes for v1.0 + beta paths.
+- End-to-end integration test for the Entra-role surface (`test/integration/role-entra-flow.test.ts`).
 - Phase 2: PIM Group tool surface (`pim_group_eligible_list`, `pim_group_active_list`, `pim_group_request_list`, `pim_group_request`, `pim_group_deactivate`, `pim_group_approval_list`, `pim_group_approval_review`).
 - Three browser flows for human-confirmed PIM actions: `requesterFlow` (multi-row activation form with policy-clamped duration), `approverFlow` (Approve/Deny/Skip per row), and `confirmerFlow` (per-row include + reason). All built on a shared `runRowForm` primitive with CSRF + CSP hardening identical to the existing picker flow.
 - Graph layer for PIM groups (`src/graph/pim-group.ts`, `src/graph/policies.ts`, `src/graph/me.ts`) wrapping `eligibilitySchedules`, `assignmentScheduleInstances`, `assignmentScheduleRequests`, `assignmentApprovals`, and `roleManagementPolicyAssignments`.

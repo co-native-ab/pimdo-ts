@@ -1,5 +1,4 @@
-// Unit tests for the read-only pim_group_* list tools.
-// Drives the tool handlers against the shared MockGraphState fake.
+// Unit tests for the read-only pim_role_entra_* list tools.
 
 import { describe, it, expect } from "vitest";
 
@@ -10,10 +9,10 @@ import type { ServerConfig } from "../../../../src/index.js";
 import { MockGraphState, createMockGraphServer } from "../../../mock-graph.js";
 import { testSignal } from "../../../helpers.js";
 
-import { pimGroupActiveListTool } from "../../../../src/tools/pim/group/pim-group-active-list.js";
-import { pimGroupApprovalListTool } from "../../../../src/tools/pim/group/pim-group-approval-list.js";
-import { pimGroupEligibleListTool } from "../../../../src/tools/pim/group/pim-group-eligible-list.js";
-import { pimGroupRequestListTool } from "../../../../src/tools/pim/group/pim-group-request-list.js";
+import { pimRoleEntraActiveListTool } from "../../../../src/tools/pim/role-entra/pim-role-entra-active-list.js";
+import { pimRoleEntraApprovalListTool } from "../../../../src/tools/pim/role-entra/pim-role-entra-approval-list.js";
+import { pimRoleEntraEligibleListTool } from "../../../../src/tools/pim/role-entra/pim-role-entra-eligible-list.js";
+import { pimRoleEntraRequestListTool } from "../../../../src/tools/pim/role-entra/pim-role-entra-request-list.js";
 
 interface ToolResult {
   content: { type: string; text: string }[];
@@ -31,7 +30,7 @@ async function withState(
       graphBaseUrl: url,
       graphBetaBaseUrl: url,
       armBaseUrl: "http://127.0.0.1:1",
-      configDir: "/tmp/pimdo-list-tests",
+      configDir: "/tmp/pimdo-role-entra-list-tests",
       graphClient: new GraphClient(url, "fake-token"),
       graphBetaClient: new GraphClient(url, "fake-token"),
       armClient: new ArmClient("http://127.0.0.1:1", "fake-token"),
@@ -56,57 +55,58 @@ async function call(
   return cb({}, { signal: testSignal() });
 }
 
-describe("pim_group list tools", () => {
+describe("pim_role_entra list tools", () => {
   it("eligible_list reports the empty state", async () => {
     await withState(async (_state, config) => {
-      const res = await call(pimGroupEligibleListTool, config);
+      const res = await call(pimRoleEntraEligibleListTool, config);
       expect(res.content[0]?.text).toContain("No eligible");
     });
   });
 
   it("eligible_list lists seeded eligibilities", async () => {
     await withState(async (state, config) => {
-      state.seedEligibility({
-        groupId: "g1",
-        group: { id: "g1", displayName: "Alpha" },
+      state.seedRoleEntraEligibility({
+        roleDefinitionId: "role-1",
+        roleDefinition: { id: "role-1", displayName: "Global Reader" },
       });
-      const res = await call(pimGroupEligibleListTool, config);
-      expect(res.content[0]?.text).toContain("Alpha");
+      const res = await call(pimRoleEntraEligibleListTool, config);
+      expect(res.content[0]?.text).toContain("Global Reader");
+      expect(res.content[0]?.text).toContain("Directory");
     });
   });
 
   it("active_list reports the empty state", async () => {
     await withState(async (_state, config) => {
-      const res = await call(pimGroupActiveListTool, config);
+      const res = await call(pimRoleEntraActiveListTool, config);
       expect(res.content[0]?.text).toContain("No active");
     });
   });
 
   it("request_list reports my pending requests", async () => {
     await withState(async (state, config) => {
-      state.myRequests.push({
+      state.roleEntraMyRequests.push({
         id: "req-1",
-        groupId: "g1",
+        roleDefinitionId: "role-1",
         principalId: "me-id",
         action: "selfActivate",
         status: "PendingApproval",
         justification: "needed",
-        group: { id: "g1", displayName: "Alpha" },
+        roleDefinition: { id: "role-1", displayName: "Global Reader" },
       });
-      const res = await call(pimGroupRequestListTool, config);
-      expect(res.content[0]?.text).toContain("Alpha");
+      const res = await call(pimRoleEntraRequestListTool, config);
+      expect(res.content[0]?.text).toContain("Global Reader");
       expect(res.content[0]?.text).toContain("req-1");
     });
   });
 
   it("approval_list reports approver-side pending approvals", async () => {
     await withState(async (state, config) => {
-      const { approval } = state.seedPendingApproval({
-        groupId: "g2",
-        groupDisplayName: "Beta",
+      const { approval } = state.seedRoleEntraPendingApproval({
+        roleDefinitionId: "role-2",
+        roleDisplayName: "User Administrator",
       });
-      const res = await call(pimGroupApprovalListTool, config);
-      expect(res.content[0]?.text).toContain("Beta");
+      const res = await call(pimRoleEntraApprovalListTool, config);
+      expect(res.content[0]?.text).toContain("User Administrator");
       expect(res.content[0]?.text).toContain(approval.id);
     });
   });

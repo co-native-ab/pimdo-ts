@@ -32,6 +32,10 @@ import type {
   GroupActiveAssignment,
   GroupAssignmentRequest,
   GroupEligibleAssignment,
+  RoleAssignmentApproval,
+  RoleEntraActiveAssignment,
+  RoleEntraAssignmentRequest,
+  RoleEntraEligibleAssignment,
   User,
 } from "../src/graph/types.js";
 
@@ -63,6 +67,22 @@ export interface MockPolicyAssignment {
   isExpirationRequired?: boolean;
 }
 
+/**
+ * Directory-scoped role-management policy assignment, used by Entra-role
+ * tests. Mirrors {@link MockPolicyAssignment} but keyed by
+ * `(scopeId, roleDefinitionId)` rather than groupId.
+ */
+export interface MockDirectoryPolicyAssignment {
+  /** Tenant root is `'/'`; AU-scoped is e.g. `/administrativeUnits/<id>`. */
+  scopeId: string;
+  roleDefinitionId: string;
+  /** ISO-8601, e.g. "PT8H". */
+  maximumDuration: string;
+  /** Override the rule id used in the response (defaults to `Expiration_EndUser_Assignment`). */
+  ruleId?: string;
+  isExpirationRequired?: boolean;
+}
+
 export class MockGraphState {
   /** Returned by `GET /me`. */
   me: User = {
@@ -84,11 +104,29 @@ export class MockGraphState {
   /** Returned for filterByCurrentUser(on='approver') assignment-schedule requests. */
   approverRequests: GroupAssignmentRequest[] = [];
 
+  /** Returned for the Entra-role filterByCurrentUser(on='principal') eligibility schedules. */
+  roleEntraEligibilitySchedules: RoleEntraEligibleAssignment[] = [];
+
+  /** Returned for the Entra-role filterByCurrentUser(on='principal') schedule instances. */
+  roleEntraAssignmentScheduleInstances: RoleEntraActiveAssignment[] = [];
+
+  /** Entra-role filterByCurrentUser(on='principal') schedule requests. */
+  roleEntraMyRequests: RoleEntraAssignmentRequest[] = [];
+
+  /** Entra-role filterByCurrentUser(on='approver') schedule requests. */
+  roleEntraApproverRequests: RoleEntraAssignmentRequest[] = [];
+
+  /** Entra-role approvals (BETA), keyed by id. */
+  roleEntraApprovals = new Map<string, RoleAssignmentApproval>();
+
   /** Approvals keyed by id. */
   approvals = new Map<string, AssignmentApproval>();
 
   /** Policy assignments keyed by groupId + roleDefinitionId=member. */
   policyAssignments: MockPolicyAssignment[] = [];
+
+  /** Directory-scoped policy assignments (Entra-role surface). */
+  directoryPolicyAssignments: MockDirectoryPolicyAssignment[] = [];
 
   /** Captured POST bodies (assignmentScheduleRequests). */
   submittedRequests: SubmittedRequest[] = [];
@@ -162,6 +200,71 @@ export class MockGraphState {
       },
     };
     this.approverRequests.push(request);
+    return { request, approval };
+  }
+
+  /** Convenience: seed a single Entra-role eligibility entry. */
+  seedRoleEntraEligibility(
+    partial: Partial<RoleEntraEligibleAssignment> & { roleDefinitionId: string },
+  ): RoleEntraEligibleAssignment {
+    const e: RoleEntraEligibleAssignment = {
+      id: partial.id ?? this.genId("role-elig"),
+      roleDefinitionId: partial.roleDefinitionId,
+      principalId: partial.principalId ?? this.me.id,
+      directoryScopeId: partial.directoryScopeId ?? "/",
+      memberType: partial.memberType ?? "Direct",
+      status: partial.status ?? "Provisioned",
+      scheduleInfo: partial.scheduleInfo,
+      roleDefinition: partial.roleDefinition,
+      principal: partial.principal,
+    };
+    this.roleEntraEligibilitySchedules.push(e);
+    return e;
+  }
+
+  /** Convenience: seed a pending Entra-role approval + matching approver request. */
+  seedRoleEntraPendingApproval(partial: {
+    roleDefinitionId: string;
+    directoryScopeId?: string;
+    requesterPrincipalId?: string;
+    requesterDisplayName?: string;
+    justification?: string;
+    roleDisplayName?: string;
+    step?: Partial<AssignmentApprovalStage>;
+  }): { request: RoleEntraAssignmentRequest; approval: RoleAssignmentApproval } {
+    const approvalId = this.genId("role-approval");
+    const stepId = this.genId("role-step");
+    const step: AssignmentApprovalStage = {
+      id: stepId,
+      assignedToMe: true,
+      reviewResult: "NotReviewed",
+      status: "InProgress",
+      ...partial.step,
+    };
+    const approval: RoleAssignmentApproval = { id: approvalId, steps: [step] };
+    this.roleEntraApprovals.set(approvalId, approval);
+
+    const request: RoleEntraAssignmentRequest = {
+      id: this.genId("role-req"),
+      roleDefinitionId: partial.roleDefinitionId,
+      principalId: partial.requesterPrincipalId ?? "other-user",
+      directoryScopeId: partial.directoryScopeId ?? "/",
+      action: "selfActivate",
+      approvalId,
+      status: "PendingApproval",
+      justification: partial.justification ?? "needs access",
+      roleDefinition: {
+        id: partial.roleDefinitionId,
+        displayName: partial.roleDisplayName ?? "Mock Role",
+      },
+      principal: {
+        id: partial.requesterPrincipalId ?? "other-user",
+        displayName: partial.requesterDisplayName ?? "Other User",
+        mail: "other@example.com",
+        userPrincipalName: "other@example.com",
+      },
+    };
+    this.roleEntraApproverRequests.push(request);
     return { request, approval };
   }
 }
@@ -289,7 +392,31 @@ async function handleRequest(
   // GET /policies/roleManagementPolicyAssignments?$filter=...
   if (method === "GET" && pathname === "/policies/roleManagementPolicyAssignments") {
     const filter = parsed.searchParams.get("$filter") ?? "";
-    const groupId = extractGroupIdFromPolicyFilter(filter);
+    const scopeType = extractScopeTypeFromPolicyFilter(filter);
+    if (scopeType === "Directory") {
+      const scopeId = extractScopeIdFromPolicyFilter(filter);
+      const roleDefinitionId = extractRoleDefinitionIdFromPolicyFilter(filter);
+      const matches = state.directoryPolicyAssignments.filter(
+        (p) =>
+          (!scopeId || p.scopeId === scopeId) &&
+          (!roleDefinitionId || p.roleDefinitionId === roleDefinitionId),
+      );
+      const value = matches.map((m) => ({
+        id: `dir-assignment-${m.scopeId}-${m.roleDefinitionId}`,
+        policy: {
+          id: `dir-policy-${m.scopeId}-${m.roleDefinitionId}`,
+          rules: [
+            {
+              id: m.ruleId ?? "Expiration_EndUser_Assignment",
+              isExpirationRequired: m.isExpirationRequired ?? true,
+              maximumDuration: m.maximumDuration,
+            },
+          ],
+        },
+      }));
+      return jsonResponse(res, 200, { value });
+    }
+    const groupId = extractScopeIdFromPolicyFilter(filter);
     const matches = groupId
       ? state.policyAssignments.filter((p) => p.groupId === groupId)
       : state.policyAssignments;
@@ -307,6 +434,88 @@ async function handleRequest(
       },
     }));
     return jsonResponse(res, 200, { value });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Entra-role surface (v1.0 list/POST + beta approvals)
+  // ---------------------------------------------------------------------------
+
+  const ROLE = "/roleManagement/directory";
+
+  if (
+    method === "GET" &&
+    pathname === `${ROLE}/roleEligibilitySchedules/filterByCurrentUser(on='principal')`
+  ) {
+    return jsonResponse(res, 200, { value: state.roleEntraEligibilitySchedules });
+  }
+
+  if (
+    method === "GET" &&
+    pathname === `${ROLE}/roleAssignmentScheduleInstances/filterByCurrentUser(on='principal')`
+  ) {
+    return jsonResponse(res, 200, { value: state.roleEntraAssignmentScheduleInstances });
+  }
+
+  const roleReqListMatch =
+    /^\/roleManagement\/directory\/roleAssignmentScheduleRequests\/filterByCurrentUser\(on='(principal|approver)'\)$/.exec(
+      pathname,
+    );
+  if (method === "GET" && roleReqListMatch) {
+    const on = roleReqListMatch[1] as "principal" | "approver";
+    const all = on === "principal" ? state.roleEntraMyRequests : state.roleEntraApproverRequests;
+    const filter = parsed.searchParams.get("$filter");
+    const filtered = applyRoleEntraStatusFilter(all, filter);
+    return jsonResponse(res, 200, { value: filtered });
+  }
+
+  if (method === "POST" && pathname === `${ROLE}/roleAssignmentScheduleRequests`) {
+    const body = await readJson(req);
+    state.submittedRequests.push({ body, method, path: pathname });
+    const created: RoleEntraAssignmentRequest = {
+      id: state.genId("role-req"),
+      roleDefinitionId: stringField(body, "roleDefinitionId") ?? "",
+      principalId: stringField(body, "principalId") ?? "",
+      directoryScopeId: stringField(body, "directoryScopeId"),
+      action: stringField(body, "action"),
+      status: "Granted",
+      justification: stringField(body, "justification"),
+      scheduleInfo: body["scheduleInfo"] as RoleEntraAssignmentRequest["scheduleInfo"],
+    };
+    return jsonResponse(res, 201, created);
+  }
+
+  // BETA approval GET / step PATCH
+  const roleApprovalGet = /^\/roleManagement\/directory\/roleAssignmentApprovals\/([^/]+)$/.exec(
+    pathname,
+  );
+  if (method === "GET" && roleApprovalGet) {
+    const approvalId = roleApprovalGet[1] ?? "";
+    const approval = state.roleEntraApprovals.get(approvalId);
+    if (!approval)
+      return errorResponse(res, 404, "NotFound", `role approval ${approvalId} not found`);
+    return jsonResponse(res, 200, approval);
+  }
+
+  const roleStepPatch =
+    /^\/roleManagement\/directory\/roleAssignmentApprovals\/([^/]+)\/steps\/([^/]+)$/.exec(
+      pathname,
+    );
+  if (method === "PATCH" && roleStepPatch) {
+    const approvalId = roleStepPatch[1] ?? "";
+    const stepId = roleStepPatch[2] ?? "";
+    const approval = state.roleEntraApprovals.get(approvalId);
+    if (!approval)
+      return errorResponse(res, 404, "NotFound", `role approval ${approvalId} not found`);
+    const step = approval.steps.find((s) => s.id === stepId);
+    if (!step) return errorResponse(res, 404, "NotFound", `role step ${stepId} not found`);
+    const body = await readJson(req);
+    state.patchedStages.push({ approvalId, stageId: stepId, body });
+    if (typeof body["reviewResult"] === "string") step.reviewResult = body["reviewResult"];
+    if (typeof body["justification"] === "string") step.justification = body["justification"];
+    step.status = "Completed";
+    res.writeHead(204);
+    res.end();
+    return;
   }
 
   errorResponse(res, 404, "NotFound", `mock graph: no route for ${method} ${pathname}`);
@@ -354,8 +563,30 @@ function applyStatusFilter(
   return items.filter((r) => r.status === m[1]);
 }
 
-/** Extract `<groupId>` from `scopeId eq '<groupId>' and ...`. */
-function extractGroupIdFromPolicyFilter(filter: string): string | null {
+function applyRoleEntraStatusFilter(
+  items: RoleEntraAssignmentRequest[],
+  filter: string | null,
+): RoleEntraAssignmentRequest[] {
+  if (!filter) return items;
+  const m = /^status eq '([^']+)'$/.exec(filter);
+  if (!m) return items;
+  return items.filter((r) => r.status === m[1]);
+}
+
+/** Extract `<scopeId>` from `scopeId eq '<scopeId>' and ...`. */
+function extractScopeIdFromPolicyFilter(filter: string): string | null {
   const m = /scopeId eq '([^']+)'/.exec(filter);
+  return m ? (m[1] ?? null) : null;
+}
+
+/** Extract scopeType (`Group` | `Directory` | …) from a policy `$filter`. */
+function extractScopeTypeFromPolicyFilter(filter: string): string | null {
+  const m = /scopeType eq '([^']+)'/.exec(filter);
+  return m ? (m[1] ?? null) : null;
+}
+
+/** Extract `<roleDefinitionId>` from `roleDefinitionId eq '<roleDefinitionId>'`. */
+function extractRoleDefinitionIdFromPolicyFilter(filter: string): string | null {
+  const m = /roleDefinitionId eq '([^']+)'/.exec(filter);
   return m ? (m[1] ?? null) : null;
 }

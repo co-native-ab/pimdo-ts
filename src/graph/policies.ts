@@ -84,3 +84,51 @@ export async function getGroupMaxDuration(
   }
   return ruleParsed.maximumDuration;
 }
+
+/**
+ * Look up the `maximumDuration` (ISO-8601) the policy attached to
+ * the directory-scoped Entra role `roleDefinitionId` allows for end-user
+ * activation requests.
+ *
+ * Mirrors `pimctl/internal/graph/pim_entra_role.go::PIMEntraRoleGetMaximumExpirationByRoleID`.
+ * The directory-scope id is the tenant root `'/'`.
+ */
+export async function getDirectoryRoleMaxDuration(
+  client: GraphClient,
+  roleDefinitionId: string,
+  signal: AbortSignal,
+  directoryScopeId = "/",
+): Promise<string> {
+  const filter = encodeURIComponent(
+    `scopeId eq '${directoryScopeId}' and scopeType eq 'Directory' and roleDefinitionId eq '${roleDefinitionId}'`,
+  );
+  const expand = encodeURIComponent("policy($expand=rules)");
+  const path = `/policies/roleManagementPolicyAssignments?$filter=${filter}&$expand=${expand}`;
+
+  const response = await client.request(HttpMethod.GET, path, signal);
+  const parsed = await parseResponse(response, PolicyAssignmentsResponseSchema, "GET", path);
+
+  const assignments = parsed.value;
+  if (assignments.length === 0) {
+    throw new Error(
+      `no role-management policy assignment found for directory role ${roleDefinitionId}`,
+    );
+  }
+  const policy = assignments[0]?.policy;
+  if (!policy?.rules || policy.rules.length === 0) {
+    throw new Error(`policy for directory role ${roleDefinitionId} has no rules`);
+  }
+  const rule = policy.rules.find((r) => r.id === END_USER_ASSIGNMENT_RULE_ID);
+  if (!rule) {
+    throw new Error(
+      `policy for directory role ${roleDefinitionId} has no ${END_USER_ASSIGNMENT_RULE_ID} rule`,
+    );
+  }
+  const ruleParsed = UnifiedRoleManagementPolicyExpirationRuleSchema.parse(rule);
+  if (!ruleParsed.maximumDuration) {
+    throw new Error(
+      `policy for directory role ${roleDefinitionId} has no maximumDuration on the ${END_USER_ASSIGNMENT_RULE_ID} rule`,
+    );
+  }
+  return ruleParsed.maximumDuration;
+}

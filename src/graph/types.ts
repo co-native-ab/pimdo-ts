@@ -208,6 +208,130 @@ export const GroupAssignmentRequestSchema: z.ZodType<GroupAssignmentRequest> = z
   .loose();
 
 // ---------------------------------------------------------------------------
+// RoleDefinition (Entra directory roles)
+// ---------------------------------------------------------------------------
+
+/** Minimal Graph `unifiedRoleDefinition` shape used by PIM expansions. */
+export interface RoleDefinition {
+  id: string;
+  displayName?: string;
+  description?: string | null;
+  isBuiltIn?: boolean;
+  isEnabled?: boolean;
+}
+
+export const RoleDefinitionSchema: z.ZodType<RoleDefinition> = z
+  .object({
+    id: z.string(),
+    displayName: z.string().optional(),
+    description: z.string().nullish(),
+    isBuiltIn: z.boolean().optional(),
+    isEnabled: z.boolean().optional(),
+  })
+  .loose();
+
+// ---------------------------------------------------------------------------
+// Entra-role eligibility / assignment / request
+// ---------------------------------------------------------------------------
+
+/** PIM Entra-role eligibility schedule (`unifiedRoleEligibilitySchedule`). */
+export interface RoleEntraEligibleAssignment {
+  id: string;
+  roleDefinitionId: string;
+  principalId: string;
+  directoryScopeId?: string;
+  memberType?: string;
+  status?: string;
+  scheduleInfo?: ScheduleInfo;
+  roleDefinition?: RoleDefinition;
+  principal?: User;
+}
+
+export const RoleEntraEligibleAssignmentSchema: z.ZodType<RoleEntraEligibleAssignment> = z
+  .object({
+    id: z.string(),
+    roleDefinitionId: z.string(),
+    principalId: z.string(),
+    directoryScopeId: z.string().optional(),
+    memberType: z.string().optional(),
+    status: z.string().optional(),
+    scheduleInfo: ScheduleInfoSchema.optional(),
+    roleDefinition: RoleDefinitionSchema.optional(),
+    principal: UserSchema.optional(),
+  })
+  .loose();
+
+/** PIM Entra-role active assignment instance (`unifiedRoleAssignmentScheduleInstance`). */
+export interface RoleEntraActiveAssignment {
+  id: string;
+  roleDefinitionId: string;
+  principalId: string;
+  directoryScopeId?: string;
+  assignmentType?: string;
+  memberType?: string;
+  roleAssignmentOriginId?: string;
+  roleAssignmentScheduleId?: string;
+  startDateTime?: string | null;
+  endDateTime?: string | null;
+  roleDefinition?: RoleDefinition;
+  principal?: User;
+}
+
+export const RoleEntraActiveAssignmentSchema: z.ZodType<RoleEntraActiveAssignment> = z
+  .object({
+    id: z.string(),
+    roleDefinitionId: z.string(),
+    principalId: z.string(),
+    directoryScopeId: z.string().optional(),
+    assignmentType: z.string().optional(),
+    memberType: z.string().optional(),
+    roleAssignmentOriginId: z.string().optional(),
+    roleAssignmentScheduleId: z.string().optional(),
+    startDateTime: z.string().nullish(),
+    endDateTime: z.string().nullish(),
+    roleDefinition: RoleDefinitionSchema.optional(),
+    principal: UserSchema.optional(),
+  })
+  .loose();
+
+/** PIM Entra-role assignment-schedule request (`unifiedRoleAssignmentScheduleRequest`). */
+export interface RoleEntraAssignmentRequest {
+  id: string;
+  roleDefinitionId: string;
+  principalId: string;
+  directoryScopeId?: string;
+  action?: string;
+  approvalId?: string | null;
+  status?: string;
+  justification?: string | null;
+  scheduleInfo?: ScheduleInfo;
+  createdDateTime?: string | null;
+  completedDateTime?: string | null;
+  targetScheduleId?: string;
+  roleDefinition?: RoleDefinition;
+  principal?: User;
+}
+
+export const RoleEntraAssignmentRequestSchema: z.ZodType<RoleEntraAssignmentRequest> = z
+  .object({
+    id: z.string(),
+    roleDefinitionId: z.string(),
+    principalId: z.string(),
+    directoryScopeId: z.string().optional(),
+    action: z.string().optional(),
+    approvalId: z.string().nullish(),
+    status: z.string().optional(),
+    justification: z.string().nullish(),
+    scheduleInfo: ScheduleInfoSchema.optional(),
+    createdDateTime: z.string().nullish(),
+    completedDateTime: z.string().nullish(),
+    targetScheduleId: z.string().optional(),
+    roleDefinition: RoleDefinitionSchema.optional(),
+    principal: UserSchema.optional(),
+  })
+  .loose();
+
+// ---------------------------------------------------------------------------
 // Approval + stages
 // ---------------------------------------------------------------------------
 
@@ -261,6 +385,24 @@ export const AssignmentApprovalSchema: z.ZodType<AssignmentApproval> = z
   .object({
     id: z.string(),
     stages: z.array(AssignmentApprovalStageSchema),
+  })
+  .loose();
+
+/**
+ * PIM role-assignment approval (Entra-role variant).
+ *
+ * Exposes its decision points as `steps` (not `stages`). Each step has the
+ * same shape as a group-approval stage so we reuse {@link AssignmentApprovalStageSchema}.
+ */
+export interface RoleAssignmentApproval {
+  id: string;
+  steps: AssignmentApprovalStage[];
+}
+
+export const RoleAssignmentApprovalSchema: z.ZodType<RoleAssignmentApproval> = z
+  .object({
+    id: z.string(),
+    steps: z.array(AssignmentApprovalStageSchema),
   })
   .loose();
 

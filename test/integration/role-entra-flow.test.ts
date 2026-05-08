@@ -1,10 +1,4 @@
-// End-to-end integration test for the PIM group tool surface.
-//
-// Exercises eligible_list → request → approval_list → approval_review
-// → active_list → deactivate against a shared MockGraphState. Each
-// browser-flow tool is driven by simulating the user POSTing the
-// row-form submission to the loopback server (the tool itself opens
-// the URL via an injected `openBrowser` stub that captures it).
+// End-to-end integration test for the PIM Entra-role tool surface.
 
 import { describe, it, expect } from "vitest";
 
@@ -15,13 +9,13 @@ import type { ServerConfig } from "../../src/index.js";
 import { MockGraphState, createMockGraphServer } from "../mock-graph.js";
 import { fetchCsrfToken, testSignal } from "../helpers.js";
 
-import { pimGroupActiveListTool } from "../../src/tools/pim/group/pim-group-active-list.js";
-import { pimGroupApprovalListTool } from "../../src/tools/pim/group/pim-group-approval-list.js";
-import { pimGroupApprovalReviewTool } from "../../src/tools/pim/group/pim-group-approval-review.js";
-import { pimGroupDeactivateTool } from "../../src/tools/pim/group/pim-group-deactivate.js";
-import { pimGroupEligibleListTool } from "../../src/tools/pim/group/pim-group-eligible-list.js";
-import { pimGroupRequestListTool } from "../../src/tools/pim/group/pim-group-request-list.js";
-import { pimGroupRequestTool } from "../../src/tools/pim/group/pim-group-request.js";
+import { pimRoleEntraActiveListTool } from "../../src/tools/pim/role-entra/pim-role-entra-active-list.js";
+import { pimRoleEntraApprovalListTool } from "../../src/tools/pim/role-entra/pim-role-entra-approval-list.js";
+import { pimRoleEntraApprovalReviewTool } from "../../src/tools/pim/role-entra/pim-role-entra-approval-review.js";
+import { pimRoleEntraDeactivateTool } from "../../src/tools/pim/role-entra/pim-role-entra-deactivate.js";
+import { pimRoleEntraEligibleListTool } from "../../src/tools/pim/role-entra/pim-role-entra-eligible-list.js";
+import { pimRoleEntraRequestListTool } from "../../src/tools/pim/role-entra/pim-role-entra-request-list.js";
+import { pimRoleEntraRequestTool } from "../../src/tools/pim/role-entra/pim-role-entra-request.js";
 
 interface Harness {
   config: ServerConfig;
@@ -43,7 +37,7 @@ async function setupHarness(): Promise<Harness> {
     graphBaseUrl: url,
     graphBetaBaseUrl: url,
     armBaseUrl: "http://127.0.0.1:1",
-    configDir: "/tmp/pimdo-int",
+    configDir: "/tmp/pimdo-role-entra-int",
     graphClient,
     graphBetaClient,
     armClient,
@@ -97,30 +91,32 @@ async function waitFor<T>(
   throw new Error("waitFor: timed out waiting for value");
 }
 
-describe("pim_group_* integration", () => {
+describe("pim_role_entra_* integration", () => {
   it("walks the full eligible → request → approve → active → deactivate flow", async () => {
     const harness = await setupHarness();
     try {
       const me = harness.state.me.id;
-      harness.state.seedEligibility({
+      harness.state.seedRoleEntraEligibility({
         id: "elig-1",
-        groupId: "group-1",
+        roleDefinitionId: "role-1",
         principalId: me,
-        group: { id: "group-1", displayName: "Group One", description: "team alpha" },
+        directoryScopeId: "/",
+        roleDefinition: { id: "role-1", displayName: "Global Reader", description: "read all" },
       });
-      harness.state.policyAssignments.push({
-        groupId: "group-1",
+      harness.state.directoryPolicyAssignments.push({
+        scopeId: "/",
+        roleDefinitionId: "role-1",
         maximumDuration: "PT8H",
       });
 
       // 1) eligible_list
-      const eligibleRes = await callTool(pimGroupEligibleListTool, harness.config, {});
+      const eligibleRes = await callTool(pimRoleEntraEligibleListTool, harness.config, {});
       expect(eligibleRes.isError).toBeFalsy();
-      expect(eligibleRes.content[0]?.text ?? "").toContain("Group One");
+      expect(eligibleRes.content[0]?.text ?? "").toContain("Global Reader");
       expect(eligibleRes.content[0]?.text ?? "").toContain("elig-1");
 
       // 2) request — start the tool, then drive the loopback form.
-      const requestPromise = callTool(pimGroupRequestTool, harness.config, {
+      const requestPromise = callTool(pimRoleEntraRequestTool, harness.config, {
         items: [{ eligibilityId: "elig-1", justification: "On-call shift", duration: "PT2H" }],
       });
 
@@ -134,27 +130,28 @@ describe("pim_group_* integration", () => {
 
       const requestResult = await requestPromise;
       expect(requestResult.isError).toBeFalsy();
-      expect(requestResult.content[0]?.text ?? "").toContain("Group One");
+      expect(requestResult.content[0]?.text ?? "").toContain("Global Reader");
       expect(harness.state.submittedRequests).toHaveLength(1);
       const submitted = harness.state.submittedRequests[0]!.body;
       expect(submitted["action"]).toBe("selfActivate");
       expect(submitted["principalId"]).toBe(me);
-      expect(submitted["groupId"]).toBe("group-1");
+      expect(submitted["roleDefinitionId"]).toBe("role-1");
+      expect(submitted["directoryScopeId"]).toBe("/");
       expect(submitted["justification"]).toBe("On-call shift");
 
       // 3) approval flow.
-      const { approval } = harness.state.seedPendingApproval({
-        groupId: "group-2",
-        groupDisplayName: "Group Two",
+      const { approval } = harness.state.seedRoleEntraPendingApproval({
+        roleDefinitionId: "role-2",
+        roleDisplayName: "User Administrator",
         requesterDisplayName: "Bob",
-        justification: "needs read",
+        justification: "needs admin",
       });
 
-      const apprList = await callTool(pimGroupApprovalListTool, harness.config, {});
-      expect(apprList.content[0]?.text ?? "").toContain("Group Two");
+      const apprList = await callTool(pimRoleEntraApprovalListTool, harness.config, {});
+      expect(apprList.content[0]?.text ?? "").toContain("User Administrator");
       expect(apprList.content[0]?.text ?? "").toContain(approval.id);
 
-      const reviewPromise = callTool(pimGroupApprovalReviewTool, harness.config, {});
+      const reviewPromise = callTool(pimRoleEntraApprovalReviewTool, harness.config, {});
       const reviewUrl = await waitFor(
         () => harness.capturedUrls.at(-1),
         (last) => last !== url,
@@ -171,20 +168,20 @@ describe("pim_group_* integration", () => {
       expect(harness.state.patchedStages[0]!.body["reviewResult"]).toBe("Approve");
 
       // 4) deactivate flow.
-      harness.state.assignmentScheduleInstances.push({
+      harness.state.roleEntraAssignmentScheduleInstances.push({
         id: "instance-1",
-        groupId: "group-1",
+        roleDefinitionId: "role-1",
         principalId: me,
-        accessId: "member",
+        directoryScopeId: "/",
         endDateTime: "2099-01-01T00:00:00Z",
-        group: { id: "group-1", displayName: "Group One" },
+        roleDefinition: { id: "role-1", displayName: "Global Reader" },
       });
 
-      const activeRes = await callTool(pimGroupActiveListTool, harness.config, {});
-      expect(activeRes.content[0]?.text ?? "").toContain("Group One");
+      const activeRes = await callTool(pimRoleEntraActiveListTool, harness.config, {});
+      expect(activeRes.content[0]?.text ?? "").toContain("Global Reader");
       expect(activeRes.content[0]?.text ?? "").toContain("instance-1");
 
-      const deactivatePromise = callTool(pimGroupDeactivateTool, harness.config, {
+      const deactivatePromise = callTool(pimRoleEntraDeactivateTool, harness.config, {
         items: [{ instanceId: "instance-1", reason: "done" }],
       });
       const deactivateUrl = await waitFor(
@@ -202,11 +199,12 @@ describe("pim_group_* integration", () => {
       const deactivateBody =
         harness.state.submittedRequests[harness.state.submittedRequests.length - 1]!.body;
       expect(deactivateBody["action"]).toBe("selfDeactivate");
-      expect(deactivateBody["groupId"]).toBe("group-1");
+      expect(deactivateBody["roleDefinitionId"]).toBe("role-1");
+      expect(deactivateBody["directoryScopeId"]).toBe("/");
       expect(deactivateBody["justification"]).toBe("done");
 
       // 5) request_list (returns nothing — myRequests not seeded).
-      const myReqs = await callTool(pimGroupRequestListTool, harness.config, {});
+      const myReqs = await callTool(pimRoleEntraRequestListTool, harness.config, {});
       expect(myReqs.content[0]?.text ?? "").toContain("No pending");
     } finally {
       await harness.shutdown();

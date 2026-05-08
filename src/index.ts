@@ -18,6 +18,7 @@ import { logger, setLogLevel } from "./logger.js";
 import { Resource, type GraphScope } from "./scopes.js";
 import { AUTH_TOOLS } from "./tools/auth/index.js";
 import { GROUP_TOOLS } from "./tools/pim/group/index.js";
+import { ROLE_ENTRA_TOOLS } from "./tools/pim/role-entra/index.js";
 import type { AnyTool, ToolEntry } from "./tool-registry.js";
 import { buildInstructions, registerTool, syncToolState } from "./tool-registry.js";
 
@@ -47,6 +48,8 @@ export const CLIENT_ID = "00000000-0000-0000-0000-000000000000";
 export interface ServerConfig {
   authenticator: Authenticator;
   graphBaseUrl: string;
+  /** Beta-channel Microsoft Graph base URL (e.g., `https://graph.microsoft.com/beta`). */
+  graphBetaBaseUrl: string;
   armBaseUrl: string;
   configDir: string;
   /**
@@ -56,6 +59,12 @@ export interface ServerConfig {
    * long-running MCP server instances.
    */
   graphClient: GraphClient;
+  /**
+   * Beta-channel Microsoft Graph client. Used by the small set of PIM
+   * features that are only available on `https://graph.microsoft.com/beta`
+   * (notably the Entra-role assignment-approvals surface).
+   */
+  graphBetaClient: GraphClient;
   /**
    * Single ArmClient instance shared across all tool handlers. Like
    * {@link graphClient} but targets Azure Resource Manager via
@@ -74,13 +83,13 @@ export interface ServerConfig {
 
 /** Create a configured McpServer instance with all tools registered. */
 export async function createMcpServer(
-  opts: Omit<ServerConfig, "graphClient" | "armClient">,
+  opts: Omit<ServerConfig, "graphClient" | "graphBetaClient" | "armClient">,
   signal: AbortSignal,
 ): Promise<McpServer> {
   // All tools the server exposes, in instruction-listing order.
   // PIM tool surfaces (group / role-entra / role-azure) are added in
-  // phases 2-4; phase 2 ships the seven group tools.
-  const allTools: readonly AnyTool[] = [...AUTH_TOOLS, ...GROUP_TOOLS];
+  // phases 2-4; phase 3 adds the seven Entra-role tools.
+  const allTools: readonly AnyTool[] = [...AUTH_TOOLS, ...GROUP_TOOLS, ...ROLE_ENTRA_TOOLS];
 
   const mcpServer = new McpServer(
     { name: "pimdo", version: VERSION },
@@ -95,11 +104,14 @@ export async function createMcpServer(
   const graphClient = new GraphClient(opts.graphBaseUrl, {
     getToken: (s: AbortSignal) => opts.authenticator.tokenForResource(Resource.Graph, s),
   });
+  const graphBetaClient = new GraphClient(opts.graphBetaBaseUrl, {
+    getToken: (s: AbortSignal) => opts.authenticator.tokenForResource(Resource.Graph, s),
+  });
   const armClient = new ArmClient(opts.armBaseUrl, {
     getToken: (s: AbortSignal) => opts.authenticator.tokenForResource(Resource.Arm, s),
   });
 
-  const config: ServerConfig = { ...opts, graphClient, armClient };
+  const config: ServerConfig = { ...opts, graphClient, graphBetaClient, armClient };
 
   // Register every tool descriptor in a single loop. The descriptor is the
   // single source of truth for metadata, schemas, annotations, and handler.
@@ -216,12 +228,15 @@ async function main(): Promise<void> {
     : new MsalAuthenticator(clientId, tenantId, cfgDir, openBrowser);
 
   const graphBaseUrl = process.env["PIMDO_GRAPH_URL"] ?? "https://graph.microsoft.com/v1.0";
+  const graphBetaBaseUrl =
+    process.env["PIMDO_GRAPH_BETA_URL"] ?? "https://graph.microsoft.com/beta";
   const armBaseUrl = process.env["PIMDO_ARM_URL"] ?? "https://management.azure.com";
 
   const server = await createMcpServer(
     {
       authenticator,
       graphBaseUrl,
+      graphBetaBaseUrl,
       armBaseUrl,
       configDir: cfgDir,
       openBrowser,
