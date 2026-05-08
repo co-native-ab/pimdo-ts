@@ -58,6 +58,7 @@ const def: ToolDef = {
     GraphScope.RoleManagementReadWriteDirectory,
     GraphScope.RoleAssignmentScheduleReadWriteDirectory,
     GraphScope.RoleEligibilityScheduleReadWriteDirectory,
+    GraphScope.RoleManagementPolicyReadDirectory,
   ],
 };
 

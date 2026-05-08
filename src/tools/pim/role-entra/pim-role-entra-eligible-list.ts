@@ -19,7 +19,10 @@ const def: ToolDef = {
   description:
     "List Entra (directory) roles the signed-in user is eligible to activate via PIM. " +
     "Returns the role display name, role definition id, eligibility id, directory scope, and any time bounds.",
-  requiredScopes: [GraphScope.RoleEligibilityScheduleReadWriteDirectory],
+  requiredScopes: [
+    GraphScope.RoleEligibilityScheduleReadDirectory,
+    GraphScope.RoleEligibilityScheduleReadWriteDirectory,
+  ],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

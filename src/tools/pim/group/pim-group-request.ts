@@ -60,6 +60,7 @@ const def: ToolDef = {
     GraphScope.PrivilegedAccessReadWriteAzureADGroup,
     GraphScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
     GraphScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup,
+    GraphScope.RoleManagementPolicyReadAzureADGroup,
   ],
 };
 

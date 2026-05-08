@@ -29,11 +29,14 @@ export enum GraphScope {
   PrivilegedAccessReadWriteAzureADGroup = "PrivilegedAccess.ReadWrite.AzureADGroup",
   PrivilegedAssignmentScheduleReadWriteAzureADGroup = "PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup",
   PrivilegedEligibilityScheduleReadWriteAzureADGroup = "PrivilegedEligibilitySchedule.ReadWrite.AzureADGroup",
+  RoleManagementPolicyReadAzureADGroup = "RoleManagementPolicy.Read.AzureADGroup",
 
   // Graph — PIM for Entra (directory) Roles
   RoleManagementReadDirectory = "RoleManagement.Read.Directory",
+  RoleManagementPolicyReadDirectory = "RoleManagementPolicy.Read.Directory",
   RoleManagementReadWriteDirectory = "RoleManagement.ReadWrite.Directory",
   RoleAssignmentScheduleReadWriteDirectory = "RoleAssignmentSchedule.ReadWrite.Directory",
+  RoleEligibilityScheduleReadDirectory = "RoleEligibilitySchedule.Read.Directory",
   RoleEligibilityScheduleReadWriteDirectory = "RoleEligibilitySchedule.ReadWrite.Directory",
 
   // ARM — PIM for Azure (resource) Roles
@@ -92,6 +95,12 @@ export const AVAILABLE_SCOPES: readonly ScopeDefinition[] = [
     required: false,
   },
   {
+    scope: GraphScope.RoleManagementPolicyReadAzureADGroup,
+    label: "Group PIM (policy)",
+    description: "Read activation policy (max duration, approval) for PIM-managed Entra groups",
+    required: false,
+  },
+  {
     scope: GraphScope.RoleManagementReadDirectory,
     label: "Entra Roles (read)",
     description: "Read directory role definitions and assignments",
@@ -104,9 +113,21 @@ export const AVAILABLE_SCOPES: readonly ScopeDefinition[] = [
     required: false,
   },
   {
+    scope: GraphScope.RoleManagementPolicyReadDirectory,
+    label: "Entra Roles (policy)",
+    description: "Read activation policy (max duration, approval) for PIM-managed directory roles",
+    required: false,
+  },
+  {
     scope: GraphScope.RoleAssignmentScheduleReadWriteDirectory,
     label: "Entra Roles (active assignments)",
     description: "Read and manage your active assignment schedules for directory roles",
+    required: false,
+  },
+  {
+    scope: GraphScope.RoleEligibilityScheduleReadDirectory,
+    label: "Entra Roles (eligible assignments, read-only)",
+    description: "Read your eligible assignment schedules for directory roles",
     required: false,
   },
   {

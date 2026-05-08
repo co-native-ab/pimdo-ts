@@ -131,19 +131,21 @@ pimdo authenticates against **two resources** from the same login:
 - **Microsoft Graph** (`https://graph.microsoft.com`) — used for PIM groups and Entra role assignments.
 - **Azure Resource Manager** (`https://management.azure.com`) — used for Azure resource role assignments.
 
-| Scope                                                  | Resource | When required                                      |
-| ------------------------------------------------------ | -------- | -------------------------------------------------- |
-| `User.Read`                                            | Graph    | always (sign-in identity)                          |
-| `offline_access`                                       | Graph    | always (refresh tokens)                            |
-| `PrivilegedAccess.Read.AzureADGroup`                   | Graph    | reading group eligibility / active assignments     |
-| `PrivilegedAccess.ReadWrite.AzureADGroup`              | Graph    | requesting / approving group elevations            |
-| `PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup`  | Graph    | submitting group activation/deactivation schedules |
-| `PrivilegedEligibilitySchedule.ReadWrite.AzureADGroup` | Graph    | reading/managing group eligibility schedules       |
-| `RoleManagement.Read.Directory`                        | Graph    | reading Entra role assignments                     |
-| `RoleManagement.ReadWrite.Directory`                   | Graph    | requesting / approving Entra role elevations       |
-| `RoleAssignmentSchedule.ReadWrite.Directory`           | Graph    | scheduled Entra role activations                   |
-| `RoleEligibilitySchedule.Read.Directory`               | Graph    | reading Entra eligibility schedules                |
-| `https://management.azure.com/user_impersonation`      | ARM      | all Azure resource role operations                 |
+| Scope                                                  | Resource | When required                                                                                   |
+| ------------------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------- |
+| `User.Read`                                            | Graph    | always (sign-in identity)                                                                       |
+| `offline_access`                                       | Graph    | always (refresh tokens)                                                                         |
+| `PrivilegedAccess.Read.AzureADGroup`                   | Graph    | reading group eligibility / active assignments                                                  |
+| `PrivilegedAccess.ReadWrite.AzureADGroup`              | Graph    | requesting / approving group elevations                                                         |
+| `PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup`  | Graph    | submitting group activation/deactivation schedules                                              |
+| `PrivilegedEligibilitySchedule.ReadWrite.AzureADGroup` | Graph    | reading/managing group eligibility schedules                                                    |
+| `RoleManagementPolicy.Read.AzureADGroup`               | Graph    | reading group activation policy (max duration etc.) — required by `pim_group_request`           |
+| `RoleManagement.Read.Directory`                        | Graph    | reading Entra role assignments                                                                  |
+| `RoleManagement.ReadWrite.Directory`                   | Graph    | requesting / approving Entra role elevations                                                    |
+| `RoleAssignmentSchedule.ReadWrite.Directory`           | Graph    | scheduled Entra role activations                                                                |
+| `RoleEligibilitySchedule.Read.Directory`               | Graph    | reading Entra eligibility schedules                                                             |
+| `RoleManagementPolicy.Read.Directory`                  | Graph    | reading Entra-role activation policy (max duration etc.) — required by `pim_role_entra_request` |
+| `https://management.azure.com/user_impersonation`      | ARM      | all Azure resource role operations                                                              |
 
 The MCP server starts with no PIM tools enabled. As the user consents to additional scopes during interactive login, the corresponding tools light up automatically.
 
