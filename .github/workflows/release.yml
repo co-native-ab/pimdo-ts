@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Stamp version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Stamping version: $VERSION"
+          npm version "$VERSION" --no-git-tag-version
+          jq --arg v "$VERSION" '.version = $v' manifest.json > tmp.json
+          test -s tmp.json
+          mv tmp.json manifest.json
+          npm run format:manifest
+      - name: Check
+        run: npm run check
+      - name: Build
+        run: npm run build
+      - name: Create MCPB bundle
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: node scripts/bundle-mcpb.mjs --no-build "graphdo-ts-${TAG_NAME}.mcpb"
+      - name: Prepare release assets
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          cp dist/index.js "graphdo-ts-${TAG_NAME}.js"
+          npm pack
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-artifacts
+          path: |
+            graphdo-ts-*.mcpb
+            graphdo-ts-*.js
+            co-native-ab-graphdo-ts-*.tgz
+          retention-days: 7
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-artifacts
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-path: |
+            graphdo-ts-*.mcpb
+            graphdo-ts-*.js
+            co-native-ab-graphdo-ts-*.tgz
+      - name: Generate checksums
+        run: sha256sum graphdo-ts-*.mcpb graphdo-ts-*.js co-native-ab-graphdo-ts-*.tgz > checksums-sha256.txt
+      - uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            graphdo-ts-*.mcpb
+            graphdo-ts-*.js
+            co-native-ab-graphdo-ts-*.tgz
+            checksums-sha256.txt
+
+  npm-publish:
+    needs: [build, github-release]
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-artifacts
+      # Authentication uses OIDC Trusted Publishing (configured on npmjs.com).
+      # No NPM_TOKEN secret is needed — the id-token: write permission enables this.
+      - name: Publish to npm
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG_NAME#v}"
+          npm publish "co-native-ab-graphdo-ts-${VERSION}.tgz" --provenance

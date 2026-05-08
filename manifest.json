@@ -1,0 +1,78 @@
+{
+  "manifest_version": "0.3",
+  "name": "pimdo",
+  "display_name": "pimdo - Microsoft Entra PIM for AI",
+  "version": "0.0.0",
+  "description": "Give your AI assistant scoped access to Microsoft Entra Privileged Identity Management (PIM) for groups, Entra roles, and Azure resource roles.",
+  "long_description": "pimdo is an MCP server that connects an AI assistant to Microsoft Entra Privileged Identity Management (PIM). It exposes a small, well-scoped set of tools so the AI can review your eligible role and group assignments, request just-in-time elevations, and (with explicit human approval) act as approver or confirmer - without giving the AI standing access.\n\n**Phase 1** of pimdo only ships the authentication tools (login, logout, auth_status). PIM-specific tools (groups, Entra roles, Azure resource roles) are added in subsequent phases.\n\n**Authentication** - Signs in via your browser using your Microsoft account. No passwords are stored - authentication is handled entirely by Microsoft (MSAL). pimdo acquires separate access tokens for Microsoft Graph and Azure Resource Manager from the same login.\n\n**Privacy** - pimdo requests only the PIM-specific permissions it needs: User.Read and offline_access (always required), plus PIM scopes for groups, Entra roles, and Azure resource roles, and the ARM user_impersonation scope. Your credentials are handled directly by Microsoft. pimdo never sees your password.",
+  "author": {
+    "name": "Co-native AB",
+    "url": "https://co-native.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/co-native-ab/pimdo-ts.git"
+  },
+  "homepage": "https://github.com/co-native-ab/pimdo-ts",
+  "documentation": "https://github.com/co-native-ab/pimdo-ts#readme",
+  "support": "https://github.com/co-native-ab/pimdo-ts/issues",
+  "icon": "assets/symbol.png",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {
+        "PIMDO_DEBUG": "${user_config.debug}",
+        "PIMDO_CLIENT_ID": "${user_config.client_id}",
+        "PIMDO_TENANT_ID": "${user_config.tenant_id}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "login",
+      "description": "Sign in to Microsoft. Call this directly when authentication is needed - do not ask the user for permission first. Opens a browser for interactive sign-in."
+    },
+    {
+      "name": "logout",
+      "description": "Sign out and clear cached tokens for both Microsoft Graph and Azure Resource Manager."
+    },
+    {
+      "name": "auth_status",
+      "description": "Check authentication status, current user, granted scopes, and server version. Use this as a first step to diagnose issues or understand current state."
+    }
+  ],
+  "keywords": ["microsoft", "entra", "pim", "privileged-identity-management", "ai-agents", "mcp"],
+  "license": "MIT",
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=22.0.0"
+    }
+  },
+  "user_config": {
+    "debug": {
+      "type": "boolean",
+      "title": "Debug Logging",
+      "description": "Enable verbose debug logging to stderr. Useful for troubleshooting authentication and API issues.",
+      "default": false,
+      "required": false
+    },
+    "client_id": {
+      "type": "string",
+      "title": "Client ID",
+      "description": "Microsoft Entra application (client) ID for authentication. A real pimdo app registration will be published in a later phase; for now, set this to your own multi-tenant app registration with the required PIM scopes pre-consented.",
+      "default": "00000000-0000-0000-0000-000000000000",
+      "required": false
+    },
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant ID",
+      "description": "Microsoft Entra tenant ID. Use 'common' for any work/school account, 'organizations' for work/school only, or a specific tenant GUID.",
+      "default": "common",
+      "required": false
+    }
+  }
+}
