@@ -1,0 +1,58 @@
+# scripts/preview
+
+Single source of truth for the **preview site** at `docs/preview/`.
+
+The preview site is a static, fully self-contained gallery that lets a
+human (or AI agent) click through every browser-facing page and every
+MCP `*_list` tool's textual output, in both colour schemes, without
+running the live MCP server. Open `docs/preview/index.html` in a
+browser to use it.
+
+## Files
+
+| File                | Purpose                                                             |
+| ------------------- | ------------------------------------------------------------------- |
+| `scenarios.ts`      | Canonical list of scenario ids (`empty`, `single`, …).              |
+| `views.ts`          | Registry of browser views — re-uses the production templates.       |
+| `tools.ts`          | Registry of MCP `*_list` tools — re-uses the production formatters. |
+| `fixtures/`         | Deterministic Graph / ARM / row-form data per scenario.             |
+| `render.ts`         | Pure helpers shared by `generate.ts` and `check.ts`.                |
+| `index-template.ts` | Inline HTML/CSS/JS for `docs/preview/index.html`.                   |
+| `generate.ts`       | Writes `docs/preview/`. Invoked by `npm run preview`.               |
+| `check.ts`          | Verifies registration, scenario coverage, and drift.                |
+
+## Conventions
+
+- **No duplication.** `render.ts` calls into `src/templates/*` and
+  `src/tools/pim/*/format.ts` directly. Never reimplement a template or
+  formatter here.
+- **Determinism.** All fixtures use fixed display names, sequential
+  GUIDs, and pinned ISO timestamps so the generator output is
+  byte-stable across machines.
+- **Five-scenario matrix.** Every list-producing surface (a row-form
+  view or an MCP `*_list` tool) renders one output per id in
+  `LIST_SCENARIO_IDS`.
+- **Both colour schemes.** Every view is rendered to `light.html` and
+  `dark.html` via a deterministic `<meta name="color-scheme">` shim;
+  the underlying templates already respond to `prefers-color-scheme`.
+
+## Adding a new view or tool
+
+1. Implement the view (`src/browser/flows/...`) or tool (`src/tools/pim/...`).
+2. Add a fixture under `fixtures/` if the existing data isn't enough.
+3. Register the surface in `views.ts` or `tools.ts`.
+4. Run `npm run preview` and visually review `docs/preview/index.html`.
+5. Run `npm run preview:check`.
+6. Commit `scripts/preview/**` and `docs/preview/**` together.
+
+If you skip step 3 the check will fail with a structured nudge that
+points back at this file, ADR-0012, and the `preview-coverage` agent.
+
+## Optional: screenshot rendering
+
+Byte-deterministic PNGs across operating systems require an extra image
+diff tool, so they are not part of `npm run preview` or
+`npm run preview:check`. The index has a "Screenshot" tab that
+gracefully degrades when no PNG is present. A future
+`npm run preview:screenshots` job (Playwright) can fill in the PNG
+slots without changing the rest of the framework.
