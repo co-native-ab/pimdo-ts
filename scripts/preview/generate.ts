@@ -13,7 +13,7 @@
 // never reimplements them.
 
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { LIST_SCENARIOS, type ListScenarioId } from "./scenarios.js";
@@ -24,7 +24,14 @@ import { renderIndexHtml, INDEX_STYLES } from "./index-template.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..", "..");
-const outDir = resolve(root, "docs", "preview");
+
+/**
+ * Output directory. Default is the gitignored `.preview/` at the repo
+ * root so contributors can open `.preview/index.html` locally without
+ * committing generated files. CI overrides this via `PREVIEW_OUT_DIR`
+ * to stage the site for GitHub Pages publication.
+ */
+const outDir = resolve(root, process.env["PREVIEW_OUT_DIR"] ?? ".preview");
 
 interface FileEntry {
   /** Absolute path. */
@@ -141,8 +148,9 @@ function writeAll(files: readonly FileEntry[]): void {
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   const files = plan();
   writeAll(files);
+  const rel = relative(root, outDir) || ".";
   // eslint-disable-next-line no-console
   console.log(
-    `Generated ${String(files.length)} files in docs/preview/. Open docs/preview/index.html to browse.`,
+    `Generated ${String(files.length)} files in ${rel}/. Open ${rel}/index.html to browse.`,
   );
 }

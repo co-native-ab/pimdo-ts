@@ -1,12 +1,22 @@
 # scripts/preview
 
-Single source of truth for the **preview site** at `docs/preview/`.
+Single source of truth for the **preview site**.
 
 The preview site is a static, fully self-contained gallery that lets a
 human (or AI agent) click through every browser-facing page and every
 MCP `*_list` tool's textual output, in both colour schemes, without
-running the live MCP server. Open `docs/preview/index.html` in a
-browser to use it.
+running the live MCP server.
+
+- **Locally:** run `npm run preview` and open `.preview/index.html`.
+- **In a PR:** CI publishes to GitHub Pages — see the sticky comment
+  at the bottom of the PR for the URL
+  (`https://<owner>.github.io/<repo>/preview/pr/<id>/`). The latest
+  `main` is always available at `/preview/main/`.
+
+The output directory `.preview/` is **gitignored**; the generated
+artefacts are never committed (see ADR-0012). They are rebuilt on
+every CI run and pushed to the `gh-pages` branch by the
+`preview-publish` workflow.
 
 ## Files
 
@@ -17,15 +27,15 @@ browser to use it.
 | `tools.ts`          | Registry of MCP `*_list` tools — re-uses the production formatters. |
 | `fixtures/`         | Deterministic Graph / ARM / row-form data per scenario.             |
 | `render.ts`         | Pure helpers shared by `generate.ts` and `check.ts`.                |
-| `index-template.ts` | Inline HTML/CSS/JS for `docs/preview/index.html`.                   |
-| `generate.ts`       | Writes `docs/preview/`. Invoked by `npm run preview`.               |
-| `check.ts`          | Verifies registration, scenario coverage, and drift.                |
+| `index-template.ts` | Inline HTML/CSS/JS for `index.html`.                                |
+| `generate.ts`       | Writes the output dir. Invoked by `npm run preview`.                |
+| `check.ts`          | Verifies registration and source coverage.                          |
 
 ## Conventions
 
 - **No duplication.** `render.ts` calls into `src/templates/*` and
-  `src/tools/pim/*/format.ts` directly. Never reimplement a template or
-  formatter here.
+  `src/tools/pim/*/format.ts` directly. Never reimplement a template
+  or formatter here.
 - **Determinism.** All fixtures use fixed display names, sequential
   GUIDs, and pinned ISO timestamps so the generator output is
   byte-stable across machines.
@@ -41,17 +51,22 @@ browser to use it.
 1. Implement the view (`src/browser/flows/...`) or tool (`src/tools/pim/...`).
 2. Add a fixture under `fixtures/` if the existing data isn't enough.
 3. Register the surface in `views.ts` or `tools.ts`.
-4. Run `npm run preview` and visually review `docs/preview/index.html`.
+4. Run `npm run preview` and visually review `.preview/index.html`.
 5. Run `npm run preview:check`.
-6. Commit `scripts/preview/**` and `docs/preview/**` together.
 
 If you skip step 3 the check will fail with a structured nudge that
 points back at this file, ADR-0012, and the `preview-coverage` agent.
 
+## Output dir override
+
+The generator honours the `PREVIEW_OUT_DIR` environment variable so CI
+can stage the site for publication. The default is `.preview/` at the
+repo root.
+
 ## Optional: screenshot rendering
 
-Byte-deterministic PNGs across operating systems require an extra image
-diff tool, so they are not part of `npm run preview` or
+Byte-deterministic PNGs across operating systems require an extra
+image-diff tool, so they are not part of `npm run preview` or
 `npm run preview:check`. The index has a "Screenshot" tab that
 gracefully degrades when no PNG is present. A future
 `npm run preview:screenshots` job (Playwright) can fill in the PNG

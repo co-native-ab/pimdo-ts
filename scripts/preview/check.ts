@@ -1,22 +1,18 @@
-// Verifies that `docs/preview/` matches what `generate.ts` would
-// produce. Failure messages are designed to be actionable for both
-// humans and AI agents — every failure points at the `preview-coverage`
-// agent and ADR-0012.
+// Verifies the preview generator's registration coverage. Because the
+// generated artefacts are no longer committed (they are published to
+// GitHub Pages — see ADR-0012), this check no longer asserts byte-for-
+// byte parity with files on disk. Instead it asserts:
 //
-// Usage:
-//   npm run preview:check
+// 1. Every registered surface renders for every required scenario.
+// 2. Every browser flow under `src/browser/flows/` and every MCP
+//    `*_list` tool under `src/tools/pim/**/` is registered.
+// 3. The full generator plan can be produced without errors.
 //
-// Wired into `npm run check` and CI.
+// Failure messages are designed for both humans and AI agents — every
+// failure names the offending surface, the fix steps, ADR-0012, and
+// the `preview-coverage` agent.
 
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,7 +23,6 @@ import { plan } from "./generate.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..", "..");
-const outDir = resolve(root, "docs", "preview");
 const srcRoot = resolve(root, "src");
 
 interface Failure {
@@ -72,7 +67,7 @@ function appendStepSummary(text: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Registration coverage: every list scenario present, every theme present.
+// 1. Registration coverage: every list scenario renders.
 // ---------------------------------------------------------------------------
 
 function checkRegistrations(): Failure[] {
@@ -93,7 +88,7 @@ function checkRegistrations(): Failure[] {
           fixSteps: [
             `Open scripts/preview/fixtures/ and add a fixture for the "${id}" scenario.`,
             `Run: npm run preview`,
-            `Commit the regenerated files under docs/preview/`,
+            `Open .preview/index.html locally to verify the new entry.`,
           ],
         });
       }
@@ -107,7 +102,7 @@ function checkRegistrations(): Failure[] {
         fixSteps: [
           `Add at least one scenario to ${view.name} in scripts/preview/views.ts.`,
           `Run: npm run preview`,
-          `Commit the regenerated files under docs/preview/`,
+          `Open .preview/index.html locally to verify the new entry.`,
         ],
       });
     }
@@ -122,8 +117,6 @@ function checkRegistrations(): Failure[] {
 function checkSourceCoverage(): Failure[] {
   const failures: Failure[] = [];
 
-  // Browser flows under src/browser/flows/ — every flow file must be
-  // referenced as a view (by name). row-form is a primitive, not a flow.
   const flowsDir = resolve(srcRoot, "browser", "flows");
   const flowFiles = readdirSync(flowsDir)
     .filter((f) => f.endsWith(".ts") && f !== "row-form.ts")
@@ -137,24 +130,19 @@ function checkSourceCoverage(): Failure[] {
         fixSteps: [
           `Add a ViewPreview entry for "${flow}" in scripts/preview/views.ts (re-use the production template module).`,
           `Run: npm run preview`,
-          `Commit the regenerated files under docs/preview/`,
+          `Open .preview/index.html locally to verify the new entry.`,
         ],
       });
     }
   }
 
-  // *_list MCP tools — every file matching pim-*-list.ts under
-  // src/tools/pim must have a tool entry.
   const toolNames = new Set(TOOL_PREVIEWS.map((t) => t.name));
   function walk(dir: string): string[] {
     const out: string[] = [];
     for (const entry of readdirSync(dir)) {
       const full = resolve(dir, entry);
-      if (statSync(full).isDirectory()) {
-        out.push(...walk(full));
-      } else if (entry.endsWith("-list.ts")) {
-        out.push(full);
-      }
+      if (statSync(full).isDirectory()) out.push(...walk(full));
+      else if (entry.endsWith("-list.ts")) out.push(full);
     }
     return out;
   }
@@ -171,7 +159,7 @@ function checkSourceCoverage(): Failure[] {
           `Add a ToolPreview entry for "${name}" in scripts/preview/tools.ts (re-use the existing format.ts module).`,
           `Add fixtures (if needed) under scripts/preview/fixtures/.`,
           `Run: npm run preview`,
-          `Commit the regenerated files under docs/preview/`,
+          `Open .preview/index.html locally to verify the new entry.`,
         ],
       });
     }
@@ -180,70 +168,40 @@ function checkSourceCoverage(): Failure[] {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Drift: regenerate into a temp dir and compare with on-disk output.
+// 3. Plan: confirm the full generator plan can be produced.
 // ---------------------------------------------------------------------------
 
-function checkDrift(): Failure[] {
-  const expected = plan();
-  const failures: Failure[] = [];
-  const expectedPaths = new Set<string>();
-  for (const f of expected) {
-    expectedPaths.add(f.path);
-    if (!existsSync(f.path)) {
-      failures.push({
-        surface: relative(outDir, f.path),
-        reason: "missing in docs/preview/ (generator would create it)",
-        fixSteps: [`Run: npm run preview`, `Commit the regenerated files under docs/preview/`],
-      });
-      continue;
+function checkPlan(): Failure[] {
+  try {
+    const files = plan();
+    if (files.length === 0) {
+      return [
+        {
+          surface: "generator",
+          reason: "plan() produced zero files",
+          fixSteps: [`Investigate scripts/preview/generate.ts.`, `Run: npm run preview`],
+        },
+      ];
     }
-    const onDisk = readFileSync(f.path, "utf8");
-    if (onDisk !== f.content) {
-      failures.push({
-        surface: relative(outDir, f.path),
-        reason: "content differs from what the generator would produce",
-        fixSteps: [`Run: npm run preview`, `Commit the regenerated files under docs/preview/`],
-      });
-    }
-  }
-  // Detect orphan files.
-  function listAll(dir: string): string[] {
-    const out: string[] = [];
-    if (!existsSync(dir)) return out;
-    for (const entry of readdirSync(dir)) {
-      const full = resolve(dir, entry);
-      if (statSync(full).isDirectory()) out.push(...listAll(full));
-      else out.push(full);
-    }
-    return out;
-  }
-  for (const path of listAll(outDir)) {
-    if (path.endsWith(".png")) continue; // PNGs are produced by the optional screenshot job
-    if (!expectedPaths.has(path)) {
-      failures.push({
-        surface: relative(outDir, path),
-        reason: "orphan file under docs/preview/ (no longer produced by the generator)",
+  } catch (err) {
+    return [
+      {
+        surface: "generator",
+        reason: `plan() threw: ${err instanceof Error ? err.message : String(err)}`,
         fixSteps: [
-          `Run: npm run preview (this rewrites docs/preview/ from scratch).`,
-          `Commit the regenerated files under docs/preview/`,
+          `Investigate scripts/preview/generate.ts and the failing surface.`,
+          `Run: npm run preview`,
         ],
-      });
-    }
+      },
+    ];
   }
-  return failures;
+  return [];
 }
 
 // ---------------------------------------------------------------------------
 
 function main(): void {
-  // Sanity: the temp regeneration uses the same plan() helper, so the
-  // tmpdir branch is mainly future-proofing if we ever decide to write
-  // before diffing.
-  const tmpDir = resolve(root, ".tmp", "preview-check");
-  rmSync(tmpDir, { recursive: true, force: true });
-  mkdirSync(tmpDir, { recursive: true });
-
-  const failures: Failure[] = [...checkRegistrations(), ...checkSourceCoverage(), ...checkDrift()];
+  const failures: Failure[] = [...checkRegistrations(), ...checkSourceCoverage(), ...checkPlan()];
   if (failures.length > 0) fail(failures);
 
   // eslint-disable-next-line no-console

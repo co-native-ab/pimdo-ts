@@ -1,7 +1,7 @@
 dist/
 node_modules/
 coverage/
-docs/preview/
+.preview/
 *.mcpb
 package-lock.json
 
