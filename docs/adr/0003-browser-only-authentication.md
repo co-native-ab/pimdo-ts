@@ -46,9 +46,9 @@ MCP elicitation prompts for presenting device codes or confirming login status a
 
 The `login` tool opens the user's default browser to the Microsoft Entra ID login page. A local HTTP server on `127.0.0.1` with a random port listens for the authorization code redirect. After successful authentication, the server displays a success page and shuts down. This is the only authentication path.
 
-### 4. Graceful Fallback When Browser Cannot Open
+### 4. No Fallback When Browser Cannot Open
 
-If the browser cannot be opened (e.g., the `open` command fails), the login tool returns an MCP error containing the full authorization URL. The user can copy and paste this URL into any browser to complete authentication. There is no device code, no polling, and no background state — just a URL.
+If the browser cannot be opened (e.g., the `open` command fails), login fails. There is no manual URL fallback, no device code, and no headless mode. pimdo-ts is a workstation tool by design; if there is no browser, there is no login.
 
 ### 5. Browser-Based Logout
 
@@ -67,7 +67,7 @@ Logout now opens a browser confirmation page consistent with the browser-only UX
 ### Negative
 
 - **NEG-001**: Headless environments (SSH sessions, containers, remote servers without display) lose the ability to authenticate interactively. Users in these environments cannot complete the login flow.
-- **NEG-002**: If the browser fails to open automatically, the fallback requires the user to manually copy and paste a URL — this is a degraded experience compared to the automatic browser launch.
+- **NEG-002**: If the browser fails to open automatically, login fails — there is no manual URL or device code fallback. Workstations without a working browser cannot use pimdo-ts.
 - **NEG-003**: Future use cases that might benefit from headless authentication (e.g., CI/CD pipelines, server-side agents) are explicitly not supported and would require revisiting this decision.
 - **NEG-004**: MCP clients that had invested in elicitation support for pimdo-ts login will see that code path disappear. Any client-side logic for handling device code elicitation becomes dead code.
 
@@ -80,8 +80,8 @@ Logout now opens a browser confirmation page consistent with the browser-only UX
 
 ### Keep MCP Elicitation for Browser URL Delivery
 
-- **ALT-003**: **Description**: Remove device code flow but use MCP elicitation to present the browser login URL to the user within the MCP client, rather than returning it as an error when the browser cannot open.
-- **ALT-004**: **Rejection Reason**: Elicitation support is inconsistent across MCP clients and the specification is still evolving. Using elicitation for URL delivery creates a dependency on client capabilities that may not be present. Returning the URL as an MCP error is universally supported by all MCP clients — every client can display error messages — making it a more reliable delivery mechanism.
+- **ALT-003**: **Description**: Use MCP elicitation to present the browser login URL to the user within the MCP client when the browser cannot open, allowing manual completion of authentication.
+- **ALT-004**: **Rejection Reason**: Elicitation support is inconsistent across MCP clients and the specification is still evolving. More importantly, any URL-fallback path defeats the design intent: pimdo-ts is a workstation tool, and a browser must be available for the entire flow to work. Adding a fallback creates a second supported deployment shape (workstation-without-browser) that is not the tool's design intent.
 
 ### Support Multiple Authentication Strategies via Configuration
 
@@ -91,7 +91,7 @@ Logout now opens a browser confirmation page consistent with the browser-only UX
 ## Implementation Notes
 
 - **IMP-001**: The MSAL `PublicClientApplication` is configured with only the interactive browser authentication flow. The `acquireTokenInteractive` method uses a custom loopback client that starts a local HTTP server on `127.0.0.1` with a random available port to capture the authorization code redirect.
-- **IMP-002**: When the browser cannot be opened, the login tool returns `{ isError: true }` with a message containing the full authorization URL. The user can navigate to this URL manually in any browser to complete authentication. No background state is created — if the user does not complete authentication, the next `login` call starts a fresh attempt.
+- **IMP-002**: When the browser cannot be opened, the login tool returns `{ isError: true }` with the underlying error and no manual recovery path. There is no authorization URL surfaced to the user, no device code, and no background state — if browser launch fails, the next `login` call starts a fresh attempt.
 - **IMP-003**: The logout tool opens a browser page confirming the logout action, consistent with the browser-only pattern. Token cache is cleared locally regardless of whether the browser page loads successfully.
 - **IMP-004**: All device code flow infrastructure is removed: the `DeviceCodeRequest` callback, pending login promise tracking, the `completePendingLogin` helper, and any elicitation-related branching in the login handler.
 - **IMP-005**: Success criteria: the `login` tool has exactly one authentication code path (browser), the codebase contains no references to device code flow or MCP elicitation for authentication, and all existing tests pass with the simplified flow.

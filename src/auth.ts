@@ -1,7 +1,7 @@
 // Authentication module - MSAL-based token acquisition for Microsoft Graph.
 //
 // Uses interactive browser login exclusively. If the browser cannot be opened,
-// the login URL is returned for manual navigation.
+// login fails — there is no manual URL or device code fallback.
 
 import { promises as fs } from "node:fs";
 import path from "node:path";

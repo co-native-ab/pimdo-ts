@@ -17,13 +17,12 @@
 //
 // API versions:
 //   - role* resources:                  2020-10-01
-//   - roleAssignmentApprovals stage PUT 2021-01-01-preview (matches pimctl)
+//   - roleAssignmentApprovals stage PUT 2021-01-01-preview
 //   - /batch:                           2020-06-01
 //
-// Mirrors `pimctl/internal/azurerm/azurerm.go`. The approve path replicates
-// pimctl's batch trick because the direct PUT to `roleAssignmentApprovals`
-// does not work for delegated tokens — see the comment on
-// `Client.PIMAzureRoleAssignmentApprovalByApprovalID`.
+// The approve path uses the Azure portal's `/batch` trick because the
+// direct PUT to `roleAssignmentApprovals` does not work for delegated
+// tokens — see the comment on `approveRoleAzureAssignment`.
 
 import { randomUUID } from "node:crypto";
 
@@ -80,8 +79,7 @@ export async function listEligibleRoleAzureAssignments(
 /**
  * GET role-assignment-schedule instances where the signed-in user is the
  * principal. ARM rejects an empty-scope listing for active assignments
- * (returns []), so we derive scopes from the eligibility list — same
- * approach pimctl takes.
+ * (returns []), so we derive scopes from the eligibility list.
  */
 export async function listActiveRoleAzureAssignments(
   client: ArmClient,
@@ -103,7 +101,7 @@ export async function listActiveRoleAzureAssignments(
       `?api-version=${ARM_ROLES_API_VERSION}&$filter=${filter}`;
     const items = await getAllPages(client, path, ActiveListSchema, signal);
     for (const item of items) {
-      // Mirror pimctl: only surface user principals.
+      // Only surface user principals.
       if (item.properties.principalType === undefined || item.properties.principalType === "User") {
         result.push(item);
       }
@@ -218,7 +216,7 @@ async function putScheduleRequest(
 /**
  * Approve or deny a PIM Azure-role assignment. ARM does not expose a
  * working delegated PUT to `roleAssignmentApprovals/.../stages/{id}`, so
- * we replicate the Azure portal's `/batch` trick (same as pimctl).
+ * we replicate the Azure portal's `/batch` trick.
  *
  * `approvalId` may be the full ARM relative path
  * (`/providers/Microsoft.Authorization/roleAssignmentApprovals/{uuid}`)

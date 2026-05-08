@@ -1,9 +1,8 @@
 // Test helpers shared across the pimdo-ts vitest suites.
 //
-// Phase 1 has no PIM Graph fakes yet — the graphdo-ts mock-graph was
-// dropped — so this module only provides primitives that don't depend
-// on a fake server: an AbortSignal-with-deadline factory and a
-// CSRF-token extractor for the loopback browser tests.
+// Provides primitives that don't depend on a fake server: an
+// AbortSignal-with-deadline factory and a CSRF-token extractor for the
+// loopback browser tests.
 
 /**
  * Returns a per-test AbortSignal that times out after 10 seconds.

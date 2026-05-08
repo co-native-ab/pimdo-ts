@@ -1,10 +1,8 @@
 // Persistent config for pimdo-ts.
 //
-// pimdo has no user-facing persisted configuration in v1: there is no
-// list-picker (graphdo-ts's `todo_select_list`) and no folder navigator
-// (graphdo-ts's `markdown_select_workspace`). All "config" today is
-// effectively the auth-cache / account files written by `src/auth.ts`,
-// which are not managed through this module.
+// pimdo has no user-facing persisted configuration in v1. All "config"
+// today is effectively the auth-cache / account files written by
+// `src/auth.ts`, which are not managed through this module.
 //
 // This module therefore exists for two narrow reasons:
 //
@@ -15,10 +13,8 @@
 //      future code keep a forward-compatible call site for adding real
 //      schema migrations later without churn.
 //
-// The Zod-driven versioned `config.json` machinery from graphdo-ts is
-// intentionally absent — when pimdo grows real persisted state, this
-// module is the place to add a `ConfigFileSchemaV1` and a real
-// migration pipeline.
+// When pimdo grows real persisted state, this module is the place to
+// add a `ConfigFileSchemaV1` and a real migration pipeline.
 
 import * as os from "node:os";
 import * as path from "node:path";
@@ -30,9 +26,7 @@ import { logger } from "./logger.js";
  *
  *  - `NoChange` — nothing on disk needed migrating.
  *
- * The `Migrated` / `Invalid` / `Absent` variants from graphdo-ts are
- * intentionally omitted; this enum will grow when pimdo introduces real
- * versioned persisted state.
+ * This enum will grow when pimdo introduces real versioned persisted state.
  */
 export enum ConfigMigrationStatus {
   NoChange = "no_change",
@@ -73,8 +67,7 @@ export function configDir(overrideDir?: string): string {
  * No-op migration stub. pimdo has no on-disk schema to migrate today;
  * this exists so the startup hook in `src/index.ts` can stay
  * forward-compatible. When a real config file is introduced, replace
- * this with a real read-parse-migrate-rewrite path mirroring
- * graphdo-ts's pattern.
+ * this with a real read-parse-migrate-rewrite path.
  */
 export function migrateConfig(
   _configDir: string,

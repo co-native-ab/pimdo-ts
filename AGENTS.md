@@ -30,7 +30,7 @@ src/
 test/                       vitest tests mirroring src/ layout
 scripts/                    encode-icons.mjs, generate-schemas.ts, preview-pages.mjs, bundle-mcpb.mjs
 schemas/tools/              generated JSON Schemas, one per MCP tool inputSchema
-docs/adr/                   ADRs inherited from graphdo-ts (still applicable)
+docs/adr/                   ADRs documenting key design decisions (still applicable)
 .tmp/                       roadmap & phase plans (gitignored)
 ```
 

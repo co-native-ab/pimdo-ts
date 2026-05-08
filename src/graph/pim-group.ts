@@ -14,8 +14,7 @@
 //   - approve / deny an assignment (GET approval, find the live stage,
 //     PATCH the stage with reviewResult + justification)
 //
-// Mirrors the shapes used by `pimctl/internal/graph/pim_group.go` and
-// returns the parsed Graph payloads — formatting/UI is the tool layer's job.
+// Returns the parsed Graph payloads — formatting/UI is the tool layer's job.
 
 import { GraphClient, HttpMethod, parseResponse } from "./client.js";
 import {

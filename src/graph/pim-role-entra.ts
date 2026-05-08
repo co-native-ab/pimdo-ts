@@ -17,9 +17,10 @@
 //   - approve / deny an assignment      (GET approval (BETA), find live step,
 //                                        PATCH the step (BETA))
 //
-// The approval surface uses the Microsoft Graph `beta` endpoint for
-// parity with `pimctl/internal/graph/pim_entra_role.go`. Callers pass a
-// separate `betaClient` so we don't conflate beta/v1.0 base URLs.
+// The approval surface uses the Microsoft Graph `beta` endpoint, since
+// that is currently the only channel exposing the assignment-approvals
+// surface. Callers pass a separate `betaClient` so we don't conflate
+// beta/v1.0 base URLs.
 
 import { GraphClient, HttpMethod, parseResponse } from "./client.js";
 import {
