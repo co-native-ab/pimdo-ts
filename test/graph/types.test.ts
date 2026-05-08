@@ -5,6 +5,7 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  AssignmentApprovalSchema,
   GroupAssignmentRequestSchema,
   RoleEntraAssignmentRequestSchema,
 } from "../../src/graph/types.js";
@@ -43,5 +44,30 @@ describe("graph/types selfDeactivate response schemas", () => {
     };
     const parsed = GroupAssignmentRequestSchema.parse(payload);
     expect(parsed.scheduleInfo).toBeNull();
+  });
+});
+
+// Microsoft Graph returns `reviewedBy` as explicit `null` on approval
+// stages that have not yet been actioned (the common case when the
+// approver opens the review page). The schema must therefore accept
+// null in addition to undefined / a populated reviewer object.
+describe("AssignmentApprovalSchema unactioned-stage tolerance", () => {
+  it("parses a stage whose reviewedBy is explicit null", () => {
+    const payload = {
+      id: "approval-1",
+      stages: [
+        {
+          id: "stage-1",
+          assignedToMe: true,
+          reviewResult: "NotReviewed",
+          status: "InProgress",
+          justification: null,
+          reviewedBy: null,
+          reviewedDateTime: null,
+        },
+      ],
+    };
+    const parsed = AssignmentApprovalSchema.parse(payload);
+    expect(parsed.stages[0]?.reviewedBy).toBeNull();
   });
 });

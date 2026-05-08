@@ -359,7 +359,7 @@ export interface AssignmentApprovalStage {
   reviewResult?: string;
   status?: string;
   justification?: string | null;
-  reviewedBy?: ApprovalReviewer;
+  reviewedBy?: ApprovalReviewer | null;
   reviewedDateTime?: string | null;
 }
 
@@ -370,7 +370,7 @@ export const AssignmentApprovalStageSchema: z.ZodType<AssignmentApprovalStage> =
     reviewResult: z.string().optional(),
     status: z.string().optional(),
     justification: z.string().nullish(),
-    reviewedBy: ApprovalReviewerSchema.optional(),
+    reviewedBy: ApprovalReviewerSchema.nullish(),
     reviewedDateTime: z.string().nullish(),
   })
   .loose();
