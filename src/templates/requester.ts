@@ -124,6 +124,25 @@ export function requesterPageHtml(config: RequesterPageConfig): string {
       });
     }
 
+    function isFormValid() {
+      var includedCount = 0;
+      var rowEls = document.querySelectorAll('.row');
+      for (var i = 0; i < rowEls.length; i++) {
+        var rowEl = rowEls[i];
+        if (!rowEl.querySelector('.include-toggle').checked) continue;
+        includedCount++;
+        var justification = rowEl.querySelector('.justification').value.trim();
+        if (!justification) return false;
+        var maxMinutes = parseInt(rowEl.getAttribute('data-max-minutes'), 10);
+        var value = parseInt(rowEl.querySelector('.duration-value').value, 10);
+        if (!Number.isFinite(value) || value <= 0) return false;
+        var unit = rowEl.querySelector('.duration-unit').value;
+        var minutes = unit === 'H' ? value * 60 : value;
+        if (minutes > maxMinutes) return false;
+      }
+      return includedCount > 0;
+    }
+
     function buildPayload() {
       var rows = [];
       var rowEls = document.querySelectorAll('.row');
@@ -170,5 +189,6 @@ export function requesterPageHtml(config: RequesterPageConfig): string {
     formContent,
     submitLabel: "Submit requests",
     perFlowScript,
+    submitInitiallyDisabled: true,
   });
 }

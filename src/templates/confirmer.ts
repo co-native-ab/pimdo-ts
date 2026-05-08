@@ -76,6 +76,14 @@ export function confirmerPageHtml(config: ConfirmerPageConfig): string {
       });
     }
 
+    function isFormValid() {
+      var toggles = document.querySelectorAll('.row .include-toggle');
+      for (var i = 0; i < toggles.length; i++) {
+        if (toggles[i].checked) return true;
+      }
+      return false;
+    }
+
     function buildPayload() {
       var rows = [];
       document.querySelectorAll('.row').forEach(function (rowEl) {
@@ -100,5 +108,6 @@ export function confirmerPageHtml(config: ConfirmerPageConfig): string {
     formContent,
     submitLabel: config.submitLabel,
     perFlowScript,
+    submitInitiallyDisabled: true,
   });
 }

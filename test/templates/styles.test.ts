@@ -7,9 +7,10 @@ import {
   SUCCESS_STYLE,
   ERROR_STYLE,
   PICKER_STYLE,
+  ROW_FORM_STYLE,
 } from "../../src/templates/styles.js";
 import { escapeHtml } from "../../src/templates/escape.js";
-import { purple, grey, complementary, fontFamily } from "../../src/templates/tokens.js";
+import { purple, grey, complementary, dark, fontFamily } from "../../src/templates/tokens.js";
 
 describe("shared styles", () => {
   describe("BASE_STYLE", () => {
@@ -97,6 +98,22 @@ describe("shared styles", () => {
 
     it("includes dark mode media query", () => {
       expect(PICKER_STYLE).toContain("prefers-color-scheme: dark");
+    });
+  });
+
+  describe("ROW_FORM_STYLE", () => {
+    it("includes dark mode media query", () => {
+      expect(ROW_FORM_STYLE).toContain("prefers-color-scheme: dark");
+    });
+
+    it("retargets .row-label to a readable color in dark mode", () => {
+      // Regression guard: the row label (group / role / resource name)
+      // must remain readable on dark surfaces. Without an explicit
+      // dark-mode override it inherits purple.plus2 (~#120457), which
+      // is essentially invisible on the dark surface background.
+      const darkBlock = ROW_FORM_STYLE.split("prefers-color-scheme: dark")[1] ?? "";
+      expect(darkBlock).toContain(".row-label");
+      expect(darkBlock).toContain(dark.heading);
     });
   });
 });

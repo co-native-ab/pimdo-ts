@@ -46,8 +46,20 @@ export interface RowFormPageConfig {
   formContent: string;
   /** Submit button label, e.g. "Submit requests". */
   submitLabel: string;
-  /** Per-flow JS. Must define `function buildPayload()` and may define `function applyBulk(actionId)`. */
+  /**
+   * Per-flow JS. Must define `function buildPayload()` and may define
+   * `function applyBulk(actionId)`. May also define
+   * `function isFormValid()` returning a boolean — when present, the
+   * submit button starts disabled and is re-enabled live as the form
+   * becomes valid (and back to disabled if the user invalidates it).
+   */
   perFlowScript: string;
+  /**
+   * When true, render the submit button initially disabled. Set this
+   * for flows whose `perFlowScript` defines `isFormValid()`, so there
+   * is no flash-of-enabled state before the page script runs.
+   */
+  submitInitiallyDisabled?: boolean;
 }
 
 /**
@@ -69,7 +81,7 @@ export function renderRowFormPage(config: RowFormPageConfig): string {
       ${config.formContent}
       <div class="form-actions">
         <button type="button" id="cancel-btn" class="cancel-btn">Cancel</button>
-        <button type="button" id="submit-btn" class="submit-btn">${escapeHtml(config.submitLabel)}</button>
+        <button type="button" id="submit-btn" class="submit-btn"${config.submitInitiallyDisabled ? " disabled" : ""}>${escapeHtml(config.submitLabel)}</button>
       </div>
       <p id="error-banner" class="error-banner" hidden></p>
     </div>
@@ -146,13 +158,38 @@ function commonRowFormScript(): string {
       }, 1000);
     }
 
+    function refreshSubmitState() {
+      if (typeof isFormValid !== 'function') return;
+      var ok = false;
+      try {
+        ok = !!isFormValid();
+      } catch (_e) {
+        ok = false;
+      }
+      submitBtn.disabled = !ok;
+      if (ok) {
+        submitBtn.removeAttribute('aria-disabled');
+        submitBtn.removeAttribute('title');
+      } else {
+        submitBtn.setAttribute('aria-disabled', 'true');
+        submitBtn.title = 'Fill in the required fields for every selected row to continue.';
+      }
+    }
+
     document.querySelectorAll('[data-bulk]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         if (typeof applyBulk === 'function') {
           applyBulk(btn.getAttribute('data-bulk'));
         }
+        refreshSubmitState();
       });
     });
+
+    if (formCard) {
+      formCard.addEventListener('input', refreshSubmitState);
+      formCard.addEventListener('change', refreshSubmitState);
+    }
+    refreshSubmitState();
 
     submitBtn.addEventListener('click', async function () {
       clearError();

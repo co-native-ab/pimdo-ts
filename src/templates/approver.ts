@@ -91,6 +91,21 @@ export function approverPageHtml(config: ApproverPageConfig): string {
       });
     }
 
+    function isFormValid() {
+      var actionable = 0;
+      var rowEls = document.querySelectorAll('.row');
+      for (var i = 0; i < rowEls.length; i++) {
+        var rowEl = rowEls[i];
+        var checked = rowEl.querySelector('.decision-group input[type="radio"]:checked');
+        var decision = checked ? checked.value : 'Skip';
+        if (decision === 'Skip') continue;
+        actionable++;
+        var justification = rowEl.querySelector('.justification').value.trim();
+        if (!justification) return false;
+      }
+      return actionable > 0;
+    }
+
     function buildPayload() {
       var rows = [];
       var rowEls = document.querySelectorAll('.row');
@@ -122,5 +137,6 @@ export function approverPageHtml(config: ApproverPageConfig): string {
     formContent,
     submitLabel: "Submit decisions",
     perFlowScript,
+    submitInitiallyDisabled: true,
   });
 }

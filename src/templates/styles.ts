@@ -837,5 +837,6 @@ export const ROW_FORM_STYLE = `
       .bulk-btn { color: ${purple.minus1}; }
       .bulk-btn:hover, .row-controls textarea:focus,
       .row-controls input:focus, .row-controls select:focus { border-color: ${purple.brand}; }
+      .row-label { color: ${dark.heading}; }
       .row-subtitle, .row-meta, .empty-state, #manual-close { color: ${dark.text}; }
     }`;
