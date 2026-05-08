@@ -31,15 +31,11 @@ declare const __VERSION__: string;
 export const VERSION: string = __VERSION__;
 
 /**
- * Azure AD (Entra ID) multi-tenant app registration client ID.
- *
- * TODO: replace with the real `pimdo-ts` Entra app registration client ID
- * once the app has been created. See `.tmp/decisions.md` for the manual
- * registration steps. Until then this placeholder is shipped so the server
- * starts in development; production users should override via
- * `PIMDO_CLIENT_ID`.
+ * Azure AD (Entra ID) multi-tenant app registration client ID for the
+ * shared `pimdo-ts` Entra application. Override via `PIMDO_CLIENT_ID`
+ * to use a custom registration in your own tenant.
  */
-export const CLIENT_ID = "00000000-0000-0000-0000-000000000000";
+export const CLIENT_ID = "30cdf00b-19c8-4fe6-94bd-2674ee51a3ff";
 
 // ---------------------------------------------------------------------------
 // Server configuration

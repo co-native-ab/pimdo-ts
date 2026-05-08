@@ -147,8 +147,8 @@
     "client_id": {
       "type": "string",
       "title": "Client ID",
-      "description": "Microsoft Entra application (client) ID for authentication. The placeholder default ships only so the server starts in development - you must register your own multi-tenant Entra app with the PIM scopes pre-consented and set this value (see README for the manual registration steps).",
-      "default": "00000000-0000-0000-0000-000000000000",
+      "description": "Microsoft Entra application (client) ID for authentication. Defaults to the shared multi-tenant pimdo-ts app registration. Override only if your organization requires a custom app registration with the PIM scopes pre-consented (see README).",
+      "default": "30cdf00b-19c8-4fe6-94bd-2674ee51a3ff",
       "required": false
     },
     "tenant_id": {

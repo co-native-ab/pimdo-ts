@@ -149,7 +149,9 @@ The MCP server starts with no PIM tools enabled. As the user consents to additio
 
 ## Manual Entra app registration
 
-pimdo-ts v0.1.0 does **not** ship a pre-published Entra application — there is no shared multi-tenant client ID baked into the manifest. Each install must register its own multi-tenant Entra application and pre-consent the scopes above for its tenant.
+pimdo-ts ships with a default multi-tenant Entra application client ID — `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff`, published by Co-native AB — so most users do **not** need to register their own app. The first interactive sign-in will prompt for the PIM scopes; an administrator may need to grant tenant-wide consent before non-admin users can sign in.
+
+If your organization requires its own app registration (for example to lock down which tenants can use it, or to pre-consent custom scopes), register a multi-tenant Entra application yourself:
 
 1. In the Microsoft Entra admin center, register a new application:
    - **Supported account types:** _Accounts in any organizational directory (multitenant)_.
@@ -165,16 +167,16 @@ pimdo-ts v0.1.0 does **not** ship a pre-published Entra application — there is
 
 ## Configuration
 
-| Environment variable   | Default                              | Purpose                                                                                                                                                          |
-| ---------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PIMDO_CLIENT_ID`      | placeholder GUID (you must override) | Entra application client ID                                                                                                                                      |
-| `PIMDO_TENANT_ID`      | `common`                             | Entra tenant ID (`common` / `organizations` / GUID)                                                                                                              |
-| `PIMDO_DEBUG`          | unset                                | Set to `true` for verbose stderr logging                                                                                                                         |
-| `PIMDO_CONFIG_DIR`     | OS-default config dir                | Override the on-disk config / token-cache location (Linux: `~/.config/pimdo-ts`, macOS: `~/Library/Application Support/pimdo-ts`, Windows: `%APPDATA%/pimdo-ts`) |
-| `PIMDO_GRAPH_URL`      | `https://graph.microsoft.com/v1.0`   | Override Microsoft Graph base URL (sovereign clouds, testing)                                                                                                    |
-| `PIMDO_GRAPH_BETA_URL` | `https://graph.microsoft.com/beta`   | Override Microsoft Graph beta base URL                                                                                                                           |
-| `PIMDO_ARM_URL`        | `https://management.azure.com`       | Override Azure Resource Manager base URL                                                                                                                         |
-| `PIMDO_ACCESS_TOKEN`   | unset                                | Static access token for testing (bypasses MSAL); not for production use                                                                                          |
+| Environment variable   | Default                                | Purpose                                                                                                                                                          |
+| ---------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PIMDO_CLIENT_ID`      | `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff` | Entra application client ID (defaults to the shared Co-native multi-tenant pimdo-ts app)                                                                         |
+| `PIMDO_TENANT_ID`      | `common`                               | Entra tenant ID (`common` / `organizations` / GUID)                                                                                                              |
+| `PIMDO_DEBUG`          | unset                                  | Set to `true` for verbose stderr logging                                                                                                                         |
+| `PIMDO_CONFIG_DIR`     | OS-default config dir                  | Override the on-disk config / token-cache location (Linux: `~/.config/pimdo-ts`, macOS: `~/Library/Application Support/pimdo-ts`, Windows: `%APPDATA%/pimdo-ts`) |
+| `PIMDO_GRAPH_URL`      | `https://graph.microsoft.com/v1.0`     | Override Microsoft Graph base URL (sovereign clouds, testing)                                                                                                    |
+| `PIMDO_GRAPH_BETA_URL` | `https://graph.microsoft.com/beta`     | Override Microsoft Graph beta base URL                                                                                                                           |
+| `PIMDO_ARM_URL`        | `https://management.azure.com`         | Override Azure Resource Manager base URL                                                                                                                         |
+| `PIMDO_ACCESS_TOKEN`   | unset                                  | Static access token for testing (bypasses MSAL); not for production use                                                                                          |
 
 ## Security model
 
@@ -197,7 +199,7 @@ node dist/index.js     # starts the MCP server on stdio
 
 ## FAQ
 
-**Why is there no shared pimdo Entra app registration?** PIM is privileged; we deliberately do _not_ ship a multi-tenant Co-native app for v0.1.0. Each install registers its own app, consents the scopes itself, and stays in control of who can sign in. A future release may publish a shared registration with documented scopes.
+**Do I need to register my own Entra app?** No — pimdo-ts ships with a shared multi-tenant Entra application (client ID `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff`, published by Co-native AB). Most users can sign in directly. Some tenants require an administrator to grant tenant-wide consent first; an admin can pre-consent the scopes listed above for the shared app, or you can register your own and override `PIMDO_CLIENT_ID` (see "Manual Entra app registration").
 
 **Does pimdo store any of my data?** It caches MSAL tokens (encrypted by MSAL) in your OS config dir under `pimdo-ts/`. No PIM resources, no listings, no approvals. Logout clears the token cache.
 

@@ -15,6 +15,12 @@ resource roles).
 
 ### Added
 
+- Phase 5: Shared multi-tenant `pimdo-ts` Entra application client ID
+  (`30cdf00b-19c8-4fe6-94bd-2674ee51a3ff`, published by Co-native AB)
+  baked in as the default for `CLIENT_ID` / `PIMDO_CLIENT_ID` /
+  manifest `client_id`. Custom registrations can still be wired up by
+  overriding `PIMDO_CLIENT_ID`.
+
 - Phase 5: Per-tool JSON Schemas generated from each MCP tool's Zod
   `inputSchema` into `schemas/tools/<tool-name>.json`. New
   `scripts/generate-schemas.ts` plus `npm run schemas:generate` /
