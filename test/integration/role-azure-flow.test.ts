@@ -237,7 +237,9 @@ describe("pim_role_azure_* integration", () => {
 
       // 5) request_list (returns nothing — myRequests not seeded).
       const myReqs = await callTool(pimRoleAzureRequestListTool, harness.config, {});
-      expect(myReqs.content[0]?.text ?? "").toContain("No pending");
+      expect(myReqs.content[0]?.text ?? "").toContain(
+        "No PIM Azure-role requests submitted by you.",
+      );
     } finally {
       await harness.shutdown();
     }

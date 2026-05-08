@@ -101,6 +101,33 @@ describe("pim_role_azure list tools", () => {
       const res = await call(pimRoleAzureRequestListTool, config);
       expect(res.content[0]?.text).toContain("Owner");
       expect(res.content[0]?.text).toContain("req-1");
+      // status is surfaced inline (mirrors pimctl's REQUEST STATUS column) and
+      // the heading must NOT claim everything is "Pending" — the request
+      // listing is not status-filtered server-side for ARM.
+      expect(res.content[0]?.text).toContain("status=PendingApproval");
+      expect(res.content[0]?.text).toMatch(/^PIM Azure-role requests submitted by you/m);
+      expect(res.content[0]?.text).not.toContain("Pending PIM Azure-role requests");
+    });
+  });
+
+  it("request_list surfaces non-pending statuses (e.g. Provisioned) without the misleading 'Pending' heading", async () => {
+    await withState(async (state, config) => {
+      state.myRequests.push({
+        id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleRequests/req-2",
+        properties: {
+          principalId: "me-id",
+          roleDefinitionId: "role-2",
+          scope: "/subscriptions/sub-a",
+          requestType: "SelfActivate",
+          status: "Provisioned",
+          expandedProperties: {
+            roleDefinition: { id: "role-2", displayName: "Reader" },
+          },
+        },
+      });
+      const res = await call(pimRoleAzureRequestListTool, config);
+      expect(res.content[0]?.text).toContain("status=Provisioned");
+      expect(res.content[0]?.text).not.toContain("Pending PIM Azure-role requests");
     });
   });
 

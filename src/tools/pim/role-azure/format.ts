@@ -67,20 +67,21 @@ export function formatRequestsText(
 ): string {
   if (items.length === 0) {
     return perspective === "mine"
-      ? "No pending PIM Azure-role requests submitted by you."
-      : "No pending PIM Azure-role approvals assigned to you.";
+      ? "No PIM Azure-role requests submitted by you."
+      : "No PIM Azure-role approvals assigned to you.";
   }
   const heading =
     perspective === "mine"
-      ? `Pending PIM Azure-role requests submitted by you (${String(items.length)}):`
-      : `Pending PIM Azure-role approvals assigned to you (${String(items.length)}):`;
+      ? `PIM Azure-role requests submitted by you (${String(items.length)}):`
+      : `PIM Azure-role approvals assigned to you (${String(items.length)}):`;
   const lines = items.map((it) => {
     const j = it.properties.justification ? ` — "${it.properties.justification}"` : "";
     const approval = it.properties.approvalId ? ` [approval=${it.properties.approvalId}]` : "";
+    const status = ` status=${it.properties.status ?? "?"}`;
     return `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
       it.properties.scope,
       it.properties.expandedProperties,
-    )} [request=${it.id}] action=${it.properties.requestType ?? "?"}${approval}${j}`;
+    )} [request=${it.id}] action=${it.properties.requestType ?? "?"}${status}${approval}${j}`;
   });
   return [heading, ...lines].join("\n");
 }
