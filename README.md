@@ -2,7 +2,7 @@
 
 Local MCP server (Model Context Protocol) written in TypeScript that gives an AI assistant scoped access to **Microsoft Entra Privileged Identity Management (PIM)** — for groups, Entra roles, and Azure resource roles — without granting it standing access.
 
-> **Phase 3 status:** Ships the seven `pim_group_*` and seven `pim_role_entra_*` tools end-to-end (14 PIM tools + 3 auth tools). The Azure-role surface is still pending (phase 4 in `.tmp/roadmap.md`).
+> **Phase 4 status:** Ships the full PIM surface end-to-end — seven `pim_group_*`, seven `pim_role_entra_*`, and seven `pim_role_azure_*` tools (21 PIM tools + 3 auth tools = 24 total).
 
 ## What pimdo does
 
@@ -54,6 +54,20 @@ The four read tools return plain text the AI can summarise. The three write tool
 | `pim_role_entra_approval_review` | Open a browser form to Approve / Deny / Skip pending PIM Entra-role approvals                    |
 
 The Entra-role approval read/PATCH operations target the Microsoft Graph **`beta`** endpoint for parity with [`pimctl`](https://github.com/co-native-ab/pimctl); the rest of the surface uses `v1.0`.
+
+### PIM for Azure roles (phase 4)
+
+| Tool                             | Purpose                                                                                               |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `pim_role_azure_eligible_list`   | List Azure resource roles the signed-in user is eligible to activate                                  |
+| `pim_role_azure_active_list`     | List Azure resource roles the signed-in user has currently activated                                  |
+| `pim_role_azure_request_list`    | List pending PIM Azure-role requests submitted by the signed-in user                                  |
+| `pim_role_azure_request`         | Open a browser form to confirm activation of one or more Azure resource roles (clamped to policy max) |
+| `pim_role_azure_deactivate`      | Open a browser form to confirm deactivation of one or more active Azure-role assignments              |
+| `pim_role_azure_approval_list`   | List pending PIM Azure-role approvals assigned to the signed-in user as approver                      |
+| `pim_role_azure_approval_review` | Open a browser form to Approve / Deny / Skip pending PIM Azure-role approvals                         |
+
+The Azure-role surface talks to the Azure Resource Manager (ARM) API instead of Microsoft Graph. It uses API version `2020-10-01` for the `Microsoft.Authorization/role*` resources, `2021-01-01-preview` for the `roleAssignmentApprovals/.../stages` PUT, and posts approvals via the `2020-06-01` `/batch` endpoint — matching [`pimctl`](https://github.com/co-native-ab/pimctl).
 
 ## Required scopes
 

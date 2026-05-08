@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Phase 4: PIM Azure-role tool surface (`pim_role_azure_eligible_list`, `pim_role_azure_active_list`, `pim_role_azure_request_list`, `pim_role_azure_request`, `pim_role_azure_deactivate`, `pim_role_azure_approval_list`, `pim_role_azure_approval_review`). All seven tools speak Azure Resource Manager (ARM) instead of Microsoft Graph and are gated by the single ARM `user_impersonation` scope.
+- ARM PIM domain layer (`src/arm/pim-role-azure.ts`) wrapping `roleEligibilityScheduleInstances`, `roleAssignmentScheduleInstances`, `roleAssignmentScheduleRequests`, and the `roleAssignmentApprovals/.../stages` PUT (delivered through the `2020-06-01` `/batch` endpoint, mirroring `pimctl`).
+- `src/arm/types.ts` — zod schemas for the ARM PIM resources (eligibility/active schedule instances, schedule requests, role-management policy assignments + effective rules, expanded properties).
+- `getAzureRoleMaxDuration` in `src/arm/policies.ts` for ARM-scoped role-management policy lookups (`Expiration_EndUser_Assignment` rule).
+- ARM mock fake (`test/mock-arm.ts`) with seedable eligibility / active / pending-approval state and a `/batch` endpoint.
+- End-to-end integration test for the Azure-role surface (`test/integration/role-azure-flow.test.ts`).
 - Phase 3: PIM Entra-role tool surface (`pim_role_entra_eligible_list`, `pim_role_entra_active_list`, `pim_role_entra_request_list`, `pim_role_entra_request`, `pim_role_entra_deactivate`, `pim_role_entra_approval_list`, `pim_role_entra_approval_review`).
 - Graph layer for PIM Entra roles (`src/graph/pim-role-entra.ts`) wrapping `roleEligibilitySchedules`, `roleAssignmentScheduleInstances`, `roleAssignmentScheduleRequests`, and `roleAssignmentApprovals` (beta) for parity with `pimctl`.
 - `getDirectoryRoleMaxDuration` in `src/graph/policies.ts` for directory-scoped role-management policy lookups.

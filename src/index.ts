@@ -18,6 +18,7 @@ import { logger, setLogLevel } from "./logger.js";
 import { Resource, type GraphScope } from "./scopes.js";
 import { AUTH_TOOLS } from "./tools/auth/index.js";
 import { GROUP_TOOLS } from "./tools/pim/group/index.js";
+import { ROLE_AZURE_TOOLS } from "./tools/pim/role-azure/index.js";
 import { ROLE_ENTRA_TOOLS } from "./tools/pim/role-entra/index.js";
 import type { AnyTool, ToolEntry } from "./tool-registry.js";
 import { buildInstructions, registerTool, syncToolState } from "./tool-registry.js";
@@ -88,8 +89,13 @@ export async function createMcpServer(
 ): Promise<McpServer> {
   // All tools the server exposes, in instruction-listing order.
   // PIM tool surfaces (group / role-entra / role-azure) are added in
-  // phases 2-4; phase 3 adds the seven Entra-role tools.
-  const allTools: readonly AnyTool[] = [...AUTH_TOOLS, ...GROUP_TOOLS, ...ROLE_ENTRA_TOOLS];
+  // phases 2-4; phase 4 adds the seven Azure-role tools.
+  const allTools: readonly AnyTool[] = [
+    ...AUTH_TOOLS,
+    ...GROUP_TOOLS,
+    ...ROLE_ENTRA_TOOLS,
+    ...ROLE_AZURE_TOOLS,
+  ];
 
   const mcpServer = new McpServer(
     { name: "pimdo", version: VERSION },
