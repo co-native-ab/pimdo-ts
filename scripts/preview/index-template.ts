@@ -283,7 +283,6 @@ const INDEX_SCRIPT = `'use strict';
 export const INDEX_STYLES = `:root {
   --bg: #f6f6f8;
   --surface: #ffffff;
-  --surface-elevated: #ffffff;
   --sidebar-bg: #fafafc;
   --border: #e3e3ea;
   --border-soft: #ececf2;
@@ -300,7 +299,6 @@ export const INDEX_STYLES = `:root {
   :root {
     --bg: #14141a;
     --surface: #1c1b27;
-    --surface-elevated: #23223300;
     --sidebar-bg: #181724;
     --border: #2c2b3d;
     --border-soft: #23223a;
@@ -628,6 +626,6 @@ section#content { display: flex; flex-direction: column; min-height: 0; min-widt
 }
 @media (max-width: 480px) {
   .brand-text { font-size: 0.95rem; }
-  .build-badge-label { max-width: 9ch; overflow: hidden; text-overflow: ellipsis; }
+  .build-badge-label { max-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
 }
 `;
