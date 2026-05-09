@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>pimdo preview</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button id="sidebar-toggle" type="button" class="sidebar-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation"><span aria-hidden="true">☰</span></button>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">◆</span><span class="brand-text">pimdo<span class="brand-sub"> · preview</span></span></div>
+    <a class="build-badge build-badge-pr" href="https://github.com/co-native-ab/pimdo-ts/pull/10" title="PR #10 · e8f922e" target="_blank" rel="noopener noreferrer"><span class="build-badge-dot" aria-hidden="true"></span><span class="build-badge-label">PR #10</span></a>
+    <div class="controls">
+      <button id="theme-toggle" type="button" class="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <span class="theme-toggle-track" aria-hidden="true">
+          <span class="theme-toggle-icon theme-toggle-icon-sun">☀</span>
+          <span class="theme-toggle-icon theme-toggle-icon-moon">☾</span>
+          <span class="theme-toggle-thumb"></span>
+        </span>
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <nav id="sidebar" aria-label="Preview index"></nav>
+    <section id="content">
+      <header id="content-header" class="content-header" hidden>
+        <div class="content-title">
+          <div class="content-eyebrow"></div>
+          <h1 class="content-name"></h1>
+          <p class="content-desc"></p>
+        </div>
+      </header>
+      <div id="content-body" class="content-body">
+        <div class="empty">Select a scenario from the sidebar.</div>
+      </div>
+    </section>
+  </main>
+
+  <script id="manifest" type="application/json">{"schemaVersion":2,"generator":"scripts/preview/generate.ts","build":{"kind":"pr","id":"10","sha":"e8f922e7d84f243c340df96cab8c9e8a0ab0f9f9","shortSha":"e8f922e","repoUrl":"https://github.com/co-native-ab/pimdo-ts"},"views":[{"name":"login","family":"Auth","description":"MSAL loopback landing / success / error pages.","kind":"static","scenarios":[{"id":"landing","label":"Landing"},{"id":"success","label":"Success"},{"id":"error","label":"Error"}]},{"name":"logout","family":"Auth","description":"Logout confirmation + signed-out state.","kind":"static","scenarios":[{"id":"confirm","label":"Confirm"},{"id":"done","label":"Done"}]},{"name":"requester","family":"Group","description":"Multi-row activation form. Each row is one requestable item.","kind":"row-form","scenarios":[{"id":"single","label":"Single"},{"id":"pair","label":"Pair"},{"id":"full","label":"Full page"}]},{"name":"approver","family":"Group","description":"Reviewer flow. One row per pending approval.","kind":"row-form","scenarios":[{"id":"single","label":"Single"},{"id":"pair","label":"Pair"},{"id":"full","label":"Full page"}]},{"name":"confirmer","family":"Group","description":"Confirmation flow used by deactivate. One row per item.","kind":"row-form","scenarios":[{"id":"single","label":"Single"},{"id":"pair","label":"Pair"},{"id":"full","label":"Full page"}]}]}</script>
+  <script>
+'use strict';
+(function () {
+  var manifest = JSON.parse(document.getElementById('manifest').textContent);
+  var sidebar = document.getElementById('sidebar');
+  var contentBody = document.getElementById('content-body');
+  var contentHeader = document.getElementById('content-header');
+  var contentEyebrow = contentHeader.querySelector('.content-eyebrow');
+  var contentName = contentHeader.querySelector('.content-name');
+  var contentDesc = contentHeader.querySelector('.content-desc');
+  var themeToggle = document.getElementById('theme-toggle');
+  var sidebarToggle = document.getElementById('sidebar-toggle');
+  var root = document.documentElement;
+
+  // ---- Theme: defaults to system, toggles to explicit light/dark ----------
+  // No persisted state ⇒ follow the system theme. When the user clicks
+  // the toggle we pin an explicit choice in localStorage. Returning to
+  // system is a power-user case and is achieved by clearing storage; the
+  // common case (just match the OS) needs zero setup.
+  var THEME_KEY = 'pimdo-preview-theme';
+  function systemPrefersDark() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  function getSavedTheme() {
+    try {
+      var v = localStorage.getItem(THEME_KEY);
+      return v === 'light' || v === 'dark' ? v : null;
+    } catch (_) { return null; }
+  }
+  function effectiveTheme() {
+    return getSavedTheme() || (systemPrefersDark() ? 'dark' : 'light');
+  }
+  function applyTheme() {
+    var saved = getSavedTheme();
+    if (saved) root.setAttribute('data-theme', saved);
+    else root.removeAttribute('data-theme');
+    var dark = effectiveTheme() === 'dark';
+    themeToggle.setAttribute('aria-checked', dark ? 'true' : 'false');
+    themeToggle.classList.toggle('is-dark', dark);
+  }
+  applyTheme();
+  if (window.matchMedia) {
+    var mql = window.matchMedia('(prefers-color-scheme: dark)');
+    var onSystemChange = function () {
+      if (!getSavedTheme()) {
+        applyTheme();
+        refreshActiveIframeTheme();
+      }
+    };
+    if (mql.addEventListener) mql.addEventListener('change', onSystemChange);
+    else if (mql.addListener) mql.addListener(onSystemChange);
+  }
+  themeToggle.addEventListener('click', function () {
+    var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem(THEME_KEY, next); } catch (_) { /* ignore */ }
+    applyTheme();
+    refreshActiveIframeTheme();
+  });
+
+  // ---- Group entries by family ---------------------------------------------
+  var families = {};
+  manifest.views.forEach(function (v) {
+    if (!families[v.family]) families[v.family] = [];
+    families[v.family].push(v);
+  });
+
+  var EXPAND_KEY = 'pimdo-preview-expanded';
+  var expandedState = {};
+  try {
+    var savedExpand = JSON.parse(localStorage.getItem(EXPAND_KEY) || '{}');
+    if (savedExpand && typeof savedExpand === 'object') expandedState = savedExpand;
+  } catch (_) { /* ignore */ }
+  function persistExpansion() {
+    try { localStorage.setItem(EXPAND_KEY, JSON.stringify(expandedState)); } catch (_) { /* ignore */ }
+  }
+  function isExpanded(key, fallback) {
+    if (Object.prototype.hasOwnProperty.call(expandedState, key)) return !!expandedState[key];
+    return fallback;
+  }
+
+  function renderSidebar() {
+    sidebar.innerHTML = '';
+    var familyNames = Object.keys(families).sort();
+    familyNames.forEach(function (familyName) {
+      var familyKey = 'family:' + familyName;
+      var familyOpen = isExpanded(familyKey, true);
+      var familyEl = document.createElement('section');
+      familyEl.className = 'family' + (familyOpen ? ' open' : '');
+      familyEl.dataset.family = familyName;
+
+      var familyHeader = document.createElement('button');
+      familyHeader.type = 'button';
+      familyHeader.className = 'family-header';
+      familyHeader.setAttribute('aria-expanded', familyOpen ? 'true' : 'false');
+      familyHeader.innerHTML = '<span class="caret" aria-hidden="true"></span><span class="family-name"></span>';
+      familyHeader.querySelector('.family-name').textContent = familyName;
+      familyHeader.addEventListener('click', function () {
+        var nextOpen = !familyEl.classList.contains('open');
+        familyEl.classList.toggle('open', nextOpen);
+        familyHeader.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        expandedState[familyKey] = nextOpen;
+        persistExpansion();
+      });
+      familyEl.appendChild(familyHeader);
+
+      var viewList = document.createElement('div');
+      viewList.className = 'view-list';
+      families[familyName].forEach(function (view) {
+        var viewKey = 'view:' + view.name;
+        var viewOpen = isExpanded(viewKey, true);
+        var viewEl = document.createElement('div');
+        viewEl.className = 'view' + (viewOpen ? ' open' : '');
+        viewEl.dataset.view = view.name;
+
+        var viewHeader = document.createElement('button');
+        viewHeader.type = 'button';
+        viewHeader.className = 'view-header';
+        viewHeader.setAttribute('aria-expanded', viewOpen ? 'true' : 'false');
+        viewHeader.innerHTML = '<span class="caret" aria-hidden="true"></span><span class="view-name"></span>';
+        viewHeader.querySelector('.view-name').textContent = view.name;
+        viewHeader.addEventListener('click', function () {
+          var nextOpen = !viewEl.classList.contains('open');
+          viewEl.classList.toggle('open', nextOpen);
+          viewHeader.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+          expandedState[viewKey] = nextOpen;
+          persistExpansion();
+        });
+        viewEl.appendChild(viewHeader);
+
+        var scenarioList = document.createElement('div');
+        scenarioList.className = 'scenario-list';
+        view.scenarios.forEach(function (sc) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'scenario';
+          btn.dataset.kind = 'view';
+          btn.dataset.name = view.name;
+          btn.dataset.scenario = sc.id;
+          btn.dataset.family = view.family;
+          btn.dataset.description = view.description || '';
+          btn.innerHTML = '<span class="scenario-dot" aria-hidden="true"></span><span class="scenario-label"></span>';
+          btn.querySelector('.scenario-label').textContent = sc.label;
+          btn.addEventListener('click', function () {
+            select('view', view.name, sc.id);
+            if (window.matchMedia && window.matchMedia('(max-width: 800px)').matches) {
+              setSidebarOpen(false);
+            }
+          });
+          scenarioList.appendChild(btn);
+        });
+        viewEl.appendChild(scenarioList);
+        viewList.appendChild(viewEl);
+      });
+      familyEl.appendChild(viewList);
+      sidebar.appendChild(familyEl);
+    });
+  }
+
+  // ---- Selection / content panel -------------------------------------------
+  function refreshActiveIframeTheme() {
+    var active = sidebar.querySelector('button.scenario.active');
+    if (active) select(active.dataset.kind, active.dataset.name, active.dataset.scenario);
+  }
+
+  function select(kind, name, scenario) {
+    var theme = effectiveTheme();
+    history.replaceState(null, '', '#' + kind + '/' + name + '/' + scenario);
+    var activeBtn = null;
+    sidebar.querySelectorAll('button.scenario').forEach(function (b) {
+      var match = b.dataset.kind === kind && b.dataset.name === name && b.dataset.scenario === scenario;
+      b.classList.toggle('active', match);
+      if (match) activeBtn = b;
+    });
+
+    var family = activeBtn ? (activeBtn.dataset.family || '') : '';
+    var description = activeBtn ? (activeBtn.dataset.description || '') : '';
+    var scenarioLabel = activeBtn ? activeBtn.querySelector('.scenario-label').textContent : scenario;
+    contentHeader.hidden = false;
+    contentEyebrow.textContent = family ? family + ' · ' + name : name;
+    contentName.textContent = scenarioLabel;
+    contentDesc.textContent = description;
+    contentDesc.hidden = !description;
+
+    contentBody.innerHTML = '';
+    var iframe = document.createElement('iframe');
+    iframe.src = 'views/' + name + '/' + scenario + '/' + theme + '.html';
+    iframe.title = name + ' / ' + scenario + ' / ' + theme;
+    iframe.className = 'preview-frame';
+    contentBody.appendChild(iframe);
+  }
+
+  // ---- Sidebar toggle (mobile) ---------------------------------------------
+  function setSidebarOpen(open) {
+    document.body.classList.toggle('sidebar-open', open);
+    sidebarToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  sidebarToggle.addEventListener('click', function () {
+    setSidebarOpen(!document.body.classList.contains('sidebar-open'));
+  });
+
+  renderSidebar();
+
+  // Restore from hash, otherwise auto-select the first scenario.
+  var m = window.location.hash.match(/^#view\/([^\/]+)\/(.+)$/);
+  if (m) {
+    select('view', m[1], m[2]);
+  } else if (manifest.views.length > 0 && manifest.views[0].scenarios.length > 0) {
+    var first = manifest.views[0];
+    select('view', first.name, first.scenarios[0].id);
+  }
+})();
+
+  </script>
+</body>
+</html>
