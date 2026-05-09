@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>pimdo preview</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button id="sidebar-toggle" type="button" class="sidebar-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation">☰</button>
+    <div class="brand">pimdo · preview</div>
+    <div class="controls">
+      <label class="control">
+        <span>Search</span>
+        <input id="search" type="search" placeholder="name, family, scenario…" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="control">
+        <span>Theme</span>
+        <select id="theme">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+      <button id="copy-link" type="button">Copy link</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <nav id="sidebar" aria-label="Preview index"></nav>
+    <section id="content">
+      <div class="empty">Select an entry from the sidebar.</div>
+    </section>
+  </main>
+
+  <script id="manifest" type="application/json">{"schemaVersion":1,"generator":"scripts/preview/generate.ts","views":[{"name":"login","family":"Auth","description":"MSAL loopback landing / success / error pages.","kind":"static","scenarios":[{"id":"landing","label":"Landing"},{"id":"success","label":"Success"},{"id":"error","label":"Error"}]},{"name":"logout","family":"Auth","description":"Logout confirmation + signed-out state.","kind":"static","scenarios":[{"id":"confirm","label":"Confirm"},{"id":"done","label":"Done"}]},{"name":"requester","family":"Group","description":"Multi-row activation form. Each row is one requestable item.","kind":"row-form","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"approver","family":"Group","description":"Reviewer flow. One row per pending approval.","kind":"row-form","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"confirmer","family":"Group","description":"Confirmation flow used by deactivate. One row per item.","kind":"row-form","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]}],"tools":[{"name":"pim_group_eligible_list","family":"Group","description":"Groups the signed-in user is eligible to activate via PIM.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"pim_group_active_list","family":"Group","description":"Currently active PIM group assignments for the signed-in user.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"pim_group_request_list","family":"Group","description":"Pending PIM group requests submitted by the signed-in user.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"pim_group_approval_list","family":"Group","description":"Pending PIM group approvals assigned to the signed-in user.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"pim_role_entra_eligible_list","family":"Entra Role","description":"Entra directory roles the signed-in user is eligible to activate.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"pim_role_entra_active_list","family":"Entra Role","description":"Currently active PIM Entra-role assignments for the signed-in user.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"pim_role_entra_request_list","family":"Entra Role","description":"Pending PIM Entra-role requests submitted by the signed-in user.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"pim_role_entra_approval_list","family":"Entra Role","description":"Pending PIM Entra-role approvals assigned to the signed-in user.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"pim_role_azure_eligible_list","family":"Azure Role","description":"Azure resource roles the signed-in user is eligible to activate.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"pim_role_azure_active_list","family":"Azure Role","description":"Currently active PIM Azure-role assignments for the signed-in user.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"pim_role_azure_request_list","family":"Azure Role","description":"Pending PIM Azure-role requests submitted by the signed-in user.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"pim_role_azure_approval_list","family":"Azure Role","description":"Pending PIM Azure-role approvals assigned to the signed-in user.","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]}]}</script>
+  <script>
+'use strict';
+(function () {
+  var manifest = JSON.parse(document.getElementById('manifest').textContent);
+  var sidebar = document.getElementById('sidebar');
+  var content = document.getElementById('content');
+  var searchEl = document.getElementById('search');
+  var themeEl = document.getElementById('theme');
+  var copyBtn = document.getElementById('copy-link');
+  var sidebarToggle = document.getElementById('sidebar-toggle');
+  var root = document.documentElement;
+
+  // ---- Theme: system | light | dark, persisted in localStorage --------------
+  var THEME_KEY = 'pimdo-preview-theme';
+  function effectiveTheme() {
+    var t = themeEl.value;
+    if (t === 'system') {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return t;
+  }
+  function applyTheme() {
+    var t = themeEl.value;
+    if (t === 'system') {
+      root.removeAttribute('data-theme');
+    } else {
+      root.setAttribute('data-theme', t);
+    }
+  }
+  try {
+    var saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'light' || saved === 'dark' || saved === 'system') themeEl.value = saved;
+  } catch (_) { /* ignore */ }
+  applyTheme();
+  if (window.matchMedia) {
+    var mql = window.matchMedia('(prefers-color-scheme: dark)');
+    var onSystemChange = function () {
+      if (themeEl.value === 'system') refreshActiveIframeTheme();
+    };
+    if (mql.addEventListener) mql.addEventListener('change', onSystemChange);
+    else if (mql.addListener) mql.addListener(onSystemChange);
+  }
+
+  // ---- Group entries by family ---------------------------------------------
+  var families = {};
+  function add(family, kind, item) {
+    var key = family + ' · ' + (kind === 'view' ? 'Views' : 'Tools');
+    if (!families[key]) families[key] = [];
+    families[key].push({ kind: kind, item: item });
+  }
+  manifest.views.forEach(function (v) { add(v.family, 'view', v); });
+  manifest.tools.forEach(function (t) { add(t.family, 'tool', t); });
+
+  function renderSidebar() {
+    sidebar.innerHTML = '';
+    Object.keys(families).sort().forEach(function (familyKey) {
+      var section = document.createElement('section');
+      section.dataset.family = familyKey;
+      var h = document.createElement('h2');
+      h.textContent = familyKey;
+      section.appendChild(h);
+      families[familyKey].forEach(function (entry) {
+        var name = entry.item.name;
+        var group = document.createElement('div');
+        group.className = 'entry';
+        group.dataset.name = name;
+        group.dataset.family = entry.item.family;
+        group.dataset.description = entry.item.description || '';
+        var label = document.createElement('div');
+        label.className = 'entry-label';
+        label.textContent = name;
+        group.appendChild(label);
+        var sub = document.createElement('div');
+        sub.className = 'entry-desc';
+        sub.textContent = entry.item.description;
+        group.appendChild(sub);
+        var sList = document.createElement('div');
+        sList.className = 'scenarios';
+        entry.item.scenarios.forEach(function (sc) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = sc.label;
+          btn.dataset.kind = entry.kind;
+          btn.dataset.name = name;
+          btn.dataset.scenario = sc.id;
+          btn.dataset.scenarioLabel = sc.label;
+          btn.addEventListener('click', function () {
+            select(entry.kind, name, sc.id);
+            // Auto-collapse the sidebar after selection on small screens.
+            if (window.matchMedia && window.matchMedia('(max-width: 800px)').matches) {
+              setSidebarOpen(false);
+            }
+          });
+          sList.appendChild(btn);
+        });
+        group.appendChild(sList);
+        section.appendChild(group);
+      });
+      sidebar.appendChild(section);
+    });
+    applyFilter();
+  }
+
+  // ---- Free-text filter -----------------------------------------------------
+  function applyFilter() {
+    var q = (searchEl.value || '').trim().toLowerCase();
+    var sections = sidebar.querySelectorAll('section');
+    sections.forEach(function (section) {
+      var familyHaystack = (section.dataset.family || '').toLowerCase();
+      var anyEntryVisible = false;
+      section.querySelectorAll('.entry').forEach(function (entry) {
+        var entryHay = [
+          entry.dataset.name || '',
+          entry.dataset.family || '',
+          entry.dataset.description || '',
+          familyHaystack,
+        ].join(' ').toLowerCase();
+        var entryMatches = !q || entryHay.indexOf(q) !== -1;
+        var anyButtonVisible = false;
+        entry.querySelectorAll('button').forEach(function (b) {
+          var btnHay = entryHay + ' ' + (b.dataset.scenario || '') + ' ' + (b.dataset.scenarioLabel || '');
+          btnHay = btnHay.toLowerCase();
+          var match = !q || entryMatches || btnHay.indexOf(q) !== -1;
+          b.style.display = match ? '' : 'none';
+          if (match) anyButtonVisible = true;
+        });
+        var show = !q || entryMatches || anyButtonVisible;
+        entry.style.display = show ? '' : 'none';
+        if (show) anyEntryVisible = true;
+      });
+      section.style.display = anyEntryVisible ? '' : 'none';
+    });
+  }
+
+  // ---- Selection / content panel -------------------------------------------
+  function refreshActiveIframeTheme() {
+    var active = sidebar.querySelector('button.active');
+    if (active) select(active.dataset.kind, active.dataset.name, active.dataset.scenario);
+  }
+
+  function select(kind, name, scenario) {
+    var theme = effectiveTheme();
+    history.replaceState(null, '', '#' + kind + '/' + name + '/' + scenario);
+    sidebar.querySelectorAll('button[data-kind]').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.kind === kind && b.dataset.name === name && b.dataset.scenario === scenario);
+    });
+    var basePath = kind === 'view'
+      ? 'views/' + name + '/' + scenario + '/' + theme + '.html'
+      : 'tools/' + name + '/' + scenario + '.html';
+    var sourcePath = kind === 'view'
+      ? 'views/' + name + '/' + scenario + '/' + theme + '.html'
+      : 'tools/' + name + '/' + scenario + '.md';
+    content.innerHTML = '';
+    var tabs = document.createElement('div');
+    tabs.className = 'tabs';
+    var rendered = tab('Rendered');
+    var source = tab('Source');
+    [rendered, source].forEach(function (t) { tabs.appendChild(t); });
+    content.appendChild(tabs);
+    var panel = document.createElement('div');
+    panel.className = 'panel';
+    content.appendChild(panel);
+
+    function show(which) {
+      [rendered, source].forEach(function (t) { t.classList.remove('active'); });
+      which.classList.add('active');
+      panel.innerHTML = '';
+      if (which === rendered) {
+        var iframe = document.createElement('iframe');
+        iframe.src = basePath;
+        iframe.title = name + ' / ' + scenario + ' / ' + theme;
+        panel.appendChild(iframe);
+      } else {
+        var pre = document.createElement('pre');
+        fetch(sourcePath).then(function (r) { return r.text(); }).then(function (t) { pre.textContent = t; });
+        panel.appendChild(pre);
+      }
+    }
+
+    rendered.addEventListener('click', function () { show(rendered); });
+    source.addEventListener('click', function () { show(source); });
+    show(rendered);
+  }
+
+  function tab(label) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tab';
+    b.textContent = label;
+    return b;
+  }
+
+  // ---- Sidebar toggle (mobile) ---------------------------------------------
+  function setSidebarOpen(open) {
+    document.body.classList.toggle('sidebar-open', open);
+    sidebarToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  sidebarToggle.addEventListener('click', function () {
+    setSidebarOpen(!document.body.classList.contains('sidebar-open'));
+  });
+
+  // ---- Wire up controls -----------------------------------------------------
+  searchEl.addEventListener('input', applyFilter);
+  themeEl.addEventListener('change', function () {
+    try { localStorage.setItem(THEME_KEY, themeEl.value); } catch (_) { /* ignore */ }
+    applyTheme();
+    refreshActiveIframeTheme();
+  });
+  copyBtn.addEventListener('click', function () {
+    navigator.clipboard.writeText(window.location.href).catch(function () {});
+  });
+
+  renderSidebar();
+
+  // Restore from hash if present.
+  var m = window.location.hash.match(/^#(view|tool)\/([^\/]+)\/(.+)$/);
+  if (m) select(m[1], m[2], m[3]);
+})();
+
+  </script>
+</body>
+</html>
