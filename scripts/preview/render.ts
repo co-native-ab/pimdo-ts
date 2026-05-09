@@ -48,18 +48,85 @@ export function buildManifest(): Manifest {
   };
 }
 
-/** Wrap raw view HTML in a tiny shim that pins the colour scheme. */
+/**
+ * Force a deterministic colour scheme on raw HTML produced by templates
+ * that use `@media (prefers-color-scheme: dark)`. We can't rely on the
+ * `color-scheme` meta alone — it controls UA defaults but does not make
+ * the media query evaluate true. So we rewrite the CSS:
+ *
+ *   - dark: unwrap every `@media (prefers-color-scheme: dark) { ... }`
+ *           block so its rules always apply, and switch any
+ *           `<source media="(prefers-color-scheme: dark)">` to `all`.
+ *   - light: drop those blocks and `<source>` elements entirely.
+ *
+ * Result: the static HTML renders identically on any OS regardless of
+ * the viewer's system theme.
+ */
 export function themedHtml(rawHtml: string, theme: "light" | "dark"): string {
-  // Inject a top-level `<meta name="color-scheme">` and a CSS override
-  // that forces `prefers-color-scheme` deterministically. The templates
-  // already respond to the OS preference; here we lock it.
-  const colorScheme = theme;
-  const cssOverride = `<style>:root{color-scheme:${colorScheme};}</style>`;
-  // Place after the existing <meta charset> so it takes precedence.
-  return rawHtml.replace(
+  let html = rewriteDarkMediaBlocks(rawHtml, theme);
+  html = rewriteDarkPictureSources(html, theme);
+  // Also pin the UA-level scheme (form controls, scrollbars, etc.).
+  const cssOverride = `<style>:root{color-scheme:${theme};}</style>`;
+  return html.replace(
     /<meta charset="utf-8"\s*\/?>/i,
-    (match) => `${match}\n  <meta name="color-scheme" content="${colorScheme}">\n  ${cssOverride}`,
+    (match) => `${match}\n  <meta name="color-scheme" content="${theme}">\n  ${cssOverride}`,
   );
+}
+
+/** Find every `@media (prefers-color-scheme: dark) { ... }` block, with brace matching. */
+function rewriteDarkMediaBlocks(input: string, theme: "light" | "dark"): string {
+  const re = /@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)\s*\{/gi;
+  let out = "";
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(input)) !== null) {
+    const blockStart = match.index;
+    const bodyStart = match.index + match[0].length;
+    const bodyEnd = findMatchingBrace(input, bodyStart);
+    if (bodyEnd === -1) {
+      // Unbalanced — bail out, leave the rest unchanged.
+      break;
+    }
+    out += input.slice(cursor, blockStart);
+    if (theme === "dark") {
+      // Inline the body so the rules always apply.
+      out += input.slice(bodyStart, bodyEnd);
+    }
+    // theme === "light": drop the block entirely.
+    cursor = bodyEnd + 1; // skip closing brace
+    re.lastIndex = cursor;
+  }
+  out += input.slice(cursor);
+  return out;
+}
+
+/**
+ * Drop / unmask `<source ... media="(prefers-color-scheme: dark)">` inside
+ * `<picture>` so the dark-themed image actually loads.
+ */
+function rewriteDarkPictureSources(input: string, theme: "light" | "dark"): string {
+  const re = /<source\b[^>]*media=["']\(prefers-color-scheme:\s*dark\)["'][^>]*>/gi;
+  if (theme === "light") {
+    return input.replace(re, "");
+  }
+  // dark: rewrite media to "all" so the source is always selected.
+  return input.replace(re, (tag) =>
+    tag.replace(/media=["']\(prefers-color-scheme:\s*dark\)["']/i, 'media="all"'),
+  );
+}
+
+/** Index of the `}` matching the `{` that opened at `bodyStart - 1`. */
+function findMatchingBrace(input: string, bodyStart: number): number {
+  let depth = 1;
+  for (let i = bodyStart; i < input.length; i++) {
+    const ch = input[i];
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
 }
 
 /** Render the markdown the MCP tool would return for this scenario. */

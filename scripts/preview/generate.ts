@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 import { LIST_SCENARIOS, type ListScenarioId } from "./scenarios.js";
 import { TOOL_PREVIEWS } from "./tools.js";
 import { VIEW_PREVIEWS } from "./views.js";
-import { buildManifest, renderToolText, renderViewHtml } from "./render.js";
+import { buildManifest, renderToolText, renderViewHtml, themedHtml } from "./render.js";
 import { renderIndexHtml, INDEX_STYLES } from "./index-template.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -81,12 +81,17 @@ export function plan(): FileEntry[] {
   for (const tool of TOOL_PREVIEWS) {
     for (const sc of LIST_SCENARIOS) {
       const id: ListScenarioId = sc.id;
-      const base = resolve(outDir, "tools", tool.name);
+      const base = resolve(outDir, "tools", tool.name, id);
       const text = renderToolText(tool.name, id);
-      files.push({ path: resolve(base, `${id}.md`), content: text + "\n" });
+      files.push({ path: resolve(base, `source.md`), content: text + "\n" });
+      const rawHtml = toolHtmlPage(tool.name, id, sc.label, sc.description, text);
       files.push({
-        path: resolve(base, `${id}.html`),
-        content: toolHtmlPage(tool.name, id, sc.label, sc.description, text) + "\n",
+        path: resolve(base, `light.html`),
+        content: themedHtml(rawHtml, "light") + "\n",
+      });
+      files.push({
+        path: resolve(base, `dark.html`),
+        content: themedHtml(rawHtml, "dark") + "\n",
       });
     }
   }

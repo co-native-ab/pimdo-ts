@@ -203,10 +203,10 @@ const INDEX_SCRIPT = `'use strict';
     });
     var basePath = kind === 'view'
       ? 'views/' + name + '/' + scenario + '/' + theme + '.html'
-      : 'tools/' + name + '/' + scenario + '.html';
+      : 'tools/' + name + '/' + scenario + '/' + theme + '.html';
     var sourcePath = kind === 'view'
       ? 'views/' + name + '/' + scenario + '/' + theme + '.html'
-      : 'tools/' + name + '/' + scenario + '.md';
+      : 'tools/' + name + '/' + scenario + '/source.md';
     content.innerHTML = '';
     var tabs = document.createElement('div');
     tabs.className = 'tabs';
