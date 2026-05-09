@@ -1,6 +1,13 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generator": "scripts/preview/generate.ts",
+  "build": {
+    "kind": "pr",
+    "id": "6",
+    "sha": "c1c2745286996364a0a452a1b839d6600f394dc2",
+    "shortSha": "c1c2745",
+    "repoUrl": "https://github.com/co-native-ab/pimdo-ts"
+  },
   "views": [
     {
       "name": "login",
