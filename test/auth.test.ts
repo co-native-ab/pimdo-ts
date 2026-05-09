@@ -8,6 +8,7 @@ import type * as MsalTypes from "@azure/msal-node";
 
 import { StaticAuthenticator, MsalAuthenticator } from "../src/auth.js";
 import { AuthenticationRequiredError, UserCancelledError } from "../src/errors.js";
+import { Resource } from "../src/scopes.js";
 import { testSignal, fetchCsrfToken } from "./helpers.js";
 
 // ---------------------------------------------------------------------------
@@ -118,7 +119,7 @@ describe("StaticAuthenticator", () => {
 
   it("token returns the fixed access token", async () => {
     const auth = new StaticAuthenticator("fixed-token");
-    const token = await auth.token(testSignal());
+    const token = await auth.tokenForResource(Resource.Graph, testSignal());
     expect(token).toBe("fixed-token");
   });
 
@@ -294,7 +295,7 @@ describe("MsalAuthenticator.token", () => {
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenSilent.mockResolvedValue(authResult({ accessToken: "silent-token-xyz" }));
 
-    const token = await auth.token(testSignal());
+    const token = await auth.tokenForResource(Resource.Graph, testSignal());
     expect(token).toBe("silent-token-xyz");
   });
 
@@ -307,7 +308,9 @@ describe("MsalAuthenticator.token", () => {
 
     installFakePCA();
 
-    await expect(auth.token(testSignal())).rejects.toThrow(AuthenticationRequiredError);
+    await expect(auth.tokenForResource(Resource.Graph, testSignal())).rejects.toThrow(
+      AuthenticationRequiredError,
+    );
   });
 
   it("throws AuthenticationRequiredError on InteractionRequiredAuthError", async () => {
@@ -332,7 +335,9 @@ describe("MsalAuthenticator.token", () => {
       new msal.InteractionRequiredAuthError("interaction_required"),
     );
 
-    await expect(auth.token(testSignal())).rejects.toThrow(AuthenticationRequiredError);
+    await expect(auth.tokenForResource(Resource.Graph, testSignal())).rejects.toThrow(
+      AuthenticationRequiredError,
+    );
   });
 
   it("re-throws non-InteractionRequired errors from silent acquisition", async () => {
@@ -355,7 +360,9 @@ describe("MsalAuthenticator.token", () => {
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenSilent.mockRejectedValue(new Error("network failure"));
 
-    await expect(auth.token(testSignal())).rejects.toThrow("network failure");
+    await expect(auth.tokenForResource(Resource.Graph, testSignal())).rejects.toThrow(
+      "network failure",
+    );
   });
 });
 

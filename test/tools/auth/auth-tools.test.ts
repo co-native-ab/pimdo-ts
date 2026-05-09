@@ -54,7 +54,6 @@ async function call(
 function stubAuth(overrides: Partial<Authenticator>): Authenticator {
   return {
     login: () => Promise.reject(new Error("not stubbed: login")),
-    token: () => Promise.reject(new Error("not stubbed: token")),
     tokenForResource: () => Promise.reject(new Error("not stubbed: tokenForResource")),
     logout: () => Promise.resolve(),
     isAuthenticated: () => Promise.resolve(false),

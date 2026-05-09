@@ -7,7 +7,7 @@
 
 import type { Authenticator, LoginResult, AccountInfo } from "../src/auth.js";
 import { AuthenticationRequiredError } from "../src/errors.js";
-import { type GraphScope, GraphScope as GS, Resource } from "../src/scopes.js";
+import { type GraphScope, GraphScope as GS, type Resource } from "../src/scopes.js";
 
 /**
  * Default scopes returned by {@link MockAuthenticator}. Picks one
@@ -67,10 +67,6 @@ export class MockAuthenticator implements Authenticator {
     }
 
     return Promise.reject(new Error("Could not open browser"));
-  }
-
-  token(signal: AbortSignal): Promise<string> {
-    return this.tokenForResource(Resource.Graph, signal);
   }
 
   tokenForResource(_resource: Resource, signal: AbortSignal): Promise<string> {

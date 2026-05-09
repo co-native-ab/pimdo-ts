@@ -4,7 +4,7 @@ import type { ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { UserCancelledError } from "../../errors.js";
-import type { ServerConfig } from "../../index.js";
+import type { ServerConfig } from "../../server-config.js";
 import { logger } from "../../logger.js";
 import type { Tool, ToolDef } from "../../tool-registry.js";
 import { formatError } from "../shared.js";

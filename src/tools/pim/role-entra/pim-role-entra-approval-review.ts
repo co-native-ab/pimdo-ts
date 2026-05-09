@@ -10,7 +10,7 @@ import {
   listRoleEntraApprovalRequests,
 } from "../../../graph/pim-role-entra.js";
 import type { RoleEntraAssignmentRequest } from "../../../graph/types.js";
-import type { ServerConfig } from "../../../index.js";
+import type { ServerConfig } from "../../../server-config.js";
 import { logger } from "../../../logger.js";
 import { GraphScope } from "../../../scopes.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";

@@ -15,7 +15,7 @@ import { getMyObjectId } from "../../../graph/me.js";
 import { listEligibleGroupAssignments, requestGroupActivation } from "../../../graph/pim-group.js";
 import { getGroupMaxDuration } from "../../../graph/policies.js";
 import type { GroupEligibleAssignment } from "../../../graph/types.js";
-import type { ServerConfig } from "../../../index.js";
+import type { ServerConfig } from "../../../server-config.js";
 import { logger } from "../../../logger.js";
 import { GraphScope } from "../../../scopes.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";

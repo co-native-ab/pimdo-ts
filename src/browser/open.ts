@@ -28,11 +28,11 @@ export async function openBrowser(url: string): Promise<void> {
   }
 
   // Two callers open URLs through this helper:
-  //   1. The loopback / picker / logout pages on a local 127.0.0.1 server
-  //      (always plain http://localhost or http://127.0.0.1 with a random port).
-  //   2. Tools that deep-link the user into an external site (e.g. the
-  //      markdown preview tool opening a SharePoint URL). These are always
-  //      https.
+  //   1. The loopback login / logout / row-form pages on a local 127.0.0.1
+  //      server (always plain http://localhost or http://127.0.0.1 with a
+  //      random port).
+  //   2. Tools that deep-link the user into an external site. These are
+  //      always https.
   //
   // Plain http to a non-local host is never something this app emits — and
   // letting it through would risk silently opening a cleartext page to an

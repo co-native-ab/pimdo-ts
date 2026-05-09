@@ -1,6 +1,6 @@
 // Core browser flow primitive — one local HTTP server, per-flow descriptors.
 //
-// All browser-driven UX (login, picker, logout) runs through `runBrowserFlow`.
+// All browser-driven UX (login, logout, row-form flows) runs through `runBrowserFlow`.
 // The primitive owns: server creation, CSRF token generation, CSP/Cache-Control
 // headers, AbortSignal wiring, timeout, 404 fallback, and structured logging.
 // Each flow supplies only its route table and resolution rule.
@@ -23,7 +23,7 @@ import {
 // ---------------------------------------------------------------------------
 
 export interface BrowserFlow<Result> {
-  /** Short label used in logs (`"login"`, `"picker"`, `"logout"`). */
+  /** Short label used in logs (`"login"`, `"logout"`, `"requester"`, …). */
   readonly name: string;
   /** Build the routes for this flow. Called once after the server binds. */
   readonly routes: (ctx: FlowContext<Result>) => RouteTable;
@@ -184,11 +184,9 @@ export function runBrowserFlow<Result>(
       server.close();
       resultReject(
         new Error(
-          flow.name === "picker"
-            ? "Selection timed out - no choice made within the time limit. Please try again."
-            : flow.name === "logout"
-              ? "Logout confirmation timed out"
-              : `Browser flow "${flow.name}" timed out`,
+          flow.name === "logout"
+            ? "Logout confirmation timed out"
+            : `Browser flow "${flow.name}" timed out`,
         ),
       );
     }, timeoutMs);
