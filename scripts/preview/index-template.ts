@@ -17,7 +17,7 @@ export function renderIndexHtml(manifest: Manifest): string {
 </head>
 <body>
   <header class="topbar">
-    <button id="sidebar-toggle" type="button" class="sidebar-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation">☰</button>
+    <button id="sidebar-toggle" type="button" class="sidebar-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation"><span aria-hidden="true">☰</span></button>
     <div class="brand">pimdo · preview</div>
     <div class="controls">
       <label class="control">
