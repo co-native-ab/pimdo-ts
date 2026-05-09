@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="light">
+  <style>:root{color-scheme:light;}</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pimdo - Review approvals</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OC41NyAxOC4zNiI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jbHMtMSB7CiAgICAgICAgZmlsbDogIzcwNjM4YzsKICAgICAgfQogICAgPC9zdHlsZT4KICA8L2RlZnM+CiAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNNi45LDQuNzhjLjc0LS40NCwxLjU4LS42NywyLjQ0LS42NS41OSwwLDEuMTcuMSwxLjcyLjMuNTUuMiwxLjA2LjQ3LDEuNTMuODIuNDUuMzIuODUuNzEsMS4xOCwxLjE1bDIuNjMtMy4xMmMtLjc5LTEuMDctMS44Ni0xLjktMy4wOS0yLjRDMTEuOTMuMjgsMTAuNDQtLjAyLDguOTQsMGMtMS41OC0uMDMtMy4xNC4zNy00LjUyLDEuMTYtMS4zNy43OS0yLjQ5LDEuOTQtMy4yNSwzLjMyQy4zOCw1LjkzLS4wMiw3LjU0LDAsOS4xOGguMDFjLS4wMywxLjY0LjM3LDMuMjYsMS4xNiw0LjcuNzYsMS4zNywxLjg4LDIuNTEsMy4yNCwzLjMsMS4zNi43OSwyLjkyLDEuMTksNC40OSwxLjE2LDEuNDcsMCwyLjkzLS4yOSw0LjI4LS44OSwxLjIzLS41LDIuMzItMS4zLDMuMTctMi4zMmwtMi42LTMuMTRjLS4zNy40NS0uNzkuODYtMS4yNiwxLjItLjkuNjYtMiwxLjAxLTMuMTIsMS0uODYuMDEtMS43LS4yMi0yLjQyLS42OC0uNzEtLjQ1LTEuMjktMS4wNy0xLjctMS44LS40My0uNzgtLjY0LTEuNjYtLjYyLTIuNTUtLjAyLS45MS4xOS0xLjguNjEtMi42LjM4LS43My45Ni0xLjM1LDEuNjYtMS43OVoiLz4KICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0zMS4zNiwxLjJjLTMuMDMtMS42LTYuNjYtMS42LTkuNywwLTEuMzkuNzctMi41NSwxLjg5LTMuMzcsMy4yNS0uODQsMS40My0xLjI2LDMuMDctMS4yMyw0LjcyLS4wMywxLjY2LjQsMy4zLDEuMjMsNC43NC44MSwxLjM3LDEuOTcsMi40OSwzLjM3LDMuMjUsMS40OS44MSwzLjE3LDEuMjEsNC44NiwxLjE4LDEuNjkuMDMsMy4zNS0uMzgsNC44My0xLjE4LDEuMzktLjc2LDIuNTUtMS44OCwzLjM1LTMuMjUuODItMS40NCwxLjI0LTMuMDgsMS4yMS00Ljc0LjAzLTEuNjYtLjM5LTMuMjktMS4yMS00LjcyLS44MS0xLjM2LTEuOTYtMi40OS0zLjM1LTMuMjVaTTMwLjUyLDExLjc3Yy0uMzcuNzQtLjkzLDEuMzYtMS42MywxLjgtLjcxLjQ0LTEuNTMuNjYtMi4zNi42NWgwYy0uODQuMDItMS42Ny0uMjEtMi4zOS0uNjUtLjctLjQ0LTEuMjctMS4wNi0xLjY1LTEuOC0uNzYtMS42NS0uNzYtMy41NCwwLTUuMTkuMzgtLjczLjk1LTEuMzYsMS42NS0xLjgsMS40Ni0uODgsMy4yOC0uODksNC43NS0uMDIuNy40NCwxLjI3LDEuMDYsMS42MywxLjguNC44MS42LDEuNzEuNTksMi42Mi4wMS45LS4xOSwxLjc4LS41OSwyLjU5WiIvPgogIDxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMzcuNTYiIHk9IjYuMjQiIHdpZHRoPSIxMS4wMSIgaGVpZ2h0PSI0LjQxIi8+Cjwvc3ZnPg==">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style nonce="preview-nonce-0000">
+    
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    body {
+      font-family: 'Lexend', Arial, sans-serif;
+      background: linear-gradient(160deg, #eae8f3 0%, #efeff0 100%);
+      color: #636466;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 48px 40px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+      animation: slideUp 0.4s ease-out;
+    }
+    .brand-footer {
+      display: block;
+      height: 12px;
+      margin: 32px auto 0;
+      opacity: 0.18;
+      animation: slideUp 0.4s ease-out 0.1s both;
+    }
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #120457;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: #636466;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+    .message {
+      color: #636466;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .countdown {
+      color: #8a8c8e;
+      margin-top: 24px;
+      font-size: 0.85rem;
+    }
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+    .cancel-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: transparent;
+      cursor: pointer;
+      color: #636466;
+      border: 1.5px solid #efeff0;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-family: 'Lexend', Arial, sans-serif;
+      font-weight: 400;
+      transition: all 0.2s ease;
+    }
+    .cancel-btn:hover {
+      background: #efeff0;
+      border-color: #c7c8ca;
+    }
+    .cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .container { max-width: 720px; }
+    .card { text-align: left; padding: 32px 32px 24px; }
+    .card h1 { text-align: center; }
+    .subtitle { text-align: center; margin-bottom: 16px; }
+
+    .row-section {
+      border: 1px solid #c7c8ca;
+      border-radius: 12px;
+      background: #ffffff;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .bulk-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 12px;
+      background: #eae8f3;
+      border-bottom: 1px solid #c7c8ca;
+    }
+    .bulk-toolbar-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #636466;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-right: 4px;
+    }
+    .bulk-btn {
+      padding: 4px 10px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      color: #6659a7;
+      font-family: 'Lexend', Arial, sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .bulk-btn:hover { background: rgba(255, 255, 255, 0.55); }
+    .row-summary {
+      margin-left: auto;
+      font-size: 0.8rem;
+      color: #636466;
+      font-weight: 400;
+    }
+
+    .row-list { display: block; }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid #efeff0;
+      transition: background 0.15s ease;
+    }
+    .row:last-child { border-bottom: none; }
+    .row:hover { background: #efeff0; }
+    @media (min-width: 520px) {
+      .row {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
+        gap: 12px;
+        align-items: start;
+      }
+    }
+    .row.skipped .row-label { text-decoration: line-through; color: #8a8c8e; }
+    .row.skipped .row-subtitle,
+    .row.skipped .row-meta { color: #8a8c8e; }
+
+    .row-header {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .row-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #120457;
+      word-break: break-word;
+      line-height: 1.35;
+    }
+    .row-subtitle {
+      font-size: 0.85rem;
+      color: #8a8c8e;
+      word-break: break-word;
+      line-height: 1.4;
+    }
+    .row-meta {
+      font-size: 0.85rem;
+      color: #636466;
+      word-break: break-word;
+      line-height: 1.5;
+    }
+    .row-meta-label { color: #8a8c8e; margin-right: 4px; }
+
+    .row-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+    .control-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .control-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #8a8c8e;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0;
+    }
+    .control-hint {
+      font-weight: 400;
+      color: #8a8c8e;
+      text-transform: none;
+      letter-spacing: 0;
+      margin-left: 4px;
+    }
+
+    .include-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      color: #636466;
+      cursor: pointer;
+      user-select: none;
+    }
+    .include-row input[type="checkbox"] {
+      margin: 0;
+      accent-color: #6659a7;
+      width: 16px;
+      height: 16px;
+    }
+
+    .row-controls textarea,
+    .row-controls input[type="number"],
+    .row-controls input[type="text"],
+    .row-controls select {
+      width: 100%;
+      padding: 6px 10px;
+      border: 1.5px solid #c7c8ca;
+      border-radius: 8px;
+      font-family: 'Lexend', Arial, sans-serif;
+      font-size: 0.85rem;
+      background: #ffffff;
+      color: inherit;
+      outline: none;
+      box-sizing: border-box;
+      resize: vertical;
+      transition: border-color 0.15s ease;
+    }
+    .row-controls textarea { min-height: 34px; line-height: 1.4; }
+    .row-controls textarea:focus,
+    .row-controls input:focus,
+    .row-controls select:focus { border-color: #6659a7; }
+
+    .duration-group {
+      display: inline-flex;
+      gap: 4px;
+      max-width: 220px;
+    }
+    .duration-group .duration-value { flex: 1 1 80px; min-width: 0; }
+    .duration-group .duration-unit { flex: 0 0 110px; }
+
+    /* Segmented control for the approver decision */
+    .decision-group {
+      display: inline-flex;
+      align-self: flex-start;
+      border: 1.5px solid #c7c8ca;
+      border-radius: 8px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+    .decision-group label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 14px;
+      margin: 0;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 400;
+      color: #636466;
+      border: none;
+      border-right: 1px solid #c7c8ca;
+      background: transparent;
+      min-height: 28px;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .decision-group label:last-child { border-right: none; }
+    .decision-group label:hover { background: #eae8f3; }
+    .decision-group input[type="radio"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .decision-group label:has(input[type="radio"]:checked) {
+      background: #eae8f3;
+      color: #6659a7;
+      font-weight: 600;
+    }
+    .decision-group input[type="radio"]:focus-visible + span,
+    .decision-group label:focus-within {
+      box-shadow: inset 0 0 0 2px #6659a7;
+    }
+
+    .row-error {
+      grid-column: 1 / -1;
+      color: #F9AA8F;
+      font-size: 0.85rem;
+      margin-top: 2px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 12px;
+      position: sticky;
+      bottom: 0;
+      background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 30%);
+      z-index: 1;
+    }
+    .form-actions .submit-btn {
+      flex: 1;
+      padding: 12px;
+      background: #6659a7;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Lexend', Arial, sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .form-actions .submit-btn:hover:not(:disabled) {
+      background: #3c2f7f;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(102, 89, 167, 0.25);
+    }
+    .form-actions .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-actions .cancel-btn { flex: 0 0 110px; padding: 12px; border-radius: 8px; }
+
+    .empty-state {
+      text-align: center;
+      color: #636466;
+      padding: 16px 0;
+    }
+    .done { text-align: center; }
+    .done h1 { color: #AABDB5; }
+    #manual-close { margin-top: 16px; color: #636466; font-size: 0.95rem; }
+    .error-banner {
+      color: #F9AA8F;
+      text-align: center;
+      margin-top: 12px;
+      font-size: 0.85rem;
+    }
+
+    
+  </style>
+  <meta name="csrf-token" content="preview-csrf-0000">
+</head>
+<body>
+  <div class="container">
+    <div class="card" id="form-card">
+      <h1>Review pending approvals</h1>
+      <p class="subtitle">Approve or deny each pending request. Skip leaves an item untouched.</p>
+      <div class="row-section">
+        <div class="bulk-toolbar"><span class="bulk-toolbar-label">Bulk</span><button type="button" class="bulk-btn" data-bulk="approve-all">Approve all</button><button type="button" class="bulk-btn" data-bulk="deny-all">Deny all</button><button type="button" class="bulk-btn" data-bulk="skip-all">Skip all</button><span class="row-summary" id="row-summary" aria-live="polite"></span></div>
+        <div class="row-list"><div class="row" data-row-id="00000000-0000-0000-0000-000000000001" data-row-index="0">
+        <div class="row-header">
+          <div class="row-label">Sample Group 1</div>
+          <div class="row-subtitle">Eligible member — 00000000-0000-0000-0000-000000000001</div>
+          <div class="row-meta"><span class="row-meta-label">Requestor</span>Alice Example</div>
+          <div class="row-meta"><span class="row-meta-label">Their justification</span>Need access to investigate ticket #1001.</div>
+        </div>
+        <div class="row-controls">
+          <div class="control-group">
+            <span class="control-label">Decision</span>
+            <div class="decision-group" role="radiogroup" aria-label="Decision">
+              <label><input type="radio" name="approver-0" value="Approve" ><span>Approve</span></label>
+              <label><input type="radio" name="approver-0" value="Deny" ><span>Deny</span></label>
+              <label><input type="radio" name="approver-0" value="Skip" checked><span>Skip</span></label>
+            </div>
+          </div>
+          <div class="control-group">
+            <label class="control-label" for="approver-0-justification">Reviewer justification</label>
+            <textarea id="approver-0-justification" class="justification" rows="2" placeholder="Required when approving or denying."></textarea>
+          </div>
+        </div>
+        <p class="row-error" hidden></p>
+      </div></div>
+      </div>
+      <div class="form-actions">
+        <button type="button" id="cancel-btn" class="cancel-btn">Cancel</button>
+        <button type="button" id="submit-btn" class="submit-btn" disabled>Submit decisions</button>
+      </div>
+      <p id="error-banner" class="error-banner" hidden></p>
+    </div>
+    <div class="card done" id="done-card" hidden>
+      <h1>&#10003; Done</h1>
+      <p class="message">You can switch back to your AI assistant now.</p>
+      <p class="countdown">Closing in <span id="countdown">5</span>s&hellip;</p>
+      <p id="manual-close" hidden>If this window didn&rsquo;t close automatically, please close it manually.</p>
+    </div>
+    <picture>
+      
+      <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNDEuOTYgMjEuNSI+CiAgPHBhdGggZD0iTTY1LjI3LDcuMDNjLS4zOC0uOTctMS4wOC0xLjc4LTEuOTctMi4zMS0uOTktLjU1LTIuMTItLjgyLTMuMjUtLjc4LS45MywwLTEuODYuMTktMi43MS41OC0uODIuMzYtMS41Ny44OC0yLjIxLDEuNTItLjE1LjE1LS4yOC4zLS40MS40N2wtLjA4LTIuMjFoLTQuMzh2MTYuODloNC41N3YtMTAuMTZjMC0uNDMuMDktLjg1LjI3LTEuMjQuMTgtLjM4LjQzLS43My43NC0xLjAyLjMyLS4zLjcxLS41NCwxLjEzLS42OC40Ni0uMTYuOTUtLjI1LDEuNDMtLjI0LjU2LS4wNiwxLjEzLjA1LDEuNjMuMzEuNDUuMjUuNzkuNjUuOTgsMS4xMy4yMy42MS4zNCwxLjI2LjMyLDEuOTJ2MTAuMDFoNC41OHYtMTAuMzVjLjA0LTEuMy0uMTgtMi42LS42NS0zLjgxWiIvPgogIDxwYXRoIGQ9Ik04MC41Myw0LjI4djIuMjRjLS4zMy0uNDUtLjctLjg2LTEuMTQtMS4yMS0uNTUtLjQ0LTEuMTctLjc5LTEuODQtMS4wMi0uNzQtLjI1LTEuNTItLjM4LTIuMy0uMzctMS40MS0uMDItMi43OC4zNy0zLjk3LDEuMTQtMS4xNy43Ny0yLjEyLDEuODQtMi43NSwzLjEtLjcsMS40LTEuMDYsMi45NS0xLjAzLDQuNTItLjAzLDEuNTcuMzEsMy4xMiwxLDQuNTQuNjEsMS4yNiwxLjU1LDIuMzQsMi43MSwzLjEzLDEuMTMuNzYsMi40NywxLjE3LDMuODMsMS4xNS43NywwLDEuNTMtLjExLDIuMjYtLjM2LjY4LS4yMywxLjMzLS41NywxLjkyLS45OS40Ny0uMzQuODgtLjc1LDEuMjQtMS4ydjIuMjNoNC42MVY0LjI4aC00LjU0Wk03OC41NywxNi45NmMtLjY4LjQxLTEuNDYuNjItMi4yNi42MWgwYy0uNzguMDItMS41NS0uMTktMi4yMS0uNjEtLjY1LS40Mi0xLjE3LTEuMDEtMS41LTEuNy0uMzgtLjgtLjU3LTEuNjgtLjU1LTIuNTctLjAyLS44Ny4xNy0xLjc0LjU1LTIuNTIuMzQtLjY5Ljg2LTEuMjgsMS41LTEuNy42Ni0uNDIsMS40My0uNjQsMi4yMS0uNjIuOC0uMDIsMS41OC4yLDIuMjYuNjIuNjUuNDIsMS4xNiwxLjAxLDEuNSwxLjcuMzcuNzkuNTUsMS42NS41MywyLjUyLjAyLjg5LS4xNiwxLjc3LS41MywyLjU3LS4zMy43LS44NCwxLjI5LTEuNSwxLjdaIi8+CiAgPGc+CiAgICA8cGF0aCBkPSJNNi45LDcuODZjLjc0LS40NCwxLjU4LS42NywyLjQ0LS42NS41OSwwLDEuMTcuMSwxLjcyLjMuNTUuMiwxLjA2LjQ3LDEuNTMuODIuNDUuMzIuODUuNzEsMS4xOCwxLjE1bDIuNjMtMy4xMmMtLjc5LTEuMDctMS44Ni0xLjktMy4wOS0yLjQtMS4zOC0uNTktMi44Ny0uODktNC4zOC0uODctMS41OC0uMDMtMy4xNC4zNy00LjUyLDEuMTYtMS4zNy43OS0yLjQ5LDEuOTQtMy4yNSwzLjMyQy4zOCw5LjAxLS4wMiwxMC42MiwwLDEyLjI2aC4wMWMtLjAzLDEuNjQuMzcsMy4yNiwxLjE2LDQuNy43NiwxLjM3LDEuODgsMi41MSwzLjI0LDMuMywxLjM2Ljc5LDIuOTIsMS4xOSw0LjQ5LDEuMTYsMS40NywwLDIuOTMtLjI5LDQuMjgtLjg5LDEuMjMtLjUsMi4zMi0xLjMsMy4xNy0yLjMybC0yLjYtMy4xNGMtLjM3LjQ1LS43OS44Ni0xLjI2LDEuMi0uOS42Ni0yLDEuMDEtMy4xMiwxLS44Ni4wMS0xLjctLjIyLTIuNDItLjY4LS43MS0uNDUtMS4yOS0xLjA3LTEuNy0xLjgtLjQzLS43OC0uNjQtMS42Ni0uNjItMi41NS0uMDItLjkxLjE5LTEuOC42MS0yLjYuMzgtLjczLjk2LTEuMzUsMS42Ni0xLjc5WiIvPgogICAgPHBhdGggZD0iTTMxLjM2LDQuMjhjLTMuMDMtMS42LTYuNjYtMS42LTkuNywwLTEuMzkuNzctMi41NSwxLjg5LTMuMzcsMy4yNS0uODQsMS40My0xLjI2LDMuMDctMS4yMyw0LjcyLS4wMywxLjY2LjQsMy4zLDEuMjMsNC43NC44MSwxLjM3LDEuOTcsMi40OSwzLjM3LDMuMjUsMS40OS44MSwzLjE3LDEuMjEsNC44NiwxLjE4LDEuNjkuMDMsMy4zNS0uMzgsNC44My0xLjE4LDEuMzktLjc2LDIuNTUtMS44OCwzLjM1LTMuMjUuODItMS40NCwxLjI0LTMuMDgsMS4yMS00Ljc0LjAzLTEuNjYtLjM5LTMuMjktMS4yMS00LjcyLS44MS0xLjM2LTEuOTYtMi40OS0zLjM1LTMuMjVaTTMwLjUyLDE0Ljg1Yy0uMzcuNzQtLjkzLDEuMzYtMS42MywxLjgtLjcxLjQ0LTEuNTMuNjYtMi4zNi42NWgwYy0uODQuMDItMS42Ny0uMjEtMi4zOS0uNjUtLjctLjQ0LTEuMjctMS4wNi0xLjY1LTEuOC0uNzYtMS42NS0uNzYtMy41NCwwLTUuMTkuMzgtLjczLjk1LTEuMzYsMS42NS0xLjgsMS40Ni0uODgsMy4yOC0uODksNC43NS0uMDIuNy40NCwxLjI3LDEuMDYsMS42MywxLjguNC44MS42LDEuNzEuNTksMi42Mi4wMS45LS4xOSwxLjc4LS41OSwyLjU5WiIvPgogICAgPHBvbHlnb24gcG9pbnRzPSIxMjEuMDEgNC4yOCAxMTYuODIgMTUuNTQgMTEyLjc2IDQuMjggMTA3Ljc0IDQuMjggMTE0Ljg5IDIxLjE4IDExOC40IDIxLjE4IDEyNS45MSA0LjI4IDEyMS4wMSA0LjI4Ii8+CiAgICA8cGF0aCBkPSJNMTQxLjk1LDEyLjA5Yy4wNS0xLjE0LS4xMi0yLjI4LS41Mi0zLjM1LS4zNy0uOTktLjkzLTEuOS0xLjY2LTIuNjYtLjcyLS43Ni0xLjU5LTEuMzYtMi41Ni0xLjc2LTEuMDItLjQyLTIuMTItLjYzLTMuMjItLjYyLTEuMTktLjAyLTIuMzcuMi0zLjQ3LjY0LTEuMDMuNDItMS45NywxLjA1LTIuNzUsMS44NS0uNzguODEtMS40LDEuNzctMS44MSwyLjgzLS40NCwxLjE0LS42NiwyLjM1LS42NCwzLjU4LS4wMywxLjU3LjM3LDMuMTIsMS4xNiw0LjQ3Ljc3LDEuMywxLjg5LDIuMzYsMy4yMiwzLjA2LDEuNDkuNzcsMy4xNSwxLjE2LDQuODMsMS4xMi43OSwwLDEuNTctLjA5LDIuMzMtLjI4LjgtLjE5LDEuNTgtLjQ4LDIuMzItLjg0Ljc1LS4zNywxLjQ0LS44NCwyLjA2LTEuMzlsLTIuMTktMy4wM2MtLjYuNTEtMS4yNy45Mi0yLDEuMjEtLjY2LjI0LTEuMzYuMzUtMi4wNi4zNC0uOTkuMDItMS45Ni0uMTktMi44NS0uNjItLjc4LS4zOS0xLjQzLS45OS0xLjg3LTEuNzQtLjI1LS40NC0uNDItLjktLjUzLTEuMzloMTIuMTZsLjAzLTEuNDFaTTEzMS42NCw4LjA4Yy43NC0uMzgsMS41Ny0uNTcsMi40LS41NC42LDAsMS4yLjEyLDEuNzQuMzguNTEuMjUuOTUuNjIsMS4yNywxLjA5LjMzLjQ2LjUyLDEsLjU2LDEuNTd2LjEyaC03LjgyYy4wOS0uMzUuMTktLjY5LjM0LTEuMDIuMzItLjY4Ljg0LTEuMjQsMS41LTEuNloiLz4KICAgIDxyZWN0IHg9IjM3LjU2IiB5PSI5LjMyIiB3aWR0aD0iMTEuMDEiIGhlaWdodD0iNC40MSIvPgogICAgPHBvbHlnb24gcG9pbnRzPSI5NC44MyA0LjI4IDk0LjgzIDAgOTAuMjYgMCA5MC4yNiA0LjI4IDg3LjA2IDQuMjggODcuMDYgOC4zNCA5MC4yNiA4LjM0IDkwLjI2IDIxLjE4IDk0LjgzIDIxLjE4IDk0LjgzIDguMzQgMTAxLjY5IDguMzQgMTAxLjY5IDIxLjE4IDEwNi4yNyAyMS4xOCAxMDYuMjcgNC4yOCA5NC44MyA0LjI4Ii8+CiAgPC9nPgo8L3N2Zz4=" alt="pimdo" class="brand-footer">
+    </picture>
+  </div>
+  <script nonce="preview-nonce-0000">
+    function applyBulk(action) {
+      var value = action === 'approve-all' ? 'Approve'
+        : action === 'deny-all' ? 'Deny'
+        : 'Skip';
+      document.querySelectorAll('.row .decision-group input[type="radio"]').forEach(function (r) {
+        if (r.value === value) r.checked = true;
+      });
+      document.querySelectorAll('.row').forEach(function (rowEl) {
+        rowEl.classList.toggle('skipped', value === 'Skip');
+      });
+      updateRowSummary();
+    }
+
+    function updateRowSummary() {
+      var summaryEl = document.getElementById('row-summary');
+      if (!summaryEl) return;
+      var rows = document.querySelectorAll('.row');
+      var approve = 0, deny = 0, skip = 0;
+      rows.forEach(function (r) {
+        var checked = r.querySelector('.decision-group input[type="radio"]:checked');
+        var v = checked ? checked.value : 'Skip';
+        if (v === 'Approve') approve++;
+        else if (v === 'Deny') deny++;
+        else skip++;
+        r.classList.toggle('skipped', v === 'Skip');
+      });
+      summaryEl.textContent = approve + ' approve · ' + deny + ' deny · ' + skip + ' skip';
+    }
+    document.addEventListener('change', updateRowSummary);
+    updateRowSummary();
+
+    function isFormValid() {
+      var actionable = 0;
+      var rowEls = document.querySelectorAll('.row');
+      for (var i = 0; i < rowEls.length; i++) {
+        var rowEl = rowEls[i];
+        var checked = rowEl.querySelector('.decision-group input[type="radio"]:checked');
+        var decision = checked ? checked.value : 'Skip';
+        if (decision === 'Skip') continue;
+        actionable++;
+        var justification = rowEl.querySelector('.justification').value.trim();
+        if (!justification) return false;
+      }
+      return actionable > 0;
+    }
+
+    function buildPayload() {
+      var rows = [];
+      var rowEls = document.querySelectorAll('.row');
+      rowEls.forEach(function (rowEl) {
+        var checked = rowEl.querySelector('.decision-group input[type="radio"]:checked');
+        var decision = checked ? checked.value : 'Skip';
+        rowEl.classList.toggle('skipped', decision === 'Skip');
+        if (decision === 'Skip') return;
+        var id = rowEl.getAttribute('data-row-id');
+        var justification = rowEl.querySelector('.justification').value.trim();
+        if (!justification) {
+          setRowError(rowEl, 'Justification is required when approving or denying.');
+          throw new Error('One or more rows are missing required justification.');
+        }
+        rows.push({ id: id, decision: decision, justification: justification });
+      });
+      if (rows.length === 0) {
+        throw new Error('Mark at least one row Approve or Deny.');
+      }
+      return { rows: rows };
+    }
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+    const submitBtn = document.getElementById('submit-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const errorBanner = document.getElementById('error-banner');
+    const formCard = document.getElementById('form-card');
+    const doneCard = document.getElementById('done-card');
+
+    function showError(msg) {
+      errorBanner.hidden = false;
+      errorBanner.textContent = msg;
+    }
+
+    function clearError() {
+      errorBanner.hidden = true;
+      errorBanner.textContent = '';
+    }
+
+    function clearRowErrors() {
+      document.querySelectorAll('.row-error').forEach(function (el) {
+        el.hidden = true;
+        el.textContent = '';
+      });
+    }
+
+    function setRowError(rowEl, msg) {
+      var err = rowEl.querySelector('.row-error');
+      if (!err) {
+        err = document.createElement('p');
+        err.className = 'row-error';
+        rowEl.appendChild(err);
+      }
+      err.hidden = false;
+      err.textContent = msg;
+    }
+
+    function showDoneCard() {
+      formCard.hidden = true;
+      doneCard.hidden = false;
+      var remaining = 5;
+      var el = document.getElementById('countdown');
+      var tick = setInterval(function () {
+        remaining--;
+        el.textContent = String(remaining);
+        if (remaining <= 0) {
+          clearInterval(tick);
+          window.close();
+          setTimeout(function () {
+            document.getElementById('countdown').parentElement.hidden = true;
+            document.getElementById('manual-close').hidden = false;
+          }, 500);
+        }
+      }, 1000);
+    }
+
+    function refreshSubmitState() {
+      if (typeof isFormValid !== 'function') return;
+      var ok = false;
+      try {
+        ok = !!isFormValid();
+      } catch (_e) {
+        ok = false;
+      }
+      submitBtn.disabled = !ok;
+      if (ok) {
+        submitBtn.removeAttribute('aria-disabled');
+        submitBtn.removeAttribute('title');
+      } else {
+        submitBtn.setAttribute('aria-disabled', 'true');
+        submitBtn.title = 'Fill in the required fields for every selected row to continue.';
+      }
+    }
+
+    document.querySelectorAll('[data-bulk]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (typeof applyBulk === 'function') {
+          applyBulk(btn.getAttribute('data-bulk'));
+        }
+        refreshSubmitState();
+      });
+    });
+
+    if (formCard) {
+      formCard.addEventListener('input', refreshSubmitState);
+      formCard.addEventListener('change', refreshSubmitState);
+    }
+    refreshSubmitState();
+
+    submitBtn.addEventListener('click', async function () {
+      clearError();
+      clearRowErrors();
+      var payload;
+      try {
+        payload = buildPayload();
+      } catch (err) {
+        showError(err && err.message ? err.message : 'Form validation failed');
+        return;
+      }
+      submitBtn.disabled = true;
+      cancelBtn.disabled = true;
+      try {
+        var body = Object.assign({ csrfToken: csrfToken }, payload);
+        var res = await fetch('/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        showDoneCard();
+      } catch (err) {
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+        showError('Submit failed: ' + (err && err.message ? err.message : 'unknown error'));
+      }
+    });
+
+    cancelBtn.addEventListener('click', async function () {
+      cancelBtn.disabled = true;
+      submitBtn.disabled = true;
+      await fetch('/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csrfToken: csrfToken }),
+      }).catch(function () {});
+      window.close();
+    });
+  </script>
+</body>
+</html>
