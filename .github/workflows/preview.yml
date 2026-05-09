@@ -42,6 +42,10 @@ jobs:
       - name: Generate preview site
         env:
           PREVIEW_OUT_DIR: .preview
+          PREVIEW_BUILD_KIND: ${{ github.event_name == 'pull_request' && 'pr' || 'main' }}
+          PREVIEW_BUILD_ID: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'main' }}
+          PREVIEW_BUILD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          PREVIEW_BUILD_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: npm run preview
 
       - name: Record metadata

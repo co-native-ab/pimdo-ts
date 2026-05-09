@@ -12,16 +12,38 @@ export interface ManifestView {
   scenarios: { id: string; label: string }[];
 }
 
+/**
+ * Build provenance surfaced in the index top bar so reviewers can tell
+ * at a glance whether they are looking at a published PR preview, the
+ * `main` site, or a local working copy. Populated from environment
+ * variables in {@link readBuildInfo}; defaults to a `local` kind when
+ * none are set (e.g. when a contributor runs `npm run preview` on
+ * their machine).
+ */
+export interface BuildInfo {
+  kind: "pr" | "main" | "local";
+  /** PR number for `pr`, `"main"` for main, `"local"` otherwise. */
+  id: string;
+  /** Full commit SHA, when known. */
+  sha?: string;
+  /** Short commit SHA (first 7 chars), when known. */
+  shortSha?: string;
+  /** GitHub repo HTML URL (e.g. `https://github.com/owner/repo`), when known. */
+  repoUrl?: string;
+}
+
 export interface Manifest {
-  schemaVersion: 1;
+  schemaVersion: 2;
   generator: "scripts/preview/generate.ts";
+  build: BuildInfo;
   views: ManifestView[];
 }
 
 export function buildManifest(): Manifest {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generator: "scripts/preview/generate.ts",
+    build: readBuildInfo(),
     views: VIEW_PREVIEWS.map((v: ViewPreview) => ({
       name: v.name,
       family: v.family,
@@ -30,6 +52,43 @@ export function buildManifest(): Manifest {
       scenarios: v.scenarios.map((s: ViewScenario) => ({ id: s.id, label: s.label })),
     })),
   };
+}
+
+/**
+ * Read build provenance from environment variables. The CI workflow
+ * (`.github/workflows/preview.yml`) sets these before invoking
+ * `npm run preview`; locally they default to a sentinel `local` build.
+ *
+ * Inputs:
+ *   - `PREVIEW_BUILD_KIND`  `"pr" | "main"` — anything else is treated
+ *     as `local`.
+ *   - `PREVIEW_BUILD_ID`    PR number for `pr`, ignored for `main`.
+ *   - `PREVIEW_BUILD_SHA`   40-char commit SHA.
+ *   - `PREVIEW_BUILD_REPO_URL`  e.g. `https://github.com/owner/repo`.
+ *
+ * All inputs are validated against strict patterns; invalid values are
+ * dropped (rather than throwing) so a misconfigured CI run still
+ * produces a usable preview, just without the badge link.
+ */
+function readBuildInfo(): BuildInfo {
+  const rawKind = process.env["PREVIEW_BUILD_KIND"];
+  const rawId = (process.env["PREVIEW_BUILD_ID"] ?? "").trim();
+  const rawSha = (process.env["PREVIEW_BUILD_SHA"] ?? "").trim();
+  const rawRepoUrl = (process.env["PREVIEW_BUILD_REPO_URL"] ?? "").trim();
+
+  const sha = /^[0-9a-f]{40}$/i.test(rawSha) ? rawSha.toLowerCase() : undefined;
+  const shortSha = sha ? sha.slice(0, 7) : undefined;
+  const repoUrl = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/i.test(rawRepoUrl)
+    ? rawRepoUrl
+    : undefined;
+
+  if (rawKind === "pr" && /^[1-9][0-9]{0,9}$/.test(rawId)) {
+    return { kind: "pr", id: rawId, sha, shortSha, repoUrl };
+  }
+  if (rawKind === "main") {
+    return { kind: "main", id: "main", sha, shortSha, repoUrl };
+  }
+  return { kind: "local", id: "local", sha, shortSha, repoUrl };
 }
 
 /**

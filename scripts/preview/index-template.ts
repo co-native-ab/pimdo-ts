@@ -8,9 +8,11 @@
 // and the rendered iframe is the thing reviewers actually look at.
 
 import type { Manifest } from "./render.js";
+import { renderBuildBadge } from "./build-badge.js";
 
 export function renderIndexHtml(manifest: Manifest): string {
   const data = JSON.stringify(manifest);
+  const badge = renderBuildBadge(manifest.build);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -25,16 +27,15 @@ export function renderIndexHtml(manifest: Manifest): string {
   <header class="topbar">
     <button id="sidebar-toggle" type="button" class="sidebar-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation"><span aria-hidden="true">☰</span></button>
     <div class="brand"><span class="brand-mark" aria-hidden="true">◆</span><span class="brand-text">pimdo<span class="brand-sub"> · preview</span></span></div>
+    ${badge}
     <div class="controls">
-      <label class="control">
-        <span>Theme</span>
-        <select id="theme">
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </label>
-      <button id="copy-link" type="button" title="Copy link to this scenario">Copy link</button>
+      <button id="theme-toggle" type="button" class="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <span class="theme-toggle-track" aria-hidden="true">
+          <span class="theme-toggle-icon theme-toggle-icon-sun">☀</span>
+          <span class="theme-toggle-icon theme-toggle-icon-moon">☾</span>
+          <span class="theme-toggle-thumb"></span>
+        </span>
+      </button>
     </div>
   </header>
 
@@ -76,41 +77,54 @@ const INDEX_SCRIPT = `'use strict';
   var contentEyebrow = contentHeader.querySelector('.content-eyebrow');
   var contentName = contentHeader.querySelector('.content-name');
   var contentDesc = contentHeader.querySelector('.content-desc');
-  var themeEl = document.getElementById('theme');
-  var copyBtn = document.getElementById('copy-link');
+  var themeToggle = document.getElementById('theme-toggle');
   var sidebarToggle = document.getElementById('sidebar-toggle');
   var root = document.documentElement;
 
-  // ---- Theme: system | light | dark, persisted in localStorage --------------
+  // ---- Theme: defaults to system, toggles to explicit light/dark ----------
+  // No persisted state ⇒ follow the system theme. When the user clicks
+  // the toggle we pin an explicit choice in localStorage. Returning to
+  // system is a power-user case and is achieved by clearing storage; the
+  // common case (just match the OS) needs zero setup.
   var THEME_KEY = 'pimdo-preview-theme';
+  function systemPrefersDark() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  function getSavedTheme() {
+    try {
+      var v = localStorage.getItem(THEME_KEY);
+      return v === 'light' || v === 'dark' ? v : null;
+    } catch (_) { return null; }
+  }
   function effectiveTheme() {
-    var t = themeEl.value;
-    if (t === 'system') {
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    return t;
+    return getSavedTheme() || (systemPrefersDark() ? 'dark' : 'light');
   }
   function applyTheme() {
-    var t = themeEl.value;
-    if (t === 'system') {
-      root.removeAttribute('data-theme');
-    } else {
-      root.setAttribute('data-theme', t);
-    }
+    var saved = getSavedTheme();
+    if (saved) root.setAttribute('data-theme', saved);
+    else root.removeAttribute('data-theme');
+    var dark = effectiveTheme() === 'dark';
+    themeToggle.setAttribute('aria-checked', dark ? 'true' : 'false');
+    themeToggle.classList.toggle('is-dark', dark);
   }
-  try {
-    var saved = localStorage.getItem(THEME_KEY);
-    if (saved === 'light' || saved === 'dark' || saved === 'system') themeEl.value = saved;
-  } catch (_) { /* ignore */ }
   applyTheme();
   if (window.matchMedia) {
     var mql = window.matchMedia('(prefers-color-scheme: dark)');
     var onSystemChange = function () {
-      if (themeEl.value === 'system') refreshActiveIframeTheme();
+      if (!getSavedTheme()) {
+        applyTheme();
+        refreshActiveIframeTheme();
+      }
     };
     if (mql.addEventListener) mql.addEventListener('change', onSystemChange);
     else if (mql.addListener) mql.addListener(onSystemChange);
   }
+  themeToggle.addEventListener('click', function () {
+    var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem(THEME_KEY, next); } catch (_) { /* ignore */ }
+    applyTheme();
+    refreshActiveIframeTheme();
+  });
 
   // ---- Group entries by family ---------------------------------------------
   var families = {};
@@ -253,16 +267,6 @@ const INDEX_SCRIPT = `'use strict';
     setSidebarOpen(!document.body.classList.contains('sidebar-open'));
   });
 
-  // ---- Wire up controls -----------------------------------------------------
-  themeEl.addEventListener('change', function () {
-    try { localStorage.setItem(THEME_KEY, themeEl.value); } catch (_) { /* ignore */ }
-    applyTheme();
-    refreshActiveIframeTheme();
-  });
-  copyBtn.addEventListener('click', function () {
-    navigator.clipboard.writeText(window.location.href).catch(function () {});
-  });
-
   renderSidebar();
 
   // Restore from hash, otherwise auto-select the first scenario.
@@ -360,25 +364,113 @@ body {
   position: relative;
   z-index: 2;
 }
-.brand { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: 0.01em; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: 0.01em; min-width: 0; }
 .brand-mark { color: var(--accent); font-size: 1.1rem; line-height: 1; }
+.brand-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand-sub { color: var(--muted); font-weight: 500; }
-.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 0.88rem; color: var(--muted); margin-left: auto; }
-.controls .control { display: flex; align-items: center; gap: 6px; }
-.controls .control span { color: var(--muted); }
-.controls select,
-.controls button {
-  font: inherit;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease;
+
+/* ---- Build badge -------------------------------------------------------- */
+.build-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid var(--badge-border, var(--border));
+  background: var(--badge-bg, var(--accent-soft));
+  color: var(--badge-fg, var(--accent-strong));
+  text-decoration: none;
+  white-space: nowrap;
+  transition: filter 120ms ease, transform 120ms ease;
 }
-.controls select:hover,
-.controls button:hover { border-color: var(--accent); }
+.build-badge:hover { filter: brightness(1.05); }
+a.build-badge:active { transform: translateY(1px); }
+.build-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--badge-dot, currentColor);
+  flex-shrink: 0;
+}
+.build-badge-pr {
+  --badge-bg: color-mix(in oklab, #f5b400 18%, transparent);
+  --badge-fg: #8a6300;
+  --badge-border: color-mix(in oklab, #f5b400 45%, transparent);
+  --badge-dot: #d49100;
+}
+.build-badge-main {
+  --badge-bg: color-mix(in oklab, #2ea868 18%, transparent);
+  --badge-fg: #1f7a4a;
+  --badge-border: color-mix(in oklab, #2ea868 45%, transparent);
+  --badge-dot: #2ea868;
+}
+.build-badge-local {
+  --badge-bg: var(--border-soft);
+  --badge-fg: var(--muted);
+  --badge-border: var(--border);
+  --badge-dot: var(--muted);
+}
+@media (prefers-color-scheme: dark) {
+  :root .build-badge-pr { --badge-fg: #f0c34a; }
+  :root .build-badge-main { --badge-fg: #6cd29a; }
+}
+:root[data-theme="dark"] .build-badge-pr { --badge-fg: #f0c34a; }
+:root[data-theme="dark"] .build-badge-main { --badge-fg: #6cd29a; }
+
+.controls { display: flex; gap: 10px; align-items: center; font-size: 0.88rem; color: var(--muted); margin-left: auto; }
+
+/* ---- Theme toggle (sun/moon switch) ------------------------------------ */
+.theme-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 4px;
+  margin: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+}
+.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-toggle-track {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 52px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--border-soft);
+  border: 1px solid var(--border);
+  padding: 0 6px;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.theme-toggle.is-dark .theme-toggle-track {
+  background: var(--accent-soft);
+  border-color: color-mix(in oklab, var(--accent) 50%, var(--border));
+}
+.theme-toggle-icon { font-size: 0.78rem; line-height: 1; color: var(--muted); transition: opacity 160ms ease; pointer-events: none; }
+.theme-toggle-icon-sun { color: #d49100; }
+.theme-toggle-icon-moon { color: #8b8bd6; }
+.theme-toggle.is-dark .theme-toggle-icon-sun { opacity: 0.4; }
+.theme-toggle:not(.is-dark) .theme-toggle-icon-moon { opacity: 0.4; }
+.theme-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  transition: transform 200ms cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+.theme-toggle.is-dark .theme-toggle-thumb { transform: translateX(26px); }
+
 .sidebar-toggle {
   display: none;
   font: inherit;
@@ -520,9 +612,10 @@ section#content { display: flex; flex-direction: column; min-height: 0; min-widt
 
 /* ---- Responsive: stack sidebar on narrow viewports ---------------------- */
 @media (max-width: 800px) {
-  .topbar { padding: 10px 12px; }
-  .controls { width: 100%; order: 3; margin-left: 0; }
+  .topbar { padding: 8px 10px; gap: 8px; }
+  .brand-sub { display: none; }
   .sidebar-toggle { display: inline-flex; }
+  .build-badge { font-size: 0.72rem; padding: 3px 8px; }
   .layout { grid-template-columns: 1fr; }
   nav#sidebar {
     display: none;
@@ -532,5 +625,9 @@ section#content { display: flex; flex-direction: column; min-height: 0; min-widt
   }
   body.sidebar-open nav#sidebar { display: block; }
   .preview-frame { min-height: 60vh; }
+}
+@media (max-width: 480px) {
+  .brand-text { font-size: 0.95rem; }
+  .build-badge-label { max-width: 9ch; overflow: hidden; text-overflow: ellipsis; }
 }
 `;
