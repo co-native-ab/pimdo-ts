@@ -23,11 +23,37 @@ npm run typecheck    # tsc --noEmit
 npm run test         # Run tests via vitest
 npm run format       # Format code with Prettier
 npm run format:check # Check formatting without writing
-npm run check        # format:check + icons:check + schemas:check + lint + typecheck + test (all six)
+npm run check        # format:check + icons:check + schemas:check + preview:check + lint + typecheck + test
 npm run build        # Build with esbuild (dist/index.js)
+npm run preview      # Regenerate the static preview site (.preview/index.html)
 ```
 
 Always run `npm run check` before submitting a PR.
+
+## Browser & tool previews
+
+Run `npm run preview` and open `.preview/index.html` in a browser to
+click through every browser-facing page (login, logout, requester,
+approver, confirmer) and every MCP `*_list` tool's text output, in
+both light and dark themes.
+
+The output directory `.preview/` is gitignored — generated artefacts
+are never committed. CI publishes the same site to GitHub Pages on
+every push:
+
+- `https://<owner>.github.io/<repo>/preview/main/` — latest `main`.
+- `https://<owner>.github.io/<repo>/preview/pr/<id>/` — per-PR
+  preview, regenerated on every push and removed on PR close. The PR
+  itself gets a sticky comment with the URL.
+
+The single source of truth lives in
+[`scripts/preview/`](scripts/preview/). After changing a template or
+formatter, run `npm run preview` locally to verify the new state. The
+`npm run preview:check` gate (part of `npm run check` and CI) refuses
+to pass when a surface is unregistered or a scenario fails to render —
+see [ADR-0012](docs/adr/0012-preview-site-and-list-scenarios.md) and
+the
+[`preview-coverage`](.github/agents/preview-coverage.agent.md) agent.
 
 ## Branching & PRs
 

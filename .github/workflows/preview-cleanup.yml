@@ -1,0 +1,53 @@
+name: Preview Cleanup
+
+# Removes `preview/pr/<id>/` from the gh-pages branch when a PR is
+# closed (merged or not), and updates the sticky preview comment.
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: preview-cleanup-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: gh-pages
+          persist-credentials: true
+          fetch-depth: 1
+        continue-on-error: true
+        id: checkout
+
+      - name: Remove PR preview directory
+        if: steps.checkout.outcome == 'success'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          dir="preview/pr/${PR_NUMBER}"
+          if [ ! -d "$dir" ]; then
+            echo "No preview directory at $dir — nothing to clean up."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -r "$dir"
+          git commit -m "preview: clean up PR #${PR_NUMBER}"
+          git push origin gh-pages
+
+      - name: Update sticky comment
+        uses: marocchino/sticky-pull-request-comment@52423e01640425a022ef5fd42c6fb5f633a02728 # v2.9.4
+        with:
+          header: preview-site
+          number: ${{ github.event.pull_request.number }}
+          message: |
+            Preview site for this PR has been removed (PR closed).
