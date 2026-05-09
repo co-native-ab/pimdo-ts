@@ -179,7 +179,7 @@ describe("pim_group_request error / edge paths", () => {
     }
   });
 
-  it("records per-row errors and the missing-id tail", async () => {
+  it("rejects fabricated row ids at the flow boundary (defence-in-depth)", async () => {
     const h = await setupHarness();
     try {
       h.state.seedEligibility({
@@ -193,17 +193,20 @@ describe("pim_group_request error / edge paths", () => {
       });
       const url = await waitFor(() => h.capturedUrls.at(-1));
       const csrf = await fetchCsrfToken(url);
+      // Fabricated id is rejected by the flow before the handler is invoked.
+      const rejectRes = await postJson(`${url}/submit`, {
+        csrfToken: csrf,
+        rows: [{ id: "fabricated", justification: "x", duration: "PT1H" }],
+      });
+      expect(rejectRes.status).toBe(500);
+      // A second submission with only the legitimate row succeeds.
       await postJson(`${url}/submit`, {
         csrfToken: csrf,
-        rows: [
-          { id: "elig-1", justification: "ok", duration: "PT1H" },
-          { id: "fabricated", justification: "x", duration: "PT1H" },
-        ],
+        rows: [{ id: "elig-1", justification: "ok", duration: "PT1H" }],
       });
       const res = await promise;
       const text = res.content[0]?.text ?? "";
       expect(text).toContain("Submitted 1 PIM group activation request(s)");
-      expect(text).toContain("unknown eligibility id fabricated");
       expect(text).toContain("Ignored unknown eligibility ids: ghost");
     } finally {
       await h.shutdown();
@@ -277,7 +280,7 @@ describe("pim_group_deactivate error / edge paths", () => {
     }
   });
 
-  it("records per-row errors and the missing-id tail", async () => {
+  it("rejects fabricated row ids at the flow boundary (defence-in-depth)", async () => {
     const h = await setupHarness();
     try {
       h.state.assignmentScheduleInstances.push({
@@ -293,17 +296,18 @@ describe("pim_group_deactivate error / edge paths", () => {
       });
       const url = await waitFor(() => h.capturedUrls.at(-1));
       const csrf = await fetchCsrfToken(url);
+      const rejectRes = await postJson(`${url}/submit`, {
+        csrfToken: csrf,
+        rows: [{ id: "fabricated", reason: "x" }],
+      });
+      expect(rejectRes.status).toBe(500);
       await postJson(`${url}/submit`, {
         csrfToken: csrf,
-        rows: [
-          { id: "instance-1", reason: "done" },
-          { id: "fabricated", reason: "x" },
-        ],
+        rows: [{ id: "instance-1", reason: "done" }],
       });
       const res = await promise;
       const text = res.content[0]?.text ?? "";
       expect(text).toContain("Submitted 1 PIM group deactivation request(s)");
-      expect(text).toContain("unknown instance id fabricated");
       expect(text).toContain("Ignored unknown instance ids: ghost");
     } finally {
       await h.shutdown();

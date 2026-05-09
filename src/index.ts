@@ -160,6 +160,40 @@ export async function createMcpServer(
 }
 
 // ---------------------------------------------------------------------------
+// API base URL validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Reject any API base URL that would cause the Graph or ARM HTTP clients
+ * to send a delegated Bearer token over plaintext to a non-loopback host.
+ *
+ * - Must parse as an absolute URL.
+ * - `https://` is always allowed.
+ * - `http://` is only allowed when the host is `localhost` or `127.0.0.1`
+ *   (the test harness uses loopback HTTP for the mock Graph/ARM servers).
+ *
+ * Throws on any other value. Called once for each `PIMDO_*_URL` env var
+ * before the corresponding HTTP client is constructed.
+ */
+export function validateApiBaseUrl(envName: string, url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`${envName}: not a valid absolute URL: ${JSON.stringify(url)}`);
+  }
+  if (parsed.protocol === "https:") return;
+  if (parsed.protocol === "http:") {
+    const host = parsed.hostname;
+    if (host === "localhost" || host === "127.0.0.1") return;
+    throw new Error(
+      `${envName}: plain http:// is only allowed for localhost / 127.0.0.1, got ${parsed.hostname}`,
+    );
+  }
+  throw new Error(`${envName}: unsupported protocol ${parsed.protocol}`);
+}
+
+// ---------------------------------------------------------------------------
 // Shutdown wiring
 // ---------------------------------------------------------------------------
 
@@ -233,6 +267,15 @@ async function main(): Promise<void> {
   const graphBetaBaseUrl =
     process.env["PIMDO_GRAPH_BETA_URL"] ?? "https://graph.microsoft.com/beta";
   const armBaseUrl = process.env["PIMDO_ARM_URL"] ?? "https://management.azure.com";
+
+  // Defence-in-depth: every API base URL receives a Bearer access token
+  // on every request. Refuse plaintext (`http://`) URLs unless they
+  // point at a loopback address (used by the test harness), so a
+  // misconfigured `PIMDO_*_URL` env var cannot silently exfiltrate
+  // user-delegated tokens to an arbitrary HTTP host.
+  validateApiBaseUrl("PIMDO_GRAPH_URL", graphBaseUrl);
+  validateApiBaseUrl("PIMDO_GRAPH_BETA_URL", graphBetaBaseUrl);
+  validateApiBaseUrl("PIMDO_ARM_URL", armBaseUrl);
 
   const server = await createMcpServer(
     {

@@ -42,6 +42,7 @@ export function runConfirmerFlow(
   config: ConfirmerConfig,
   signal: AbortSignal,
 ): Promise<RowFormHandle<ConfirmerResult>> {
+  const allowedIds = new Set(config.rows.map((r) => r.id));
   return runRowForm(
     {
       name: "confirmer",
@@ -57,8 +58,16 @@ export function runConfirmerFlow(
           rows: config.rows,
         }),
       submitSchema: ConfirmerSubmissionSchema,
-      onSubmit: (data): Promise<ConfirmerResult> =>
-        Promise.resolve({ rows: data.rows.map((r) => ({ ...r })) }),
+      onSubmit: (data): Promise<ConfirmerResult> => {
+        // Defence-in-depth: a CSRF-token holder must not be able to
+        // submit an id that was not in the rendered form.
+        for (const row of data.rows) {
+          if (!allowedIds.has(row.id)) {
+            throw new Error(`Unknown row id: ${row.id}`);
+          }
+        }
+        return Promise.resolve({ rows: data.rows.map((r) => ({ ...r })) });
+      },
     },
     signal,
   );

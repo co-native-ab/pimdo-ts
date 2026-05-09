@@ -190,7 +190,7 @@ describe("pim_role_entra_request error / edge paths", () => {
     }
   });
 
-  it("records per-row errors when the submitted row has an unknown id, and reports missing-id tail", async () => {
+  it("rejects fabricated row ids at the flow boundary (defence-in-depth)", async () => {
     const h = await setupHarness();
     try {
       h.state.seedRoleEntraEligibility({
@@ -211,20 +211,20 @@ describe("pim_role_entra_request error / edge paths", () => {
       });
       const url = await waitFor(() => h.capturedUrls.at(-1));
       const csrf = await fetchCsrfToken(url);
-      // Spoof a row id that wasn't part of `selected`. The handler reaches
-      // the `unknown eligibility id` branch when iterating result.rows.
+      // The flow rejects a fabricated row id with HTTP 500 — the handler
+      // never sees it.
+      const rejectRes = await postJson(`${url}/submit`, {
+        csrfToken: csrf,
+        rows: [{ id: "fabricated", justification: "x", duration: "PT1H" }],
+      });
+      expect(rejectRes.status).toBe(500);
       await postJson(`${url}/submit`, {
         csrfToken: csrf,
-        rows: [
-          { id: "elig-1", justification: "ok", duration: "PT1H" },
-          { id: "fabricated", justification: "x", duration: "PT1H" },
-        ],
+        rows: [{ id: "elig-1", justification: "ok", duration: "PT1H" }],
       });
       const res = await promise;
       const text = res.content[0]?.text ?? "";
       expect(text).toContain("Submitted 1 PIM Entra-role activation request(s)");
-      expect(text).toContain("Errors:");
-      expect(text).toContain("unknown eligibility id fabricated");
       expect(text).toContain("Ignored unknown eligibility ids: ghost");
     } finally {
       await h.shutdown();
@@ -299,7 +299,7 @@ describe("pim_role_entra_deactivate error / edge paths", () => {
     }
   });
 
-  it("records per-row errors and the missing-id tail", async () => {
+  it("rejects fabricated row ids at the flow boundary (defence-in-depth)", async () => {
     const h = await setupHarness();
     try {
       h.state.roleEntraAssignmentScheduleInstances.push({
@@ -314,17 +314,18 @@ describe("pim_role_entra_deactivate error / edge paths", () => {
       });
       const url = await waitFor(() => h.capturedUrls.at(-1));
       const csrf = await fetchCsrfToken(url);
+      const rejectRes = await postJson(`${url}/submit`, {
+        csrfToken: csrf,
+        rows: [{ id: "fabricated", reason: "x" }],
+      });
+      expect(rejectRes.status).toBe(500);
       await postJson(`${url}/submit`, {
         csrfToken: csrf,
-        rows: [
-          { id: "instance-1", reason: "done" },
-          { id: "fabricated", reason: "x" },
-        ],
+        rows: [{ id: "instance-1", reason: "done" }],
       });
       const res = await promise;
       const text = res.content[0]?.text ?? "";
       expect(text).toContain("Submitted 1 PIM Entra-role deactivation request(s)");
-      expect(text).toContain("unknown instance id fabricated");
       expect(text).toContain("Ignored unknown instance ids: ghost");
     } finally {
       await h.shutdown();

@@ -19,6 +19,20 @@ export interface LoginPageOptions {
 }
 
 export function landingPageHtml(authUrl: string, opts: LoginPageOptions = {}): string {
+  // Defence-in-depth: refuse to embed any URL that is not an absolute
+  // https:// URL. MSAL's authorize URL is always
+  // `https://login.microsoftonline.com/...`, so any other shape (in
+  // particular `javascript:` URIs that would slip through escapeHtml)
+  // is a programming error or an attempted injection.
+  let parsed: URL;
+  try {
+    parsed = new URL(authUrl);
+  } catch {
+    throw new Error("landingPageHtml: authUrl is not a valid URL");
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error(`landingPageHtml: authUrl protocol must be https:, got ${parsed.protocol}`);
+  }
   const safeAuthUrl = escapeHtml(authUrl);
 
   return layoutHtml({
