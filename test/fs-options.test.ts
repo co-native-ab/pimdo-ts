@@ -9,6 +9,7 @@ import {
   POSIX_DIR_MODE,
   POSIX_FILE_MODE,
   mkdirOptions,
+  writeFileAtomic,
   writeFileOptions,
   writeJsonAtomic,
 } from "../src/fs-options.js";
@@ -302,5 +303,37 @@ describe("writeJsonAtomic", () => {
     expect(content).toMatch(/\n$/);
     // Check that it parses back correctly
     expect(JSON.parse(content)).toEqual(data);
+  });
+});
+
+describe("writeFileAtomic", () => {
+  it("writes a raw string body atomically", async () => {
+    const dir = getTempDir();
+    await fs.mkdir(dir, { recursive: true });
+    const filePath = path.join(dir, "raw.txt");
+    const body = "line one\nline two — with multi-byte: 你好 🚀\n";
+
+    await writeFileAtomic(filePath, body, testSignal());
+
+    expect(await fs.readFile(filePath, "utf-8")).toBe(body);
+  });
+
+  it("tightens perms when overwriting a pre-existing loose-mode file (POSIX)", async () => {
+    if (os.platform() === "win32") return;
+
+    const dir = getTempDir();
+    await fs.mkdir(dir, { recursive: true });
+    const filePath = path.join(dir, "loose.txt");
+
+    // Pre-create the destination with world-readable perms, simulating
+    // a file restored from backup or written by an older version.
+    await fs.writeFile(filePath, "old contents", { mode: 0o644 });
+    expect((await fs.stat(filePath)).mode & 0o777).toBe(0o644);
+
+    await writeFileAtomic(filePath, "new contents", testSignal());
+
+    // After atomic rename, perms come from the freshly-created temp file.
+    expect((await fs.stat(filePath)).mode & 0o777).toBe(POSIX_FILE_MODE);
+    expect(await fs.readFile(filePath, "utf-8")).toBe("new contents");
   });
 });

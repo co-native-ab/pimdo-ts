@@ -12,6 +12,7 @@ import { z } from "zod";
 import { createMsalLoopback } from "./browser/flows/login.js";
 import { showLogoutConfirmation } from "./browser/flows/logout.js";
 import { AuthenticationRequiredError, isNodeError, UserCancelledError } from "./errors.js";
+import { writeFileAtomic, writeJsonAtomic } from "./fs-options.js";
 import { logger } from "./logger.js";
 import { Resource, type GraphScope, toGraphScopes, defaultScopes } from "./scopes.js";
 
@@ -48,6 +49,17 @@ const AUTHORITY_BASE = "https://login.microsoftonline.com";
  */
 const TENANT_ID_RE =
   /^(?:common|consumers|organizations|[0-9a-fA-F-]{36}|[a-z0-9-]+\.onmicrosoft\.com)$/i;
+
+/**
+ * Allow-listed client identifier shape — Entra application (client) IDs
+ * are GUIDs. Defence-in-depth parity with {@link TENANT_ID_RE}: the
+ * `clientId` is operator-controlled today (`PIMDO_CLIENT_ID`) and is
+ * splatted into MSAL's OAuth authorize-URL query parameters. Catching
+ * obviously-malformed values up-front produces a clear error instead of
+ * a deep MSAL stack trace later.
+ */
+const CLIENT_ID_RE =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 /** Default tenant: "common" allows any Microsoft account (personal + work/school). */
 export const DEFAULT_TENANT_ID = "common";
@@ -172,14 +184,15 @@ function createFileCachePlugin(configDir: string): msal.ICachePlugin {
 
     async afterCacheAccess(context: msal.TokenCacheContext): Promise<void> {
       if (context.cacheHasChanged) {
-        await fs.mkdir(path.dirname(cachePath), {
-          recursive: true,
-          mode: 0o700,
-        });
-        await fs.writeFile(cachePath, context.tokenCache.serialize(), {
-          mode: 0o600,
-          signal: AbortSignal.timeout(5_000),
-        });
+        // Atomic write: ensures the freshly-created temp file's
+        // restrictive `0o600` mode replaces any pre-existing file's
+        // (potentially looser) perms via `rename`, and avoids partial
+        // writes if the process is killed mid-flush.
+        await writeFileAtomic(
+          cachePath,
+          context.tokenCache.serialize(),
+          AbortSignal.timeout(5_000),
+        );
         logger.debug("exported token cache", { path: cachePath });
       }
     },
@@ -196,14 +209,10 @@ async function saveAccount(
   signal: AbortSignal,
 ): Promise<void> {
   const accountPath = path.join(configDir, ACCOUNT_FILE_NAME);
-  await fs.mkdir(path.dirname(accountPath), {
-    recursive: true,
-    mode: 0o700,
-  });
-  await fs.writeFile(accountPath, JSON.stringify(account, undefined, 2) + "\n", {
-    mode: 0o600,
-    signal,
-  });
+  // Atomic write — see afterCacheAccess for rationale. JSON formatting
+  // is delegated to writeJsonAtomic so it stays consistent with every
+  // other persisted JSON file in the codebase.
+  await writeJsonAtomic(accountPath, account, signal);
   logger.debug("saved account", { path: accountPath });
 }
 
@@ -271,6 +280,12 @@ export class MsalAuthenticator implements Authenticator {
     configDir: string,
     openBrowser: (url: string) => Promise<void>,
   ) {
+    if (!CLIENT_ID_RE.test(clientId)) {
+      throw new Error(
+        `MsalAuthenticator: clientId ${JSON.stringify(clientId)} is not a valid Entra application ` +
+          `(client) ID (expected a GUID like "00000000-0000-0000-0000-000000000000")`,
+      );
+    }
     if (!TENANT_ID_RE.test(tenantId)) {
       throw new Error(
         `MsalAuthenticator: tenantId ${JSON.stringify(tenantId)} is not a recognised authority form ` +

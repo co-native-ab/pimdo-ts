@@ -35,6 +35,9 @@ beforeEach(async () => {
 
 const tempDirs: string[] = [];
 
+/** Valid GUID used in tests since MsalAuthenticator now validates clientId shape. */
+const TEST_CLIENT_ID = "30cdf00b-19c8-4fe6-94bd-2674ee51a3ff";
+
 function getTempDir(): string {
   const dir = path.join(os.tmpdir(), `pimdo-auth-test-${crypto.randomUUID()}`);
   tempDirs.push(dir);
@@ -154,7 +157,7 @@ describe("MsalAuthenticator constructor", () => {
     "accepts well-known tenant alias %s",
     (tenant) => {
       expect(
-        () => new MsalAuthenticator("client-id", tenant, getTempDir(), noopOpen),
+        () => new MsalAuthenticator(TEST_CLIENT_ID, tenant, getTempDir(), noopOpen),
       ).not.toThrow();
     },
   );
@@ -163,7 +166,7 @@ describe("MsalAuthenticator constructor", () => {
     expect(
       () =>
         new MsalAuthenticator(
-          "client-id",
+          TEST_CLIENT_ID,
           "11111111-2222-3333-4444-555555555555",
           getTempDir(),
           noopOpen,
@@ -173,7 +176,8 @@ describe("MsalAuthenticator constructor", () => {
 
   it("accepts a <name>.onmicrosoft.com tenant primary domain", () => {
     expect(
-      () => new MsalAuthenticator("client-id", "contoso.onmicrosoft.com", getTempDir(), noopOpen),
+      () =>
+        new MsalAuthenticator(TEST_CLIENT_ID, "contoso.onmicrosoft.com", getTempDir(), noopOpen),
     ).not.toThrow();
   });
 
@@ -186,8 +190,28 @@ describe("MsalAuthenticator constructor", () => {
     "common/extra",
     "123",
   ])("rejects malformed tenant id %j", (tenant) => {
-    expect(() => new MsalAuthenticator("client-id", tenant, getTempDir(), noopOpen)).toThrow(
+    expect(() => new MsalAuthenticator(TEST_CLIENT_ID, tenant, getTempDir(), noopOpen)).toThrow(
       /not a recognised authority form/,
+    );
+  });
+
+  it("accepts a GUID client id", () => {
+    expect(
+      () => new MsalAuthenticator(TEST_CLIENT_ID, "common", getTempDir(), noopOpen),
+    ).not.toThrow();
+  });
+
+  it.each([
+    "",
+    "client-id",
+    "not-a-guid",
+    "30cdf00b19c84fe694bd2674ee51a3ff",
+    "30cdf00b-19c8-4fe6-94bd-2674ee51a3ff-extra",
+    "javascript:alert(1)",
+    "../etc/passwd",
+  ])("rejects malformed client id %j", (badClientId) => {
+    expect(() => new MsalAuthenticator(badClientId, "common", getTempDir(), noopOpen)).toThrow(
+      /is not a valid Entra application/,
     );
   });
 });
@@ -200,7 +224,7 @@ describe("MsalAuthenticator.login", () => {
   it("completes via browser login when interactive succeeds", async () => {
     const dir = getTempDir();
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenInteractive.mockResolvedValue(authResult());
@@ -218,7 +242,7 @@ describe("MsalAuthenticator.login", () => {
   it("throws when browser login fails (no device code fallback)", async () => {
     const dir = getTempDir();
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     // Browser login fails
@@ -230,7 +254,7 @@ describe("MsalAuthenticator.login", () => {
   it("saves the account file with mode 0o600", async () => {
     const dir = getTempDir();
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenInteractive.mockResolvedValue(authResult());
@@ -265,7 +289,7 @@ describe("MsalAuthenticator.token", () => {
     );
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenSilent.mockResolvedValue(authResult({ accessToken: "silent-token-xyz" }));
@@ -279,7 +303,7 @@ describe("MsalAuthenticator.token", () => {
     await fs.mkdir(dir, { recursive: true });
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     installFakePCA();
 
@@ -301,7 +325,7 @@ describe("MsalAuthenticator.token", () => {
     );
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenSilent.mockRejectedValue(
@@ -326,7 +350,7 @@ describe("MsalAuthenticator.token", () => {
     );
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenSilent.mockRejectedValue(new Error("network failure"));
@@ -371,7 +395,7 @@ describe("MsalAuthenticator.logout", () => {
     await fs.writeFile(path.join(dir, "account.json"), "{}");
 
     const openBrowser = makeBrowserSpy("/confirm");
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     await auth.logout(testSignal());
 
@@ -386,7 +410,7 @@ describe("MsalAuthenticator.logout", () => {
     await fs.writeFile(path.join(dir, "account.json"), "{}");
 
     const openBrowser = makeBrowserSpy("/cancel");
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     await expect(auth.logout(testSignal())).rejects.toThrow(UserCancelledError);
 
@@ -404,7 +428,7 @@ describe("MsalAuthenticator.logout", () => {
     const openBrowser = vi
       .fn<(url: string) => Promise<void>>()
       .mockRejectedValue(new Error("no browser available"));
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     await auth.logout(testSignal());
 
@@ -418,7 +442,7 @@ describe("MsalAuthenticator.logout", () => {
     // No cache files exist
 
     const openBrowser = makeBrowserSpy("/confirm");
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     await expect(auth.logout(testSignal())).resolves.toBeUndefined();
   });
@@ -430,7 +454,7 @@ describe("MsalAuthenticator.logout", () => {
     // msal_cache.json does NOT exist
 
     const openBrowser = makeBrowserSpy("/confirm");
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     await auth.logout(testSignal());
 
@@ -458,7 +482,7 @@ describe("MsalAuthenticator.isAuthenticated", () => {
     );
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenSilent.mockResolvedValue(authResult());
@@ -471,7 +495,7 @@ describe("MsalAuthenticator.isAuthenticated", () => {
     await fs.mkdir(dir, { recursive: true });
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     installFakePCA();
 
@@ -493,7 +517,7 @@ describe("MsalAuthenticator.isAuthenticated", () => {
     );
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenSilent.mockRejectedValue(new Error("expired"));
@@ -522,7 +546,7 @@ describe("MsalAuthenticator.accountInfo", () => {
     );
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const info = await auth.accountInfo(testSignal());
     expect(info).toEqual({ username: "alice@example.com" });
@@ -533,7 +557,7 @@ describe("MsalAuthenticator.accountInfo", () => {
     await fs.mkdir(dir, { recursive: true });
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const info = await auth.accountInfo(testSignal());
     expect(info).toBeNull();
@@ -545,7 +569,7 @@ describe("MsalAuthenticator.accountInfo", () => {
     await fs.writeFile(path.join(dir, "account.json"), "not-json{{{");
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const info = await auth.accountInfo(testSignal());
     expect(info).toBeNull();
@@ -558,7 +582,7 @@ describe("MsalAuthenticator.accountInfo", () => {
     await fs.writeFile(path.join(dir, "account.json"), JSON.stringify({ homeAccountId: "h-1" }));
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const info = await auth.accountInfo(testSignal());
     expect(info).toBeNull();
@@ -575,7 +599,7 @@ describe("MsalAuthenticator multi-resource silent probe", () => {
   it("login probes ARM silently and exposes ARM scope in grantedScopes when consent exists", async () => {
     const dir = getTempDir();
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenInteractive.mockResolvedValue(
@@ -601,7 +625,7 @@ describe("MsalAuthenticator multi-resource silent probe", () => {
   it("login still succeeds when the ARM silent probe needs interaction", async () => {
     const dir = getTempDir();
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenInteractive.mockResolvedValue(authResult({ scopes: ["User.Read"] }));
@@ -632,7 +656,7 @@ describe("MsalAuthenticator multi-resource silent probe", () => {
     );
 
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
-    const auth = new MsalAuthenticator("client-id", "common", dir, openBrowser);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     // First call: Graph silent probe (scopes from cache).
