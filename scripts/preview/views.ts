@@ -14,8 +14,23 @@ import { logoutPageHtml } from "../../src/templates/logout.js";
 import { requesterPageHtml } from "../../src/templates/requester.js";
 
 import { FIXED_CSRF, FIXED_NONCE, ROW_FIXTURES } from "./fixtures/row-form/rows.js";
-import type { ListScenarioId } from "./scenarios.js";
-import { LIST_SCENARIO_IDS } from "./scenarios.js";
+import { LIST_SCENARIOS, type ListScenarioId } from "./scenarios.js";
+
+/**
+ * Subset of the canonical {@link LIST_SCENARIO_IDS} that browser flows
+ * actually exhibit in the preview site. Two ids are deliberately
+ * excluded:
+ *
+ *   - `empty` — production loopback flows never open with zero rows; the
+ *     server returns early before launching the browser. Showing a
+ *     fake-empty page in the index was misleading.
+ *   - `next-page` — visually indistinguishable from `full` (same row
+ *     template, different ids that never surface in the rendered HTML).
+ *     The pagination boundary it represents only matters for the text
+ *     output of MCP `*_list` tools, which still cover it via the
+ *     canonical matrix in `scripts/preview/check.ts`.
+ */
+const ROW_FORM_VIEW_SCENARIOS: readonly ListScenarioId[] = ["single", "pair", "full"];
 
 export interface ViewScenario {
   /** Scenario id used for filenames and the index. */
@@ -97,11 +112,14 @@ const LOGOUT: ViewPreview = {
 // ---------------------------------------------------------------------------
 
 function rowFormScenarios(build: (scenario: ListScenarioId) => string): readonly ViewScenario[] {
-  return LIST_SCENARIO_IDS.map((id) => ({
-    id,
-    label: id,
-    render: () => build(id),
-  }));
+  return ROW_FORM_VIEW_SCENARIOS.map((id) => {
+    const meta = LIST_SCENARIOS.find((s) => s.id === id);
+    return {
+      id,
+      label: meta?.label ?? id,
+      render: () => build(id),
+    };
+  });
 }
 
 const REQUESTER: ViewPreview = {
