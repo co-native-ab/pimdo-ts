@@ -5,51 +5,54 @@ import type {
   GroupAssignmentRequest,
   GroupEligibleAssignment,
 } from "../../../graph/types.js";
-
-function groupLabel(groupId: string, group: { displayName?: string } | undefined): string {
-  return group?.displayName ? `${group.displayName} (${groupId})` : groupId;
-}
+import {
+  approvalTag,
+  expiryTail,
+  formatBulletList,
+  justificationTail,
+  namedLabel,
+} from "../format-shared.js";
 
 export function formatEligibleAssignmentsText(items: readonly GroupEligibleAssignment[]): string {
-  if (items.length === 0) {
-    return "No eligible PIM group assignments.";
-  }
-  const lines = items.map((it) => {
-    const expiry = it.scheduleInfo?.expiration?.endDateTime;
-    const tail = expiry ? ` — eligible until ${expiry}` : "";
-    return `- ${groupLabel(it.groupId, it.group)} [eligibility=${it.id}]${tail}`;
-  });
-  return [`Eligible PIM group assignments (${String(items.length)}):`, ...lines].join("\n");
+  return formatBulletList(
+    items,
+    `Eligible PIM group assignments (${String(items.length)}):`,
+    "No eligible PIM group assignments.",
+    (it) =>
+      `- ${namedLabel(it.groupId, it.group)} [eligibility=${it.id}]${expiryTail(
+        "eligible",
+        it.scheduleInfo?.expiration?.endDateTime,
+      )}`,
+  );
 }
 
 export function formatActiveAssignmentsText(items: readonly GroupActiveAssignment[]): string {
-  if (items.length === 0) {
-    return "No active PIM group assignments.";
-  }
-  const lines = items.map((it) => {
-    const tail = it.endDateTime ? ` — active until ${it.endDateTime}` : "";
-    return `- ${groupLabel(it.groupId, it.group)} [instance=${it.id}]${tail}`;
-  });
-  return [`Active PIM group assignments (${String(items.length)}):`, ...lines].join("\n");
+  return formatBulletList(
+    items,
+    `Active PIM group assignments (${String(items.length)}):`,
+    "No active PIM group assignments.",
+    (it) =>
+      `- ${namedLabel(it.groupId, it.group)} [instance=${it.id}]${expiryTail("active", it.endDateTime)}`,
+  );
 }
 
 export function formatRequestsText(
   items: readonly GroupAssignmentRequest[],
   perspective: "mine" | "approver",
 ): string {
-  if (items.length === 0) {
-    return perspective === "mine"
+  const empty =
+    perspective === "mine"
       ? "No pending PIM group requests submitted by you."
       : "No pending PIM group approvals assigned to you.";
-  }
   const heading =
     perspective === "mine"
       ? `Pending PIM group requests submitted by you (${String(items.length)}):`
       : `Pending PIM group approvals assigned to you (${String(items.length)}):`;
-  const lines = items.map((it) => {
-    const j = it.justification ? ` — "${it.justification}"` : "";
-    const approval = it.approvalId ? ` [approval=${it.approvalId}]` : "";
-    return `- ${groupLabel(it.groupId, it.group)} [request=${it.id}] action=${it.action ?? "?"}${approval}${j}`;
-  });
-  return [heading, ...lines].join("\n");
+  return formatBulletList(
+    items,
+    heading,
+    empty,
+    (it) =>
+      `- ${namedLabel(it.groupId, it.group)} [request=${it.id}] action=${it.action ?? "?"}${approvalTag(it.approvalId)}${justificationTail(it.justification)}`,
+  );
 }

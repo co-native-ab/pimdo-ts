@@ -80,13 +80,6 @@ export interface Authenticator {
   login(signal: AbortSignal): Promise<LoginResult>;
 
   /**
-   * Acquire a cached access token for the Microsoft Graph resource,
-   * refreshing silently if needed. Equivalent to
-   * `tokenForResource(Resource.Graph, signal)`.
-   */
-  token(signal: AbortSignal): Promise<string>;
-
-  /**
    * Acquire a cached access token for `resource`, refreshing silently
    * if needed. MSAL maintains a separate token per resource (audience),
    * so the same logged-in account can transparently address Microsoft
@@ -419,10 +412,6 @@ export class MsalAuthenticator implements Authenticator {
     }
   }
 
-  token(signal: AbortSignal): Promise<string> {
-    return this.tokenForResource(Resource.Graph, signal);
-  }
-
   async tokenForResource(resource: Resource, signal: AbortSignal): Promise<string> {
     if (signal.aborted) throw signal.reason;
     const client = this.createClient();
@@ -513,7 +502,7 @@ export class MsalAuthenticator implements Authenticator {
 
   async isAuthenticated(signal: AbortSignal): Promise<boolean> {
     try {
-      await this.token(signal);
+      await this.tokenForResource(Resource.Graph, signal);
       return true;
     } catch {
       return false;
@@ -533,7 +522,7 @@ export class MsalAuthenticator implements Authenticator {
     // server restart against an existing cache would leave ARM tools
     // disabled even though a silent ARM token is reachable.
     try {
-      await this.token(signal);
+      await this.tokenForResource(Resource.Graph, signal);
     } catch {
       // Graph silent acquisition failed — user is not authenticated for
       // any resource.
@@ -556,10 +545,6 @@ export class StaticAuthenticator implements Authenticator {
       message: "Already authenticated with static token.",
       grantedScopes: defaultScopes(),
     });
-  }
-
-  token(_signal: AbortSignal): Promise<string> {
-    return Promise.resolve(this.accessToken);
   }
 
   tokenForResource(_resource: Resource, _signal: AbortSignal): Promise<string> {

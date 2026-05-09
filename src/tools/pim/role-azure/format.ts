@@ -5,6 +5,7 @@ import type {
   RoleAzureAssignmentRequest,
   RoleAzureEligibleAssignment,
 } from "../../../arm/types.js";
+import { approvalTag, expiryTail, formatBulletList, justificationTail } from "../format-shared.js";
 
 function shortId(resourceId: string): string {
   const idx = resourceId.lastIndexOf("/");
@@ -33,57 +34,53 @@ export function scopeLabel(
 export function formatEligibleAssignmentsText(
   items: readonly RoleAzureEligibleAssignment[],
 ): string {
-  if (items.length === 0) {
-    return "No eligible PIM Azure-role assignments.";
-  }
-  const lines = items.map((it) => {
-    const expiry = it.properties.endDateTime;
-    const tail = expiry ? ` — eligible until ${expiry}` : "";
-    return `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
-      it.properties.scope,
-      it.properties.expandedProperties,
-    )} [eligibility=${it.id}]${tail}`;
-  });
-  return [`Eligible PIM Azure-role assignments (${String(items.length)}):`, ...lines].join("\n");
+  return formatBulletList(
+    items,
+    `Eligible PIM Azure-role assignments (${String(items.length)}):`,
+    "No eligible PIM Azure-role assignments.",
+    (it) =>
+      `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
+        it.properties.scope,
+        it.properties.expandedProperties,
+      )} [eligibility=${it.id}]${expiryTail("eligible", it.properties.endDateTime)}`,
+  );
 }
 
 export function formatActiveAssignmentsText(items: readonly RoleAzureActiveAssignment[]): string {
-  if (items.length === 0) {
-    return "No active PIM Azure-role assignments.";
-  }
-  const lines = items.map((it) => {
-    const tail = it.properties.endDateTime ? ` — active until ${it.properties.endDateTime}` : "";
-    return `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
-      it.properties.scope,
-      it.properties.expandedProperties,
-    )} [instance=${it.id}]${tail}`;
-  });
-  return [`Active PIM Azure-role assignments (${String(items.length)}):`, ...lines].join("\n");
+  return formatBulletList(
+    items,
+    `Active PIM Azure-role assignments (${String(items.length)}):`,
+    "No active PIM Azure-role assignments.",
+    (it) =>
+      `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
+        it.properties.scope,
+        it.properties.expandedProperties,
+      )} [instance=${it.id}]${expiryTail("active", it.properties.endDateTime)}`,
+  );
 }
 
 export function formatRequestsText(
   items: readonly RoleAzureAssignmentRequest[],
   perspective: "mine" | "approver",
 ): string {
-  if (items.length === 0) {
-    return perspective === "mine"
+  const empty =
+    perspective === "mine"
       ? "No PIM Azure-role requests submitted by you."
       : "No PIM Azure-role approvals assigned to you.";
-  }
   const heading =
     perspective === "mine"
       ? `PIM Azure-role requests submitted by you (${String(items.length)}):`
       : `PIM Azure-role approvals assigned to you (${String(items.length)}):`;
-  const lines = items.map((it) => {
-    const j = it.properties.justification ? ` — "${it.properties.justification}"` : "";
-    const approval = it.properties.approvalId ? ` [approval=${it.properties.approvalId}]` : "";
-    const status = ` status=${it.properties.status ?? "?"}`;
-    return `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
-      it.properties.scope,
-      it.properties.expandedProperties,
-    )} [request=${it.id}] action=${it.properties.requestType ?? "?"}${status}${approval}${j}`;
-  });
-  return [heading, ...lines].join("\n");
+  return formatBulletList(
+    items,
+    heading,
+    empty,
+    (it) =>
+      `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
+        it.properties.scope,
+        it.properties.expandedProperties,
+      )} [request=${it.id}] action=${it.properties.requestType ?? "?"} status=${it.properties.status ?? "?"}${approvalTag(it.properties.approvalId)}${justificationTail(it.properties.justification)}`,
+  );
 }
 
 /**

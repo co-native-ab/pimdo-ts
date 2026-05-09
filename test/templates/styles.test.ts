@@ -6,7 +6,6 @@ import {
   LOGIN_STYLE,
   SUCCESS_STYLE,
   ERROR_STYLE,
-  PICKER_STYLE,
   ROW_FORM_STYLE,
 } from "../../src/templates/styles.js";
 import { escapeHtml } from "../../src/templates/escape.js";
@@ -76,28 +75,6 @@ describe("shared styles", () => {
 
     it("uses peach light for error background", () => {
       expect(ERROR_STYLE).toContain(complementary.peach.light);
-    });
-  });
-
-  describe("PICKER_STYLE", () => {
-    it("uses brand purple for hover border", () => {
-      expect(PICKER_STYLE).toContain(purple.brand);
-    });
-
-    it("uses grey for border color", () => {
-      expect(PICKER_STYLE).toContain(grey.grey2);
-    });
-
-    it("uses teal for done heading color", () => {
-      expect(PICKER_STYLE).toContain(complementary.teal.base);
-    });
-
-    it("uses Lexend font family", () => {
-      expect(PICKER_STYLE).toContain("Lexend");
-    });
-
-    it("includes dark mode media query", () => {
-      expect(PICKER_STYLE).toContain("prefers-color-scheme: dark");
     });
   });
 

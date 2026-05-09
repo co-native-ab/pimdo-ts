@@ -29,7 +29,7 @@ import { readJsonWithCsrf, respondAndClose, runBrowserFlow } from "../server.js"
 export interface RowFormDescriptor<Submission, Result> {
   /** Short label used in logs and timeout messages. */
   readonly name: string;
-  /** Per-flow timeout. Defaults to 5 minutes (longer than the picker). */
+  /** Per-flow timeout. Defaults to 5 minutes. */
   readonly timeoutMs?: number;
   /** Render the HTML page. Receives the CSRF token + per-request CSP nonce. */
   readonly renderHtml: (csrfToken: string, nonce: string) => string;
@@ -49,7 +49,7 @@ export interface RowFormHandle<Result> {
   readonly result: Promise<Result>;
 }
 
-/** Default timeout for row-form flows (5 minutes — longer than picker's 2). */
+/** Default timeout for row-form flows (5 minutes). */
 const DEFAULT_ROW_FORM_TIMEOUT_MS = 5 * 60 * 1000;
 
 const CancelSchema = z.object({ csrfToken: z.string() });

@@ -16,12 +16,18 @@ import { configDir, migrateConfig } from "./config.js";
 import { GraphClient } from "./graph/client.js";
 import { logger, setLogLevel } from "./logger.js";
 import { Resource, type GraphScope } from "./scopes.js";
+import type { ServerConfig } from "./server-config.js";
 import { AUTH_TOOLS } from "./tools/auth/index.js";
 import { GROUP_TOOLS } from "./tools/pim/group/index.js";
 import { ROLE_AZURE_TOOLS } from "./tools/pim/role-azure/index.js";
 import { ROLE_ENTRA_TOOLS } from "./tools/pim/role-entra/index.js";
 import type { AnyTool, ToolEntry } from "./tool-registry.js";
 import { buildInstructions, registerTool, syncToolState } from "./tool-registry.js";
+
+// Re-exported for backward compatibility — `ServerConfig` lives in
+// `./server-config.js` so leaf tool files don't need to import from the
+// composition root.
+export type { ServerConfig } from "./server-config.js";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -38,43 +44,6 @@ export const VERSION: string = __VERSION__;
 export const CLIENT_ID = "30cdf00b-19c8-4fe6-94bd-2674ee51a3ff";
 
 // ---------------------------------------------------------------------------
-// Server configuration
-// ---------------------------------------------------------------------------
-
-/** Configuration for the MCP server - all dependencies injected here. */
-export interface ServerConfig {
-  authenticator: Authenticator;
-  graphBaseUrl: string;
-  /** Beta-channel Microsoft Graph base URL (e.g., `https://graph.microsoft.com/beta`). */
-  graphBetaBaseUrl: string;
-  armBaseUrl: string;
-  configDir: string;
-  /**
-   * Single GraphClient instance shared across all tool handlers.
-   * Uses the authenticator as a TokenCredential — tokens are fetched (and
-   * silently refreshed) on every Graph API request, which is correct for
-   * long-running MCP server instances.
-   */
-  graphClient: GraphClient;
-  /**
-   * Beta-channel Microsoft Graph client. Used by the small set of PIM
-   * features that are only available on `https://graph.microsoft.com/beta`
-   * (notably the Entra-role assignment-approvals surface).
-   */
-  graphBetaClient: GraphClient;
-  /**
-   * Single ArmClient instance shared across all tool handlers. Like
-   * {@link graphClient} but targets Azure Resource Manager via
-   * `tokenForResource(Resource.Arm, …)`.
-   */
-  armClient: ArmClient;
-  /** Opens a URL in the system browser. Injected for testability. */
-  openBrowser: (url: string) => Promise<void>;
-  /** Set by createMcpServer() — login/logout tools call this to sync tool visibility. */
-  onScopesChanged?: (grantedScopes: GraphScope[]) => void;
-}
-
-// ---------------------------------------------------------------------------
 // MCP Server
 // ---------------------------------------------------------------------------
 
@@ -84,8 +53,6 @@ export async function createMcpServer(
   signal: AbortSignal,
 ): Promise<McpServer> {
   // All tools the server exposes, in instruction-listing order.
-  // PIM tool surfaces (group / role-entra / role-azure) are added in
-  // phases 2-4; phase 4 adds the seven Azure-role tools.
   const allTools: readonly AnyTool[] = [
     ...AUTH_TOOLS,
     ...GROUP_TOOLS,

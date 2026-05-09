@@ -5,15 +5,13 @@ import type {
   RoleEntraAssignmentRequest,
   RoleEntraEligibleAssignment,
 } from "../../../graph/types.js";
-
-function roleLabel(
-  roleDefinitionId: string,
-  roleDefinition: { displayName?: string } | undefined,
-): string {
-  return roleDefinition?.displayName
-    ? `${roleDefinition.displayName} (${roleDefinitionId})`
-    : roleDefinitionId;
-}
+import {
+  approvalTag,
+  expiryTail,
+  formatBulletList,
+  justificationTail,
+  namedLabel,
+} from "../format-shared.js";
 
 function scopeLabel(directoryScopeId: string | undefined): string {
   if (!directoryScopeId || directoryScopeId === "/") return "Directory";
@@ -23,51 +21,48 @@ function scopeLabel(directoryScopeId: string | undefined): string {
 export function formatEligibleAssignmentsText(
   items: readonly RoleEntraEligibleAssignment[],
 ): string {
-  if (items.length === 0) {
-    return "No eligible PIM Entra-role assignments.";
-  }
-  const lines = items.map((it) => {
-    const expiry = it.scheduleInfo?.expiration?.endDateTime;
-    const tail = expiry ? ` — eligible until ${expiry}` : "";
-    return `- ${roleLabel(it.roleDefinitionId, it.roleDefinition)} @ ${scopeLabel(
-      it.directoryScopeId,
-    )} [eligibility=${it.id}]${tail}`;
-  });
-  return [`Eligible PIM Entra-role assignments (${String(items.length)}):`, ...lines].join("\n");
+  return formatBulletList(
+    items,
+    `Eligible PIM Entra-role assignments (${String(items.length)}):`,
+    "No eligible PIM Entra-role assignments.",
+    (it) =>
+      `- ${namedLabel(it.roleDefinitionId, it.roleDefinition)} @ ${scopeLabel(
+        it.directoryScopeId,
+      )} [eligibility=${it.id}]${expiryTail("eligible", it.scheduleInfo?.expiration?.endDateTime)}`,
+  );
 }
 
 export function formatActiveAssignmentsText(items: readonly RoleEntraActiveAssignment[]): string {
-  if (items.length === 0) {
-    return "No active PIM Entra-role assignments.";
-  }
-  const lines = items.map((it) => {
-    const tail = it.endDateTime ? ` — active until ${it.endDateTime}` : "";
-    return `- ${roleLabel(it.roleDefinitionId, it.roleDefinition)} @ ${scopeLabel(
-      it.directoryScopeId,
-    )} [instance=${it.id}]${tail}`;
-  });
-  return [`Active PIM Entra-role assignments (${String(items.length)}):`, ...lines].join("\n");
+  return formatBulletList(
+    items,
+    `Active PIM Entra-role assignments (${String(items.length)}):`,
+    "No active PIM Entra-role assignments.",
+    (it) =>
+      `- ${namedLabel(it.roleDefinitionId, it.roleDefinition)} @ ${scopeLabel(
+        it.directoryScopeId,
+      )} [instance=${it.id}]${expiryTail("active", it.endDateTime)}`,
+  );
 }
 
 export function formatRequestsText(
   items: readonly RoleEntraAssignmentRequest[],
   perspective: "mine" | "approver",
 ): string {
-  if (items.length === 0) {
-    return perspective === "mine"
+  const empty =
+    perspective === "mine"
       ? "No pending PIM Entra-role requests submitted by you."
       : "No pending PIM Entra-role approvals assigned to you.";
-  }
   const heading =
     perspective === "mine"
       ? `Pending PIM Entra-role requests submitted by you (${String(items.length)}):`
       : `Pending PIM Entra-role approvals assigned to you (${String(items.length)}):`;
-  const lines = items.map((it) => {
-    const j = it.justification ? ` — "${it.justification}"` : "";
-    const approval = it.approvalId ? ` [approval=${it.approvalId}]` : "";
-    return `- ${roleLabel(it.roleDefinitionId, it.roleDefinition)} @ ${scopeLabel(
-      it.directoryScopeId,
-    )} [request=${it.id}] action=${it.action ?? "?"}${approval}${j}`;
-  });
-  return [heading, ...lines].join("\n");
+  return formatBulletList(
+    items,
+    heading,
+    empty,
+    (it) =>
+      `- ${namedLabel(it.roleDefinitionId, it.roleDefinition)} @ ${scopeLabel(
+        it.directoryScopeId,
+      )} [request=${it.id}] action=${it.action ?? "?"}${approvalTag(it.approvalId)}${justificationTail(it.justification)}`,
+  );
 }

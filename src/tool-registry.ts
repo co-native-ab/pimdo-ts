@@ -26,7 +26,7 @@ import type {
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 
-import type { ServerConfig } from "./index.js";
+import type { ServerConfig } from "./server-config.js";
 import type { GraphScope } from "./scopes.js";
 import { logger } from "./logger.js";
 

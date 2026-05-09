@@ -1,54 +1,47 @@
 // Lightweight HTTP client for Microsoft Graph API.
+//
+// Thin subclass of {@link BaseHttpClient} that plugs in the Graph error
+// class and the standard `{ error: { code, message } }` envelope. The
+// shared transport (auth, retry/backoff, timeout, logging) lives in the
+// base class.
 
-import type { GraphErrorEnvelope } from "./types.js";
-import { logger } from "../logger.js";
-import { ZodType, ZodError } from "zod";
+import {
+  BaseHttpClient,
+  HttpMethod,
+  RequestError,
+  ResponseParseError,
+  isStandardErrorEnvelope,
+  parseResponseGeneric,
+  type TokenCredential,
+} from "../http/base-client.js";
+import type { ZodType } from "zod";
 
-/** HTTP methods used by Graph API requests. */
-export enum HttpMethod {
-  GET = "GET",
-  POST = "POST",
-  PUT = "PUT",
-  PATCH = "PATCH",
-  DELETE = "DELETE",
-}
-
-/**
- * Analogous to Azure.Identity's TokenCredential (Go: azidentity, .NET: Azure.Core).
- * Implemented by Authenticator — handles caching, silent refresh, and throws
- * AuthenticationRequiredError when interaction is needed.
- */
-export interface TokenCredential {
-  /** Acquire a (possibly cached / silently-refreshed) access token. */
-  getToken(signal: AbortSignal): Promise<string>;
-}
+export { HttpMethod, type TokenCredential };
 
 /** Error thrown when a Graph API request fails. */
-export class GraphRequestError extends Error {
+export class GraphRequestError extends RequestError {
   constructor(
-    public readonly method: string,
-    public readonly path: string,
-    public readonly statusCode: number,
-    public readonly code: string,
+    method: string,
+    path: string,
+    statusCode: number,
+    code: string,
     public readonly graphMessage: string,
   ) {
-    super(`graph ${method} ${path}: ${code}: ${graphMessage} (HTTP ${statusCode})`);
+    super("graph", method, path, statusCode, code, graphMessage);
     this.name = "GraphRequestError";
   }
 }
 
 /** Error thrown when a Graph API response cannot be parsed/validated. */
-export class GraphResponseParseError extends Error {
+export class GraphResponseParseError extends ResponseParseError {
   constructor(
-    public readonly method: string,
-    public readonly path: string,
-    public readonly statusCode: number,
-    public readonly zodError: ZodError,
-    public readonly rawBody: string,
+    method: string,
+    path: string,
+    statusCode: number,
+    zodError: import("zod").ZodError,
+    rawBody: string,
   ) {
-    super(
-      `Failed to parse Graph API response for ${method} ${path} (HTTP ${statusCode}): ${zodError.message}`,
-    );
+    super("graph", method, path, statusCode, zodError, rawBody);
     this.name = "GraphResponseParseError";
   }
 }
@@ -63,48 +56,11 @@ export async function parseResponse<T>(
   method?: string,
   path?: string,
 ): Promise<T> {
-  const rawBody = await response.text();
-  let json: unknown;
-  try {
-    json = JSON.parse(rawBody);
-  } catch {
-    throw new GraphResponseParseError(
-      method ?? response.url,
-      path ?? "",
-      response.status,
-      new ZodError([
-        {
-          code: "custom",
-          message: "Response body is not valid JSON",
-          path: [],
-        },
-      ]),
-      rawBody,
-    );
-  }
-  const result = schema.safeParse(json);
-  if (!result.success) {
-    throw new GraphResponseParseError(
-      method ?? response.url,
-      path ?? "",
-      response.status,
-      result.error,
-      rawBody,
-    );
-  }
-  return result.data;
+  return parseResponseGeneric(response, schema, "Graph", GraphResponseParseError, method, path);
 }
 
 /** HTTP client for Microsoft Graph API using native fetch. */
-export class GraphClient {
-  private readonly baseUrl: string;
-  private readonly timeoutMs: number;
-  private readonly credential: TokenCredential;
-  private readonly maxRetries: number;
-  private readonly _delayFn: (ms: number) => Promise<void>;
-  private static readonly retryableStatusCodes = new Set([429, 503, 504]);
-  private static readonly BASE_RETRY_DELAY_MS = 1000;
-
+export class GraphClient extends BaseHttpClient<GraphRequestError> {
   /**
    * @param baseUrl  Graph API base URL (default: https://graph.microsoft.com/v1.0)
    * @param credential  A TokenCredential whose getToken() is called on every request,
@@ -117,41 +73,20 @@ export class GraphClient {
     maxRetries = 3,
     delayFn?: (ms: number) => Promise<void>,
   ) {
-    // Strip trailing slashes without a backtracking regex (avoids ReDoS on untrusted input).
-    let cleanUrl = baseUrl;
-    while (cleanUrl.endsWith("/")) cleanUrl = cleanUrl.slice(0, -1);
-    this.baseUrl = cleanUrl;
-    this.credential =
-      typeof credential === "string" ? { getToken: () => Promise.resolve(credential) } : credential;
-    this.timeoutMs = timeoutMs;
-    this.maxRetries = maxRetries;
-    this._delayFn = delayFn ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
-  }
-
-  /** Send an HTTP request with no body. */
-  request(method: HttpMethod, path: string, signal: AbortSignal): Promise<Response>;
-  /** Send an HTTP request with a JSON body. */
-  request(method: HttpMethod, path: string, body: unknown, signal: AbortSignal): Promise<Response>;
-  async request(
-    method: HttpMethod,
-    path: string,
-    bodyOrSignal: unknown,
-    signalArg?: AbortSignal,
-  ): Promise<Response> {
-    let body: unknown;
-    let signal: AbortSignal;
-    if (bodyOrSignal instanceof AbortSignal) {
-      body = undefined;
-      signal = bodyOrSignal;
-    } else {
-      body = bodyOrSignal;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      signal = signalArg!;
-    }
-
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    const rawBody = body !== undefined ? JSON.stringify(body) : undefined;
-    return this.performRequest(method, path, headers, rawBody, signal);
+    super(
+      baseUrl,
+      credential,
+      {
+        resource: "graph",
+        errorLabel: "Graph API",
+        buildRequestError: (method, path, statusCode, code, message) =>
+          new GraphRequestError(method, path, statusCode, code, message),
+        isErrorEnvelope: isStandardErrorEnvelope,
+      },
+      timeoutMs,
+      maxRetries,
+      delayFn,
+    );
   }
 
   /**
@@ -171,144 +106,6 @@ export class GraphClient {
     signal: AbortSignal,
     extraHeaders?: Readonly<Record<string, string>>,
   ): Promise<Response> {
-    const headers: Record<string, string> = { "Content-Type": contentType, ...extraHeaders };
-    return this.performRequest(method, path, headers, body, signal);
+    return this.performRawRequest(method, path, body, contentType, signal, extraHeaders);
   }
-
-  private async performRequest(
-    method: HttpMethod,
-    path: string,
-    extraHeaders: Record<string, string>,
-    body: string | Uint8Array | undefined,
-    signal: AbortSignal,
-  ): Promise<Response> {
-    const url = `${this.baseUrl}${path}`;
-
-    // Acquire a fresh (or silently-refreshed) token for this request.
-    // Throws AuthenticationRequiredError if the user needs to re-authenticate.
-    const token = await this.credential.getToken(signal);
-
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${token}`,
-      // Node's undici fetch defaults Accept-Language to "*", which Microsoft
-      // Graph rejects on some endpoints (e.g. PIM eligibilitySchedules) with
-      // "CultureNotFoundException: * is an invalid culture identifier". Pin
-      // an explicit, well-formed value. Callers may override via extraHeaders.
-      "Accept-Language": "en",
-      ...extraHeaders,
-    };
-
-    // Log path only (no query string): URLs frequently embed user
-    // identifiers, principal/role-assignment GUIDs, and `$filter`
-    // expressions containing display names — content the user enabling
-    // PIMDO_DEBUG=true probably does not expect to land in plaintext
-    // host-client logs.
-    const queryIdx = path.indexOf("?");
-    const pathForLog = queryIdx === -1 ? path : path.slice(0, queryIdx);
-    logger.debug("graph request", { method, path: pathForLog });
-
-    const baseInit: RequestInit = { method, headers };
-    if (body !== undefined) {
-      baseInit.body = body;
-    }
-
-    let lastError: GraphRequestError | undefined;
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-      if (signal.aborted) throw signal.reason;
-
-      // Create a fresh AbortSignal per attempt so each retry gets the full timeout.
-      // Combine per-request timeout with the caller's cancellation signal.
-      const timeoutSignal = AbortSignal.timeout(this.timeoutMs);
-      const init: RequestInit = {
-        ...baseInit,
-        signal: AbortSignal.any([signal, timeoutSignal]),
-      };
-
-      let response: Response;
-      try {
-        response = await fetch(url, init);
-      } catch (err) {
-        if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
-          throw new GraphRequestError(
-            method,
-            path,
-            0,
-            "TimeoutError",
-            `Graph API request timed out after ${this.timeoutMs}ms`,
-          );
-        }
-        throw err;
-      }
-
-      logger.debug("graph response", { method, url, status: response.status });
-
-      if (response.status < 400) {
-        return response;
-      }
-
-      // Parse error body for code/message
-      const rawBody = await response.text();
-      let code = "UnknownError";
-      let message = rawBody;
-
-      try {
-        const envelope = JSON.parse(rawBody) as unknown;
-        if (isGraphErrorEnvelope(envelope)) {
-          code = envelope.error.code;
-          message = envelope.error.message;
-        }
-      } catch {
-        // Use raw body text as message
-      }
-
-      const error = new GraphRequestError(method, path, response.status, code, message);
-
-      if (attempt < this.maxRetries && GraphClient.retryableStatusCodes.has(response.status)) {
-        // Determine delay
-        let delayMs = 0;
-        const retryAfter = response.headers.get("Retry-After");
-        if (retryAfter) {
-          const retryAfterSeconds = parseInt(retryAfter, 10);
-          if (!isNaN(retryAfterSeconds)) {
-            delayMs = retryAfterSeconds * 1000;
-          } else {
-            // Try HTTP-date format (not common, but spec allows)
-            const retryDate = Date.parse(retryAfter);
-            if (!isNaN(retryDate)) {
-              delayMs = Math.max(0, retryDate - Date.now());
-            }
-          }
-        }
-        if (delayMs === 0) {
-          delayMs = GraphClient.BASE_RETRY_DELAY_MS * Math.pow(2, attempt); // 1s, 2s, 4s
-        }
-        logger.info("graph retry", {
-          method,
-          path,
-          status: response.status,
-          attempt: attempt + 1,
-          delayMs,
-          code,
-          message,
-        });
-        await this._delayFn(delayMs);
-        lastError = error;
-        continue;
-      }
-      // Not retryable or out of retries
-      throw error;
-    }
-    // lastError is always set when the loop exits without throwing (all attempts
-    // were retryable and exhausted), so the non-null assertion is safe.
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    throw lastError!;
-  }
-}
-
-function isGraphErrorEnvelope(value: unknown): value is GraphErrorEnvelope {
-  if (typeof value !== "object" || value === null) return false;
-  const obj = value as Record<string, unknown>;
-  if (typeof obj["error"] !== "object" || obj["error"] === null) return false;
-  const err = obj["error"] as Record<string, unknown>;
-  return typeof err["code"] === "string" && typeof err["message"] === "string";
 }
