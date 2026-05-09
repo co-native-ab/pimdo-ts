@@ -64,28 +64,27 @@ function renderRow(row: RequesterRowSpec, index: number): string {
   const initialValue = useHours
     ? defaultParts.hours || Math.max(1, Math.round(defaultParts.totalMinutes / 60))
     : defaultParts.minutes || max.totalMinutes;
+  const id = `requester-${String(index)}`;
 
   return `<div class="row" data-row-id="${escapeHtml(row.id)}" data-max-minutes="${String(max.totalMinutes)}" data-row-index="${String(index)}">
         <div class="row-header">
-          <div>
-            <div class="row-label">${escapeHtml(row.label)}</div>
-            ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
-          </div>
-          <label class="row-meta">
-            <input type="checkbox" class="include-toggle" ${included ? "checked" : ""}>
-            Include
-          </label>
+          <div class="row-label">${escapeHtml(row.label)}</div>
+          ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
         </div>
         <div class="row-controls">
-          <div>
-            <label>Justification</label>
-            <textarea class="justification" rows="2" placeholder="Why do you need this access?">${escapeHtml(justification)}</textarea>
+          <label class="include-row">
+            <input type="checkbox" class="include-toggle" ${included ? "checked" : ""}>
+            <span>Include</span>
+          </label>
+          <div class="control-group">
+            <label class="control-label" for="${id}-justification">Justification</label>
+            <textarea id="${id}-justification" class="justification" rows="2" placeholder="Why do you need this access?">${escapeHtml(justification)}</textarea>
           </div>
-          <div>
-            <label>Duration (max ${escapeHtml(formatHumanDuration(max))})</label>
+          <div class="control-group">
+            <label class="control-label" for="${id}-duration">Duration <span class="control-hint">max ${escapeHtml(formatHumanDuration(max))}</span></label>
             <div class="duration-group">
-              <input type="number" class="duration-value" min="1" value="${String(initialValue)}">
-              <select class="duration-unit">
+              <input id="${id}-duration" type="number" class="duration-value" min="1" value="${String(initialValue)}">
+              <select class="duration-unit" aria-label="Duration unit">
                 <option value="H" ${initialUnit === "H" ? "selected" : ""}>Hours</option>
                 <option value="M" ${initialUnit === "M" ? "selected" : ""}>Minutes</option>
               </select>
@@ -104,25 +103,39 @@ function formatHumanDuration(parts: DurationParts): string {
 }
 
 export function requesterPageHtml(config: RequesterPageConfig): string {
-  const rowsHtml =
+  const bulkToolbar = renderBulkToolbar(
+    [
+      { id: "include-all", label: "Include all" },
+      { id: "include-none", label: "Include none" },
+    ],
+    "row-summary",
+  );
+
+  const formContent =
     config.rows.length > 0
-      ? `<div class="row-list">${config.rows.map(renderRow).join("\n      ")}</div>`
-      : `<p class="empty-state">No items to request.</p>`;
-
-  const bulkToolbar = renderBulkToolbar([
-    { id: "include-all", label: "Include all" },
-    { id: "include-none", label: "Include none" },
-  ]);
-
-  const formContent = `${bulkToolbar}
-      ${rowsHtml}`;
+      ? `<div class="row-section">
+        ${bulkToolbar}
+        <div class="row-list">${config.rows.map(renderRow).join("\n      ")}</div>
+      </div>`
+      : `<div class="row-section"><p class="empty-state">No items to request.</p></div>`;
 
   const perFlowScript = `    function applyBulk(action) {
       var include = action === 'include-all';
       document.querySelectorAll('.row .include-toggle').forEach(function (cb) {
         cb.checked = include;
       });
+      updateRowSummary();
     }
+
+    function updateRowSummary() {
+      var summaryEl = document.getElementById('row-summary');
+      if (!summaryEl) return;
+      var total = document.querySelectorAll('.row').length;
+      var selected = document.querySelectorAll('.row .include-toggle:checked').length;
+      summaryEl.textContent = selected + ' of ' + total + ' selected';
+    }
+    document.addEventListener('change', updateRowSummary);
+    updateRowSummary();
 
     function isFormValid() {
       var includedCount = 0;

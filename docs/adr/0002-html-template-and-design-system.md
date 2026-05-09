@@ -115,6 +115,23 @@ The following patterns are prohibited in all current and future HTML-serving cod
 - **No template engines or frontend frameworks**: no Handlebars, EJS, Pug, React, Vue, Svelte, or similar. Only TypeScript functions returning strings.
 - **No external image requests**: all images and icons are embedded as base64 data URIs. The MCPB bundle must render correctly with no network access beyond Google Fonts (which degrades gracefully).
 
+### 7. Row-Form Layout Pattern
+
+Multi-row decision pages — `requesterFlow`, `approverFlow`, and `confirmerFlow` — follow a borderless-list layout convention rather than rendering each row as its own bordered card. This pattern is informed by Microsoft Fluent 2 (DataGrid + CommandBar), Atlassian (TableTree + Inline Edit), GitHub Primer (ActionList), Shopify Polaris (ResourceList), and IBM Carbon (DataTable + batch actions bar).
+
+The canonical structure is:
+
+- **Single bordered `.row-section` container** holds the bulk toolbar and the row list. The list is a vertically stacked `.row-list` with 1px `grey1` dividers between rows; rows themselves carry no border or border-radius.
+- **Two-column row at ≥520px viewport width.** Left column (`.row-header`) holds the entity identity — `.row-label`, optional `.row-subtitle`, and `.row-meta` lines (with `.row-meta-label` for the muted field name). Right column (`.row-controls`) holds the per-row decision controls. Below 520px the row collapses to a single column.
+- **Compact segmented control for mutually exclusive decisions.** The `.decision-group` is a single connected control with a 1.5px outer border and internal vertical dividers; the underlying radios are visually hidden but kept for accessibility. The selected segment fills with `purple.minus3` and switches text to `purple.brand` semibold (dark mode: `dark.surfaceHover` background, `purple.minus1` text).
+- **Inline include + duration + justification controls.** Boolean inclusion uses a small `.include-row` checkbox label; duration is a width-fit `.duration-group` (number input + unit select capped at ~220px); justification is a 2-row textarea with `min-height: 34px` so it reads as a single line until focused.
+- **Bulk toolbar as a true CommandBar.** Bulk-action buttons (e.g. "Approve all", "Include none") live above the rows in a `purple.minus3` toolbar with a muted "Bulk" label and an aria-live `.row-summary` count on the right.
+- **Sticky form-actions footer.** The Cancel/Submit pair is `position: sticky; bottom: 0;` with a token-derived white-to-transparent gradient backdrop so it remains visible regardless of row count.
+- **Skipped state via typography, not opacity.** Skipped rows strike through `.row-label` and dim `.row-meta` text rather than dropping the entire row to half-opacity, which previously made the row look broken rather than de-emphasised.
+- **Typography hierarchy.** Row label `fontSize.base` semibold; subtitle `fontSize.sm` `grey3`; meta `fontSize.sm` `grey4` with `grey3` field labels; control labels `fontSize.xs` semibold uppercase `grey3`. Exactly one source of emphasis per row.
+
+These rules apply to every new row-form surface added in `src/browser/flows/`. Reuse `ROW_FORM_STYLE` and the helpers in `src/templates/row-form.ts` rather than authoring per-flow CSS.
+
 ## Consequences
 
 ### Positive

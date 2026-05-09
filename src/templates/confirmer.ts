@@ -27,54 +27,64 @@ export interface ConfirmerPageConfig {
   rows: readonly ConfirmerRowSpec[];
 }
 
-function renderRow(row: ConfirmerRowSpec, reasonLabel: string): string {
+function renderRow(row: ConfirmerRowSpec, reasonLabel: string, index: number): string {
   const included = row.includedByDefault !== false;
   const reason = row.prefilledReason ?? "";
+  const id = `confirmer-${String(index)}`;
   return `<div class="row" data-row-id="${escapeHtml(row.id)}">
         <div class="row-header">
-          <div>
-            <div class="row-label">${escapeHtml(row.label)}</div>
-            ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
-          </div>
-          <label class="row-meta">
-            <input type="checkbox" class="include-toggle" ${included ? "checked" : ""}>
-            Include
-          </label>
+          <div class="row-label">${escapeHtml(row.label)}</div>
+          ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
         </div>
         <div class="row-controls">
-          <div>
-            <label>${escapeHtml(reasonLabel)} (optional)</label>
-            <textarea class="reason" rows="2"></textarea>
+          <label class="include-row">
+            <input type="checkbox" class="include-toggle" ${included ? "checked" : ""}>
+            <span>Include</span>
+          </label>
+          <div class="control-group">
+            <label class="control-label" for="${id}-reason">${escapeHtml(reasonLabel)} <span class="control-hint">optional</span></label>
+            <textarea id="${id}-reason" class="reason" rows="2">${escapeHtml(reason)}</textarea>
           </div>
         </div>
         <p class="row-error" hidden></p>
-      </div>`.replace(
-    `<textarea class="reason" rows="2"></textarea>`,
-    `<textarea class="reason" rows="2">${escapeHtml(reason)}</textarea>`,
-  );
+      </div>`;
 }
 
 export function confirmerPageHtml(config: ConfirmerPageConfig): string {
   const reasonLabel = config.reasonLabel ?? "Reason";
-  const rowsHtml =
+  const bulkToolbar = renderBulkToolbar(
+    [
+      { id: "include-all", label: "Include all" },
+      { id: "include-none", label: "Include none" },
+    ],
+    "row-summary",
+  );
+
+  const formContent =
     config.rows.length > 0
-      ? `<div class="row-list">${config.rows.map((r) => renderRow(r, reasonLabel)).join("\n      ")}</div>`
-      : `<p class="empty-state">No items to confirm.</p>`;
-
-  const bulkToolbar = renderBulkToolbar([
-    { id: "include-all", label: "Include all" },
-    { id: "include-none", label: "Include none" },
-  ]);
-
-  const formContent = `${bulkToolbar}
-      ${rowsHtml}`;
+      ? `<div class="row-section">
+        ${bulkToolbar}
+        <div class="row-list">${config.rows.map((r, i) => renderRow(r, reasonLabel, i)).join("\n      ")}</div>
+      </div>`
+      : `<div class="row-section"><p class="empty-state">No items to confirm.</p></div>`;
 
   const perFlowScript = `    function applyBulk(action) {
       var include = action === 'include-all';
       document.querySelectorAll('.row .include-toggle').forEach(function (cb) {
         cb.checked = include;
       });
+      updateRowSummary();
     }
+
+    function updateRowSummary() {
+      var summaryEl = document.getElementById('row-summary');
+      if (!summaryEl) return;
+      var total = document.querySelectorAll('.row').length;
+      var selected = document.querySelectorAll('.row .include-toggle:checked').length;
+      summaryEl.textContent = selected + ' of ' + total + ' selected';
+    }
+    document.addEventListener('change', updateRowSummary);
+    updateRowSummary();
 
     function isFormValid() {
       var toggles = document.querySelectorAll('.row .include-toggle');

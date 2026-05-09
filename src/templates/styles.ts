@@ -689,67 +689,151 @@ export const NAVIGATOR_STYLE = `
 // ---------------------------------------------------------------------------
 
 export const ROW_FORM_STYLE = `
-    .container { max-width: 640px; }
-    .card { text-align: left; }
+    .container { max-width: 720px; }
+    .card { text-align: left; padding: 32px 32px 24px; }
     .card h1 { text-align: center; }
-    .subtitle { text-align: center; }
+    .subtitle { text-align: center; margin-bottom: ${spacing.lg}; }
+
+    .row-section {
+      border: 1px solid ${grey.grey2};
+      border-radius: ${borderRadius.lg};
+      background: ${grey.white};
+      overflow: hidden;
+      margin-bottom: ${spacing.md};
+    }
+
     .bulk-toolbar {
       display: flex;
       flex-wrap: wrap;
-      gap: ${spacing.sm};
-      justify-content: center;
-      margin-bottom: ${spacing.md};
+      align-items: center;
+      gap: ${spacing.xs};
+      padding: ${spacing.sm} ${spacing.md};
+      background: ${purple.minus3};
+      border-bottom: 1px solid ${grey.grey2};
+    }
+    .bulk-toolbar-label {
+      font-size: ${fontSize.xs};
+      font-weight: ${fontWeight.semibold};
+      color: ${grey.grey4};
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-right: ${spacing.xs};
     }
     .bulk-btn {
-      padding: 8px 14px;
-      background: ${grey.white};
-      border: 1.5px solid ${grey.grey2};
-      border-radius: ${borderRadius.md};
+      padding: 4px 10px;
+      background: transparent;
+      border: none;
+      border-radius: ${borderRadius.sm};
       color: ${purple.brand};
       font-family: ${fontFamily};
       font-size: ${fontSize.sm};
       font-weight: ${fontWeight.semibold};
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: background 0.15s ease;
     }
-    .bulk-btn:hover { border-color: ${purple.brand}; background: ${purple.minus3}; }
-    .row-list { display: flex; flex-direction: column; gap: ${spacing.md}; }
+    .bulk-btn:hover { background: rgba(255, 255, 255, 0.55); }
+    .row-summary {
+      margin-left: auto;
+      font-size: ${fontSize.xs};
+      color: ${grey.grey4};
+      font-weight: ${fontWeight.regular};
+    }
+
+    .row-list { display: block; }
     .row {
-      border: 1.5px solid ${grey.grey2};
-      border-radius: ${borderRadius.lg};
-      padding: ${spacing.md};
-      background: ${grey.white};
-      transition: all 0.15s ease;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: ${spacing.sm};
+      padding: 12px 14px;
+      border-bottom: 1px solid ${grey.grey1};
+      transition: background 0.15s ease;
     }
-    .row.skipped { opacity: 0.55; }
+    .row:last-child { border-bottom: none; }
+    .row:hover { background: ${grey.grey1}; }
+    @media (min-width: 520px) {
+      .row {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
+        gap: ${spacing.md};
+        align-items: start;
+      }
+    }
+    .row.skipped .row-label { text-decoration: line-through; color: ${grey.grey3}; }
+    .row.skipped .row-subtitle,
+    .row.skipped .row-meta { color: ${grey.grey3}; }
+
     .row-header {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: ${spacing.sm};
-      margin-bottom: ${spacing.sm};
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
     }
-    .row-label { font-weight: ${fontWeight.semibold}; color: ${purple.plus2}; }
-    .row-subtitle { font-size: ${fontSize.sm}; color: ${grey.grey4}; }
-    .row-meta { font-size: ${fontSize.sm}; color: ${grey.grey4}; }
+    .row-label {
+      font-size: ${fontSize.base};
+      font-weight: ${fontWeight.semibold};
+      color: ${purple.plus2};
+      word-break: break-word;
+      line-height: 1.35;
+    }
+    .row-subtitle {
+      font-size: ${fontSize.sm};
+      color: ${grey.grey3};
+      word-break: break-word;
+      line-height: 1.4;
+    }
+    .row-meta {
+      font-size: ${fontSize.sm};
+      color: ${grey.grey4};
+      word-break: break-word;
+      line-height: 1.5;
+    }
+    .row-meta-label { color: ${grey.grey3}; margin-right: 4px; }
+
     .row-controls {
       display: flex;
       flex-direction: column;
       gap: ${spacing.sm};
+      min-width: 0;
     }
-    .row-controls label {
+    .control-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .control-label {
       display: block;
-      font-size: ${fontSize.sm};
+      font-size: ${fontSize.xs};
       font-weight: ${fontWeight.semibold};
-      color: ${grey.grey4};
-      margin-bottom: 4px;
+      color: ${grey.grey3};
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0;
     }
+    .control-hint {
+      font-weight: ${fontWeight.regular};
+      color: ${grey.grey3};
+      text-transform: none;
+      letter-spacing: 0;
+      margin-left: 4px;
+    }
+
+    .include-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: ${fontSize.sm};
+      color: ${grey.grey4};
+      cursor: pointer;
+      user-select: none;
+    }
+    .include-row input[type="checkbox"] {
+      margin: 0;
+      accent-color: ${purple.brand};
+      width: 16px;
+      height: 16px;
+    }
+
     .row-controls textarea,
     .row-controls input[type="number"],
     .row-controls input[type="text"],
     .row-controls select {
       width: 100%;
-      padding: 8px 10px;
+      padding: 6px 10px;
       border: 1.5px solid ${grey.grey2};
       border-radius: ${borderRadius.md};
       font-family: ${fontFamily};
@@ -759,57 +843,107 @@ export const ROW_FORM_STYLE = `
       outline: none;
       box-sizing: border-box;
       resize: vertical;
+      transition: border-color 0.15s ease;
     }
+    .row-controls textarea { min-height: 34px; line-height: 1.4; }
     .row-controls textarea:focus,
     .row-controls input:focus,
     .row-controls select:focus { border-color: ${purple.brand}; }
-    .duration-group { display: flex; gap: ${spacing.sm}; }
-    .duration-group input { flex: 1; }
-    .duration-group select { flex: 0 0 110px; }
+
+    .duration-group {
+      display: inline-flex;
+      gap: ${spacing.xs};
+      max-width: 220px;
+    }
+    .duration-group .duration-value { flex: 1 1 80px; min-width: 0; }
+    .duration-group .duration-unit { flex: 0 0 110px; }
+
+    /* Segmented control for the approver decision */
     .decision-group {
-      display: flex;
-      gap: ${spacing.sm};
-      flex-wrap: wrap;
+      display: inline-flex;
+      align-self: flex-start;
+      border: 1.5px solid ${grey.grey2};
+      border-radius: ${borderRadius.md};
+      background: ${grey.white};
+      overflow: hidden;
     }
     .decision-group label {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border: 1.5px solid ${grey.grey2};
-      border-radius: ${borderRadius.md};
+      justify-content: center;
+      padding: 5px 14px;
+      margin: 0;
       cursor: pointer;
       font-size: ${fontSize.sm};
-      margin-bottom: 0;
+      font-weight: ${fontWeight.regular};
       color: ${grey.grey4};
+      border: none;
+      border-right: 1px solid ${grey.grey2};
+      background: transparent;
+      min-height: 28px;
+      transition: background 0.15s ease, color 0.15s ease;
     }
-    .decision-group input[type="radio"] { margin: 0; accent-color: ${purple.brand}; }
+    .decision-group label:last-child { border-right: none; }
+    .decision-group label:hover { background: ${purple.minus3}; }
+    .decision-group input[type="radio"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .decision-group label:has(input[type="radio"]:checked) {
+      background: ${purple.minus3};
+      color: ${purple.brand};
+      font-weight: ${fontWeight.semibold};
+    }
+    .decision-group input[type="radio"]:focus-visible + span,
+    .decision-group label:focus-within {
+      box-shadow: inset 0 0 0 2px ${purple.brand};
+    }
+
     .row-error {
+      grid-column: 1 / -1;
       color: ${complementary.peach.base};
       font-size: ${fontSize.sm};
-      margin-top: 6px;
+      margin-top: 2px;
     }
+
     .form-actions {
       display: flex;
       gap: ${spacing.sm};
       margin-top: ${spacing.lg};
+      padding-top: ${spacing.md};
+      position: sticky;
+      bottom: 0;
+      background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, ${grey.white} 30%);
+      z-index: 1;
     }
     .form-actions .submit-btn {
       flex: 1;
-      padding: 14px;
+      padding: 12px;
       background: ${purple.brand};
       color: ${grey.white};
       border: none;
-      border-radius: ${borderRadius.lg};
+      border-radius: ${borderRadius.md};
       font-family: ${fontFamily};
       font-size: ${fontSize.md};
       font-weight: ${fontWeight.semibold};
       cursor: pointer;
       transition: all 0.2s ease;
     }
-    .form-actions .submit-btn:hover { background: ${purple.plus1}; }
+    .form-actions .submit-btn:hover:not(:disabled) {
+      background: ${purple.plus1};
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(102, 89, 167, 0.25);
+    }
     .form-actions .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .form-actions .cancel-btn { flex: 0 0 110px; }
+    .form-actions .cancel-btn { flex: 0 0 110px; padding: 12px; border-radius: ${borderRadius.md}; }
+
     .empty-state {
       text-align: center;
       color: ${grey.grey4};
@@ -824,19 +958,55 @@ export const ROW_FORM_STYLE = `
       margin-top: ${spacing.md};
       font-size: ${fontSize.sm};
     }
+
     @media (prefers-color-scheme: dark) {
-      .row, .bulk-btn,
-      .row-controls textarea,
-      .row-controls input,
-      .row-controls select,
-      .decision-group label {
+      .row-section {
         background: ${dark.surface};
+        border-color: ${dark.border};
+      }
+      .bulk-toolbar {
+        background: ${dark.surfaceHover};
+        border-bottom-color: ${dark.border};
+      }
+      .bulk-toolbar-label, .row-summary { color: ${dark.textMuted}; }
+      .bulk-btn { color: ${purple.minus1}; }
+      .bulk-btn:hover { background: rgba(255, 255, 255, 0.06); }
+      .row { border-bottom-color: ${dark.border}; color: ${dark.text}; }
+      .row:hover { background: ${dark.surfaceHover}; }
+      .row-label { color: ${dark.heading}; }
+      .row-subtitle, .row-meta-label { color: ${dark.textMuted}; }
+      .row-meta { color: ${dark.text}; }
+      .row.skipped .row-label,
+      .row.skipped .row-subtitle,
+      .row.skipped .row-meta { color: ${dark.textMuted}; }
+      .control-label { color: ${dark.textMuted}; }
+      .include-row { color: ${dark.text}; }
+      .row-controls textarea,
+      .row-controls input[type="number"],
+      .row-controls input[type="text"],
+      .row-controls select {
+        background: ${dark.bg2};
         border-color: ${dark.border};
         color: ${dark.text};
       }
-      .bulk-btn { color: ${purple.minus1}; }
-      .bulk-btn:hover, .row-controls textarea:focus,
-      .row-controls input:focus, .row-controls select:focus { border-color: ${purple.brand}; }
-      .row-label { color: ${dark.heading}; }
-      .row-subtitle, .row-meta, .empty-state, #manual-close { color: ${dark.text}; }
+      .row-controls textarea:focus,
+      .row-controls input:focus,
+      .row-controls select:focus { border-color: ${purple.brand}; }
+      .decision-group {
+        background: ${dark.bg2};
+        border-color: ${dark.border};
+      }
+      .decision-group label {
+        color: ${dark.text};
+        border-right-color: ${dark.border};
+      }
+      .decision-group label:hover { background: ${dark.surfaceHover}; }
+      .decision-group label:has(input[type="radio"]:checked) {
+        background: ${dark.surfaceHover};
+        color: ${purple.minus1};
+      }
+      .empty-state, #manual-close { color: ${dark.text}; }
+      .form-actions {
+        background: linear-gradient(to bottom, rgba(28, 27, 41, 0) 0%, ${dark.surface} 30%);
+      }
     }`;

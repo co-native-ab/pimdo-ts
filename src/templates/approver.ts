@@ -35,29 +35,27 @@ function renderRow(row: ApproverRowSpec, index: number): string {
   const radio = (value: "Approve" | "Deny" | "Skip"): string =>
     `<label><input type="radio" name="${id}" value="${value}" ${
       decision === value ? "checked" : ""
-    }>${value}</label>`;
+    }><span>${value}</span></label>`;
 
   return `<div class="row" data-row-id="${escapeHtml(row.id)}" data-row-index="${String(index)}">
         <div class="row-header">
-          <div>
-            <div class="row-label">${escapeHtml(row.label)}</div>
-            ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
-            <div class="row-meta">Requestor: <strong>${escapeHtml(row.requestor)}</strong></div>
-            <div class="row-meta">Their justification: ${escapeHtml(row.requestorJustification)}</div>
-          </div>
+          <div class="row-label">${escapeHtml(row.label)}</div>
+          ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
+          <div class="row-meta"><span class="row-meta-label">Requestor</span>${escapeHtml(row.requestor)}</div>
+          <div class="row-meta"><span class="row-meta-label">Their justification</span>${escapeHtml(row.requestorJustification)}</div>
         </div>
         <div class="row-controls">
-          <div>
-            <label>Decision</label>
-            <div class="decision-group">
+          <div class="control-group">
+            <span class="control-label">Decision</span>
+            <div class="decision-group" role="radiogroup" aria-label="Decision">
               ${radio("Approve")}
               ${radio("Deny")}
               ${radio("Skip")}
             </div>
           </div>
-          <div>
-            <label>Reviewer justification</label>
-            <textarea class="justification" rows="2" placeholder="Required when approving or denying.">${escapeHtml(justification)}</textarea>
+          <div class="control-group">
+            <label class="control-label" for="${id}-justification">Reviewer justification</label>
+            <textarea id="${id}-justification" class="justification" rows="2" placeholder="Required when approving or denying.">${escapeHtml(justification)}</textarea>
           </div>
         </div>
         <p class="row-error" hidden></p>
@@ -65,19 +63,22 @@ function renderRow(row: ApproverRowSpec, index: number): string {
 }
 
 export function approverPageHtml(config: ApproverPageConfig): string {
-  const rowsHtml =
+  const bulkToolbar = renderBulkToolbar(
+    [
+      { id: "approve-all", label: "Approve all" },
+      { id: "deny-all", label: "Deny all" },
+      { id: "skip-all", label: "Skip all" },
+    ],
+    "row-summary",
+  );
+
+  const formContent =
     config.rows.length > 0
-      ? `<div class="row-list">${config.rows.map(renderRow).join("\n      ")}</div>`
-      : `<p class="empty-state">No pending approvals.</p>`;
-
-  const bulkToolbar = renderBulkToolbar([
-    { id: "approve-all", label: "Approve all" },
-    { id: "deny-all", label: "Deny all" },
-    { id: "skip-all", label: "Skip all" },
-  ]);
-
-  const formContent = `${bulkToolbar}
-      ${rowsHtml}`;
+      ? `<div class="row-section">
+        ${bulkToolbar}
+        <div class="row-list">${config.rows.map(renderRow).join("\n      ")}</div>
+      </div>`
+      : `<div class="row-section"><p class="empty-state">No pending approvals.</p></div>`;
 
   const perFlowScript = `    function applyBulk(action) {
       var value = action === 'approve-all' ? 'Approve'
@@ -89,7 +90,27 @@ export function approverPageHtml(config: ApproverPageConfig): string {
       document.querySelectorAll('.row').forEach(function (rowEl) {
         rowEl.classList.toggle('skipped', value === 'Skip');
       });
+      updateRowSummary();
     }
+
+    function updateRowSummary() {
+      var summaryEl = document.getElementById('row-summary');
+      if (!summaryEl) return;
+      var rows = document.querySelectorAll('.row');
+      var approve = 0, deny = 0, skip = 0;
+      rows.forEach(function (r) {
+        var checked = r.querySelector('.decision-group input[type="radio"]:checked');
+        var v = checked ? checked.value : 'Skip';
+        if (v === 'Approve') approve++;
+        else if (v === 'Deny') deny++;
+        else skip++;
+        r.classList.toggle('skipped', v === 'Skip');
+      });
+      summaryEl.textContent = approve + ' approve · ' + deny + ' deny · ' + skip + ' skip';
+    }
+    document.addEventListener('change', updateRowSummary);
+    document.addEventListener('DOMContentLoaded', updateRowSummary);
+    updateRowSummary();
 
     function isFormValid() {
       var actionable = 0;
