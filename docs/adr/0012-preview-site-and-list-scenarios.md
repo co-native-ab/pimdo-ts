@@ -75,8 +75,12 @@ index.html                  browsable gallery (sidebar + tabs)
 styles.css                  small site CSS
 manifest.json               machine-readable index
 views/<name>/<scenario>/    light.html, dark.html, meta.json
-tools/<name>/<scenario>.{md,html}
 ```
+
+> MCP `*_list` tools intentionally do NOT emit preview artefacts —
+> they return plain text to the AI by contract, so there's nothing
+> meaningful to render in a browser-facing site. Their registration
+> coverage is still validated by `preview:check`.
 
 ### Rules
 

@@ -3,9 +3,13 @@
 Single source of truth for the **preview site**.
 
 The preview site is a static, fully self-contained gallery that lets a
-human (or AI agent) click through every browser-facing page and every
-MCP `*_list` tool's textual output, in both colour schemes, without
-running the live MCP server.
+human (or AI agent) click through every browser-facing page in both
+colour schemes without running the live MCP server.
+
+> MCP `*_list` tools are tracked by the registry and their renderers
+> are exercised by `preview:check`, but they do **not** emit preview
+> artefacts — they return plain text to the AI by contract, so there's
+> nothing meaningful to render in a browser-facing site.
 
 - **Locally:** run `npm run preview` and open `.preview/index.html`.
 - **In a PR:** CI publishes to GitHub Pages — see the sticky comment
@@ -67,7 +71,9 @@ repo root.
 
 Byte-deterministic PNGs across operating systems require an extra
 image-diff tool, so they are not part of `npm run preview` or
-`npm run preview:check`. The index has a "Screenshot" tab that
-gracefully degrades when no PNG is present. A future
-`npm run preview:screenshots` job (Playwright) can fill in the PNG
-slots without changing the rest of the framework.
+`npm run preview:check`. The index renders each view live in an
+iframe, in either light or dark theme, which already shows what
+the page looks like — a separate "Screenshot" tab is therefore
+not exposed today. A future `npm run preview:screenshots` job
+(Playwright) could add PNG snapshots without changing the rest
+of the framework.
