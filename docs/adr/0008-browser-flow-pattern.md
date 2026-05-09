@@ -14,6 +14,21 @@ superseded_by: ""
 
 **Accepted**
 
+> **Update (2026-05-09):** The "Context" section below describes the
+> world _before_ this ADR was implemented and refers to files that no
+> longer exist (`src/loopback.ts`, `src/picker.ts`,
+> `src/loopback-security.ts`, `src/browser.ts`, the inline
+> `showLogoutPage` in `src/auth.ts`). The decided architecture has
+> since shipped: the loopback primitive lives at
+> `src/browser/server.ts`, hardening at `src/browser/security.ts`, the
+> platform shim at `src/browser/open.ts` (ADR-0011), and the flow
+> descriptors at `src/browser/flows/{login,logout,requester,approver,
+confirmer,row-form}.ts`. The picker has been retired — the row-form
+> flows replaced it for every PIM-era use case, all sharing
+> `runRowForm` in `src/browser/flows/row-form.ts` (see ADR-0002 §7
+> for the table layout used by all three row forms). The decision,
+> route table, and hardening rules described below are unchanged.
+
 ## Context
 
 pimdo-ts ships three user-facing flows that drive the system browser at a

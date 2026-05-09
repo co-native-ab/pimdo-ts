@@ -14,9 +14,22 @@ superseded_by: ""
 
 **Accepted**
 
+> **Update (2026-05-09):** The file paths cited below predate ADR-0008
+> and ADR-0011. The login flow now lives at `src/browser/flows/login.ts`
+> (not `src/loopback.ts`); the option picker has been retired in favour
+> of the row-form flows under `src/browser/flows/`
+> (`requester.ts`, `approver.ts`, `confirmer.ts`) which all share
+> `src/browser/flows/row-form.ts`. The runtime dependency list is also
+> outdated: pimdo-ts ships four runtime dependencies today
+> (`@modelcontextprotocol/sdk`, `zod`, `@azure/msal-node`, `open` —
+> see ADR-0011). The shared CSP / CSRF / header pinning module
+> referenced in the rules below moved from `src/loopback-security.ts`
+> to `src/browser/security.ts`. The design rules themselves are
+> unchanged.
+
 ## Context
 
-pimdo-ts is a stdio-based MCP server distributed as an MCPB bundle with only three runtime dependencies (`@modelcontextprotocol/sdk`, `zod`, `@azure/msal-node`). It serves HTML locally for transient authentication and configuration flows via loopback HTTP servers — specifically the MSAL login flow (`src/loopback.ts`) and the browser-based option picker (`src/picker.ts`).
+pimdo-ts is a stdio-based MCP server distributed as an MCPB bundle with four runtime dependencies (`@modelcontextprotocol/sdk`, `zod`, `@azure/msal-node`, `open`). It serves HTML locally for transient authentication and confirmation flows via loopback HTTP servers — specifically the MSAL login flow (`src/browser/flows/login.ts`) and the row-form flows (`src/browser/flows/requester.ts`, `approver.ts`, `confirmer.ts`).
 
 Currently, HTML templates live in `src/templates/` as TypeScript functions that return HTML strings. However, several problems exist in the current implementation:
 

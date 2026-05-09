@@ -14,6 +14,19 @@ superseded_by: ""
 
 **Accepted**
 
+> **Update (2026-05-09):** This ADR was written when the tool surface
+> still included graphdo-ts mail / to-do / markdown families (~25
+> tools across six domains). pimdo-ts has since narrowed to PIM and
+> exposes 24 tools across four flat domains: `src/tools/auth/`,
+> `src/tools/pim/group/`, `src/tools/pim/role-entra/`, and
+> `src/tools/pim/role-azure/`. There is no `src/tools/markdown-*`,
+> `src/tools/todo*`, or `src/tools/mail.ts`. The descriptor-per-file
+> pattern, `Tool<Args>` shape, `registerTool(...)` helper, and the
+> "one composition-root loop" structure are all unchanged. The
+> "TODO_TOOLS" example below is illustrative — its current
+> equivalents are `AUTH_TOOLS`, `GROUP_TOOLS`, `ROLE_ENTRA_TOOLS`,
+> `ROLE_AZURE_TOOLS`, registered in `src/index.ts`.
+
 ## Context
 
 pimdo-ts currently exposes ~25 MCP tools spread across six domain modules
