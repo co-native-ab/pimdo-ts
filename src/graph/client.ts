@@ -198,7 +198,14 @@ export class GraphClient {
       ...extraHeaders,
     };
 
-    logger.debug("graph request", { method, url });
+    // Log path only (no query string): URLs frequently embed user
+    // identifiers, principal/role-assignment GUIDs, and `$filter`
+    // expressions containing display names — content the user enabling
+    // PIMDO_DEBUG=true probably does not expect to land in plaintext
+    // host-client logs.
+    const queryIdx = path.indexOf("?");
+    const pathForLog = queryIdx === -1 ? path : path.slice(0, queryIdx);
+    logger.debug("graph request", { method, path: pathForLog });
 
     const baseInit: RequestInit = { method, headers };
     if (body !== undefined) {

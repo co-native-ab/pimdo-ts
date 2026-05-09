@@ -55,18 +55,25 @@ export function appendFileOptions(): Parameters<typeof fs.appendFile>[2] {
 }
 
 /**
- * Atomically write `data` as JSON to `filePath`: ensure the parent
- * directory exists, write to a unique temp file in the same directory,
- * then `rename` it into place (POSIX atomic on the same volume). On
- * any error the temp file is best-effort removed and the original error
+ * Atomically write `body` to `filePath`: ensure the parent directory
+ * exists, write to a unique temp file in the same directory, then
+ * `rename` it into place (POSIX atomic on the same volume). On any
+ * error the temp file is best-effort removed and the original error
  * is re-thrown.
+ *
+ * Defence-in-depth: the `rename` replaces the destination inode with
+ * the freshly created (mode `0o600` on POSIX) temp file, which means
+ * any pre-existing file with looser permissions is replaced rather
+ * than left in place — `fs.writeFile`'s `mode` option is only honoured
+ * when the file is created, so a plain overwrite would not tighten
+ * existing perms.
  *
  * Consolidated here so file-mode policy and crash semantics never drift
  * between callers.
  */
-export async function writeJsonAtomic(
+export async function writeFileAtomic(
   filePath: string,
-  data: unknown,
+  body: string | Uint8Array,
   signal: AbortSignal,
 ): Promise<void> {
   if (signal.aborted) throw signal.reason;
@@ -74,7 +81,6 @@ export async function writeJsonAtomic(
   const dir = path.dirname(filePath);
   await fs.mkdir(dir, mkdirOptions());
 
-  const body = JSON.stringify(data, null, 2) + "\n";
   const tmpFile = path.join(dir, `.${path.basename(filePath)}-${crypto.randomUUID()}.tmp`);
 
   try {
@@ -88,4 +94,17 @@ export async function writeJsonAtomic(
     }
     throw err;
   }
+}
+
+/**
+ * Atomically write `data` as JSON (pretty-printed, trailing newline) to
+ * `filePath`. Thin wrapper around {@link writeFileAtomic}.
+ */
+export async function writeJsonAtomic(
+  filePath: string,
+  data: unknown,
+  signal: AbortSignal,
+): Promise<void> {
+  const body = JSON.stringify(data, null, 2) + "\n";
+  await writeFileAtomic(filePath, body, signal);
 }

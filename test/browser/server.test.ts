@@ -294,6 +294,24 @@ describe("readJsonWithCsrf", () => {
     const result = await handle.result;
     expect(result).toBe("hello");
   });
+
+  it("preserves multi-byte UTF-8 characters that straddle TCP chunk boundaries", async () => {
+    // String chosen to span >> a typical first-flush size; emoji and CJK
+    // characters take 3-4 UTF-8 bytes, so any per-chunk decode that splits
+    // mid-character will surface as U+FFFD replacements.
+    const justification = "需要紧急访问以恢复生产事件 🚨".repeat(1024) + " — final 你好 🚀";
+
+    const handle = await runBrowserFlow(testFlow(), testSignal());
+    const csrfToken = await fetchCsrfToken(handle.url);
+    const res = await postJson(`${handle.url}/complete`, {
+      value: justification,
+      csrfToken,
+    });
+    expect(res.status).toBe(200);
+    const result = await handle.result;
+    expect(result).toBe(justification);
+    expect(result).not.toContain("\uFFFD");
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -190,7 +190,10 @@ export class ArmClient {
       ...extraHeaders,
     };
 
-    logger.debug("arm request", { method, url });
+    // Log path only (no query string) — see graph/client.ts for rationale.
+    const queryIdx = path.indexOf("?");
+    const pathForLog = queryIdx === -1 ? path : path.slice(0, queryIdx);
+    logger.debug("arm request", { method, path: pathForLog });
 
     const baseInit: RequestInit = { method, headers };
     if (body !== undefined) {

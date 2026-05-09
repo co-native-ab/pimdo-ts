@@ -230,7 +230,7 @@ export function readJsonWithCsrf<S extends z.ZodType, R>(
     return;
   }
 
-  let body = "";
+  const chunks: Buffer[] = [];
   let size = 0;
   req.on("data", (chunk: Buffer) => {
     size += chunk.length;
@@ -240,9 +240,14 @@ export function readJsonWithCsrf<S extends z.ZodType, R>(
       req.destroy();
       return;
     }
-    body += chunk.toString();
+    chunks.push(chunk);
   });
   req.on("end", () => {
+    // Concatenate first, then decode once: per-chunk `chunk.toString()`
+    // would replace any multi-byte UTF-8 character that straddles a
+    // chunk boundary with U+FFFD, silently corrupting human-entered
+    // justifications/reasons that get audited downstream by Graph/ARM.
+    const body = Buffer.concat(chunks).toString("utf8");
     let parsed: unknown;
     try {
       parsed = JSON.parse(body);
