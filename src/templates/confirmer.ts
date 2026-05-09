@@ -31,23 +31,19 @@ function renderRow(row: ConfirmerRowSpec, reasonLabel: string, index: number): s
   const included = row.includedByDefault !== false;
   const reason = row.prefilledReason ?? "";
   const id = `confirmer-${String(index)}`;
-  return `<div class="row" data-row-id="${escapeHtml(row.id)}">
-        <div class="row-header">
+  return `<tr class="row" data-row-id="${escapeHtml(row.id)}">
+        <td class="cell-include">
+          <input type="checkbox" class="include-toggle" aria-label="Include" ${included ? "checked" : ""}>
+        </td>
+        <td class="cell-primary">
           <div class="row-label">${escapeHtml(row.label)}</div>
           ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
-        </div>
-        <div class="row-controls">
-          <label class="include-row">
-            <input type="checkbox" class="include-toggle" ${included ? "checked" : ""}>
-            <span>Include</span>
-          </label>
-          <div class="control-group">
-            <label class="control-label" for="${id}-reason">${escapeHtml(reasonLabel)} <span class="control-hint">optional</span></label>
-            <textarea id="${id}-reason" class="reason" rows="2">${escapeHtml(reason)}</textarea>
-          </div>
-        </div>
-        <p class="row-error" hidden></p>
-      </div>`;
+        </td>
+        <td class="cell-input">
+          <textarea id="${id}-reason" class="reason" rows="2" aria-label="${escapeHtml(reasonLabel)}" placeholder="Optional ${escapeHtml(reasonLabel.toLowerCase())}">${escapeHtml(reason)}</textarea>
+          <p class="row-error" hidden></p>
+        </td>
+      </tr>`;
 }
 
 export function confirmerPageHtml(config: ConfirmerPageConfig): string {
@@ -62,11 +58,20 @@ export function confirmerPageHtml(config: ConfirmerPageConfig): string {
 
   const formContent =
     config.rows.length > 0
-      ? `<div class="row-section">
-        ${bulkToolbar}
-        <div class="row-list">${config.rows.map((r, i) => renderRow(r, reasonLabel, i)).join("\n      ")}</div>
+      ? `${bulkToolbar}
+      <div class="row-table-wrap">
+        <table class="row-table">
+          <thead>
+            <tr>
+              <th class="col-include" scope="col" aria-label="Include"></th>
+              <th class="col-primary" scope="col">Group / role</th>
+              <th class="col-input" scope="col">${escapeHtml(reasonLabel)} <span class="cell-num">(optional)</span></th>
+            </tr>
+          </thead>
+          <tbody>${config.rows.map((r, i) => renderRow(r, reasonLabel, i)).join("\n          ")}</tbody>
+        </table>
       </div>`
-      : `<div class="row-section"><p class="empty-state">No items to confirm.</p></div>`;
+      : `<p class="empty-state">// no items to confirm</p>`;
 
   const perFlowScript = `    function applyBulk(action) {
       var include = action === 'include-all';

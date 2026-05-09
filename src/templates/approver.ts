@@ -33,33 +33,31 @@ function renderRow(row: ApproverRowSpec, index: number): string {
   const id = `approver-${String(index)}`;
 
   const radio = (value: "Approve" | "Deny" | "Skip"): string =>
-    `<label><input type="radio" name="${id}" value="${value}" ${
-      decision === value ? "checked" : ""
+    `<label><input type="radio" name="${id}" value="${value}"${
+      decision === value ? " checked" : ""
     }><span>${value}</span></label>`;
 
-  return `<div class="row" data-row-id="${escapeHtml(row.id)}" data-row-index="${String(index)}">
-        <div class="row-header">
+  return `<tr class="row" data-row-id="${escapeHtml(row.id)}" data-row-index="${String(index)}">
+        <td class="cell-primary">
           <div class="row-label">${escapeHtml(row.label)}</div>
           ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
-          <div class="row-meta"><span class="row-meta-label">Requestor</span>${escapeHtml(row.requestor)}</div>
-          <div class="row-meta"><span class="row-meta-label">Their justification</span>${escapeHtml(row.requestorJustification)}</div>
-        </div>
-        <div class="row-controls">
-          <div class="control-group">
-            <span class="control-label">Decision</span>
-            <div class="decision-group" role="radiogroup" aria-label="Decision">
-              ${radio("Approve")}
-              ${radio("Deny")}
-              ${radio("Skip")}
-            </div>
+        </td>
+        <td class="cell-meta">
+          <span class="cell-meta-name">${escapeHtml(row.requestor)}</span>
+          <span class="cell-quote">&ldquo;${escapeHtml(row.requestorJustification)}&rdquo;</span>
+        </td>
+        <td class="cell-decision">
+          <div class="decision-group" role="radiogroup" aria-label="Decision">
+            ${radio("Approve")}
+            ${radio("Deny")}
+            ${radio("Skip")}
           </div>
-          <div class="control-group">
-            <label class="control-label" for="${id}-justification">Reviewer justification</label>
-            <textarea id="${id}-justification" class="justification" rows="2" placeholder="Required when approving or denying.">${escapeHtml(justification)}</textarea>
-          </div>
-        </div>
-        <p class="row-error" hidden></p>
-      </div>`;
+        </td>
+        <td class="cell-input">
+          <textarea id="${id}-justification" class="justification" rows="2" aria-label="Reviewer justification" placeholder="Required when approving or denying">${escapeHtml(justification)}</textarea>
+          <p class="row-error" hidden></p>
+        </td>
+      </tr>`;
 }
 
 export function approverPageHtml(config: ApproverPageConfig): string {
@@ -74,11 +72,21 @@ export function approverPageHtml(config: ApproverPageConfig): string {
 
   const formContent =
     config.rows.length > 0
-      ? `<div class="row-section">
-        ${bulkToolbar}
-        <div class="row-list">${config.rows.map(renderRow).join("\n      ")}</div>
+      ? `${bulkToolbar}
+      <div class="row-table-wrap">
+        <table class="row-table">
+          <thead>
+            <tr>
+              <th class="col-primary" scope="col">Group / role</th>
+              <th class="col-meta" scope="col">Requestor</th>
+              <th class="col-decision" scope="col">Decision</th>
+              <th class="col-input" scope="col">Reviewer note</th>
+            </tr>
+          </thead>
+          <tbody>${config.rows.map(renderRow).join("\n          ")}</tbody>
+        </table>
       </div>`
-      : `<div class="row-section"><p class="empty-state">No pending approvals.</p></div>`;
+      : `<p class="empty-state">// no pending approvals</p>`;
 
   const perFlowScript = `    function applyBulk(action) {
       var value = action === 'approve-all' ? 'Approve'
@@ -104,11 +112,16 @@ export function approverPageHtml(config: ApproverPageConfig): string {
         if (v === 'Approve') approve++;
         else if (v === 'Deny') deny++;
         else skip++;
-        r.classList.toggle('skipped', v === 'Skip');
       });
       summaryEl.textContent = approve + ' approve · ' + deny + ' deny · ' + skip + ' skip';
     }
-    document.addEventListener('change', updateRowSummary);
+    document.addEventListener('change', function (e) {
+      if (e.target && e.target.matches && e.target.matches('.decision-group input[type="radio"]')) {
+        var rowEl = e.target.closest('.row');
+        if (rowEl) rowEl.classList.toggle('skipped', e.target.value === 'Skip');
+      }
+      updateRowSummary();
+    });
     updateRowSummary();
 
     function isFormValid() {

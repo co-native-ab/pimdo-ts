@@ -66,33 +66,29 @@ function renderRow(row: RequesterRowSpec, index: number): string {
     : defaultParts.minutes || max.totalMinutes;
   const id = `requester-${String(index)}`;
 
-  return `<div class="row" data-row-id="${escapeHtml(row.id)}" data-max-minutes="${String(max.totalMinutes)}" data-row-index="${String(index)}">
-        <div class="row-header">
+  return `<tr class="row" data-row-id="${escapeHtml(row.id)}" data-max-minutes="${String(max.totalMinutes)}" data-row-index="${String(index)}">
+        <td class="cell-include">
+          <input type="checkbox" class="include-toggle" aria-label="Include" ${included ? "checked" : ""}>
+        </td>
+        <td class="cell-primary">
           <div class="row-label">${escapeHtml(row.label)}</div>
           ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
-        </div>
-        <div class="row-controls">
-          <label class="include-row">
-            <input type="checkbox" class="include-toggle" ${included ? "checked" : ""}>
-            <span>Include</span>
-          </label>
-          <div class="control-group">
-            <label class="control-label" for="${id}-justification">Justification</label>
-            <textarea id="${id}-justification" class="justification" rows="2" placeholder="Why do you need this access?">${escapeHtml(justification)}</textarea>
+        </td>
+        <td class="cell-input">
+          <textarea id="${id}-justification" class="justification" rows="2" aria-label="Justification" placeholder="Why do you need this access?">${escapeHtml(justification)}</textarea>
+        </td>
+        <td class="cell-duration">
+          <div class="duration-group">
+            <input id="${id}-duration" type="number" class="duration-value" min="1" value="${String(initialValue)}" aria-label="Duration value">
+            <select class="duration-unit" aria-label="Duration unit">
+              <option value="H" ${initialUnit === "H" ? "selected" : ""}>Hours</option>
+              <option value="M" ${initialUnit === "M" ? "selected" : ""}>Minutes</option>
+            </select>
           </div>
-          <div class="control-group">
-            <label class="control-label" for="${id}-duration">Duration <span class="control-hint">max ${escapeHtml(formatHumanDuration(max))}</span></label>
-            <div class="duration-group">
-              <input id="${id}-duration" type="number" class="duration-value" min="1" value="${String(initialValue)}">
-              <select class="duration-unit" aria-label="Duration unit">
-                <option value="H" ${initialUnit === "H" ? "selected" : ""}>Hours</option>
-                <option value="M" ${initialUnit === "M" ? "selected" : ""}>Minutes</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <p class="row-error" hidden></p>
-      </div>`;
+          <span class="duration-max">max ${escapeHtml(formatHumanDuration(max))}</span>
+          <p class="row-error" hidden></p>
+        </td>
+      </tr>`;
 }
 
 function formatHumanDuration(parts: DurationParts): string {
@@ -113,11 +109,21 @@ export function requesterPageHtml(config: RequesterPageConfig): string {
 
   const formContent =
     config.rows.length > 0
-      ? `<div class="row-section">
-        ${bulkToolbar}
-        <div class="row-list">${config.rows.map(renderRow).join("\n      ")}</div>
+      ? `${bulkToolbar}
+      <div class="row-table-wrap">
+        <table class="row-table">
+          <thead>
+            <tr>
+              <th class="col-include" scope="col" aria-label="Include"></th>
+              <th class="col-primary" scope="col">Group / role</th>
+              <th class="col-input" scope="col">Justification</th>
+              <th class="col-duration" scope="col">Duration</th>
+            </tr>
+          </thead>
+          <tbody>${config.rows.map(renderRow).join("\n          ")}</tbody>
+        </table>
       </div>`
-      : `<div class="row-section"><p class="empty-state">No items to request.</p></div>`;
+      : `<p class="empty-state">// no items to request</p>`;
 
   const perFlowScript = `    function applyBulk(action) {
       var include = action === 'include-all';

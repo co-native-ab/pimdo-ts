@@ -117,20 +117,23 @@ The following patterns are prohibited in all current and future HTML-serving cod
 
 ### 7. Row-Form Layout Pattern
 
-Multi-row decision pages — `requesterFlow`, `approverFlow`, and `confirmerFlow` — follow a borderless-list layout convention rather than rendering each row as its own bordered card. This pattern is informed by Microsoft Fluent 2 (DataGrid + CommandBar), Atlassian (TableTree + Inline Edit), GitHub Primer (ActionList), Shopify Polaris (ResourceList), and IBM Carbon (DataTable + batch actions bar).
+Multi-row decision pages — `requesterFlow`, `approverFlow`, and `confirmerFlow` — diverge from the centred login/logout/picker shell on purpose. They are **high-density, console-inspired tables**, not marketing cards: a reviewer triaging twenty pending requests benefits from compact rows, sticky column headers, and tabular metadata far more than from generous whitespace. This pattern is informed by Microsoft Fluent 2 (DataGrid + CommandBar), Atlassian (TableTree + Inline Edit), GitHub Primer (ActionList), Shopify Polaris (ResourceList), and IBM Carbon (DataTable + batch actions bar).
 
 The canonical structure is:
 
-- **Single bordered `.row-section` container** holds the bulk toolbar and the row list. The list is a vertically stacked `.row-list` with 1px `grey1` dividers between rows; rows themselves carry no border or border-radius.
-- **Two-column row at ≥520px viewport width.** Left column (`.row-header`) holds the entity identity — `.row-label`, optional `.row-subtitle`, and `.row-meta` lines (with `.row-meta-label` for the muted field name). Right column (`.row-controls`) holds the per-row decision controls. Below 520px the row collapses to a single column.
-- **Compact segmented control for mutually exclusive decisions.** The `.decision-group` is a single connected control with a 1.5px outer border and internal vertical dividers; the underlying radios are visually hidden but kept for accessibility. The selected segment fills with `purple.minus3` and switches text to `purple.brand` semibold (dark mode: `dark.surfaceHover` background, `purple.minus1` text).
-- **Inline include + duration + justification controls.** Boolean inclusion uses a small `.include-row` checkbox label; duration is a width-fit `.duration-group` (number input + unit select capped at ~220px); justification is a 2-row textarea with `min-height: 34px` so it reads as a single line until focused.
-- **Bulk toolbar as a true CommandBar.** Bulk-action buttons (e.g. "Approve all", "Include none") live above the rows in a `purple.minus3` toolbar with a muted "Bulk" label and an aria-live `.row-summary` count on the right.
-- **Sticky form-actions footer.** The Cancel/Submit pair is `position: sticky; bottom: 0;` with a token-derived white-to-transparent gradient backdrop so it remains visible regardless of row count.
-- **Skipped state via typography, not opacity.** Skipped rows strike through `.row-label` and dim `.row-meta` text rather than dropping the entire row to half-opacity, which previously made the row look broken rather than de-emphasised.
-- **Typography hierarchy.** Row label `fontSize.base` semibold; subtitle `fontSize.sm` `grey3`; meta `fontSize.sm` `grey4` with `grey3` field labels; control labels `fontSize.xs` semibold uppercase `grey3`. Exactly one source of emphasis per row.
+- **Wide left-aligned card.** Override the centred 400px container with a left-aligned `max-width: 1080px` card and reduced padding (`18px 22px 14px`). The body itself flows to `align-items: flex-start` so a long table doesn't try to vertically centre.
+- **Slim CommandBar above the table.** A monospace uppercase `BULK` label, a row of borderless text-buttons (e.g. "Approve all", "Include none"), and an aria-live `.row-summary` count on the right (e.g. `3 approve · 0 deny · 2 skip`). Background: `grey1`, border: `grey2`, no rounded corners larger than `borderRadius.sm`.
+- **Real `<table class="row-table">` markup** wrapped in a `.row-table-wrap` with `max-height: calc(100vh - 240px)` and `overflow: auto`. Use semantic `<thead>` / `<tbody>` / `<tr>` / `<td>` so screen readers and keyboards get table navigation for free.
+- **Sticky uppercase monospace `<thead>`.** Column titles are 0.7rem, `grey3`, `letter-spacing: 0.08em`, `text-transform: uppercase`, `position: sticky; top: 0;` so they remain visible while scrolling long lists.
+- **Compact `<tr class="row">`.** Approximately 30–36px tall: cell padding `6px 10px`, line-height `1.45`, `font-size: sm`. Hover row tint: `purple.minus3` (light) / `dark.surfaceHover` (dark). 1px `grey1` separators between rows, no per-row border, no border-radius.
+- **Monospace metadata cells.** IDs (subtitle), durations, "max" hints, and the bulk-toolbar `BULK` label use `fontFamilyMono` (the system monospace stack — no extra font load). Names use Lexend; quoted requestor text is italic Lexend in `grey3`.
+- **Ultra-compact segmented decision control.** Inside the decision `<td>`, `.decision-group` is a connected segmented control with `border-radius: sm`, ~22px tall, `font-family: fontFamilyMono`, uppercase APPROVE/DENY/SKIP labels at `fontSize.xs`. Selected segment fills with `purple.minus3` and switches text to `purple.brand`. Native radios are visually hidden (`clip: rect(0,0,0,0)`) but kept for keyboard a11y.
+- **Inline single-cell controls.** Justification: a 2-row `<textarea class="justification">` with `min-height: 26px` and `max-height: 120px` so it grows on focus / long input. Duration: a `.duration-group` (60px number + flex-1 unit select) capped at 160px with a monospace "max NN h" hint below. Include: a centred 15px native checkbox (`accent-color: purple.brand`).
+- **Sticky form-actions footer** with a token-derived white-to-transparent gradient backdrop so Cancel/Submit stay reachable on long lists.
+- **Skipped state via typography, not opacity.** Strikethrough `.row-label` plus dimmed `.cell-meta` / `.cell-quote`. Applied only after explicit user action (radio change to Skip or bulk Skip-all) — never on initial paint, even if "Skip" is the default radio.
+- **Empty state in console voice.** A single muted monospace line such as `// no pending approvals`, no card chrome.
 
-These rules apply to every new row-form surface added in `src/browser/flows/`. Reuse `ROW_FORM_STYLE` and the helpers in `src/templates/row-form.ts` rather than authoring per-flow CSS.
+These rules apply to every new row-form surface added in `src/browser/flows/`. Reuse `ROW_FORM_STYLE` and the helpers in `src/templates/row-form.ts` rather than authoring per-flow CSS, and add `fontFamilyMono` from `tokens.ts` (never an inline font stack).
 
 ## Consequences
 

@@ -7,6 +7,7 @@ import {
   complementary,
   dark,
   fontFamily,
+  fontFamilyMono,
   fontWeight,
   fontSize,
   spacing,
@@ -687,86 +688,128 @@ export const NAVIGATOR_STYLE = `
 // ---------------------------------------------------------------------------
 // Row-form styles (shared by requester / approver / confirmer flows)
 // ---------------------------------------------------------------------------
+//
+// These pages diverge from the centred login/logout/picker shell on
+// purpose — they're a high-density review surface, more akin to a
+// console / DevOps dashboard than a marketing card. See ADR-0002 §7
+// for the rationale.
 
 export const ROW_FORM_STYLE = `
-    .container { max-width: 720px; }
-    .card { text-align: left; padding: 32px 32px 24px; }
-    .card h1 { text-align: center; }
-    .subtitle { text-align: center; margin-bottom: ${spacing.lg}; }
-
-    .row-section {
-      border: 1px solid ${grey.grey2};
+    body { align-items: flex-start; padding: 24px 16px; }
+    .container { max-width: 1080px; text-align: left; }
+    .card {
+      padding: 18px 22px 14px;
       border-radius: ${borderRadius.lg};
-      background: ${grey.white};
-      overflow: hidden;
+      text-align: left;
+    }
+    .card h1 {
+      font-size: ${fontSize.lg};
+      color: ${purple.plus2};
+      font-weight: ${fontWeight.semibold};
+      letter-spacing: -0.01em;
+      margin-bottom: 2px;
+    }
+    .card .subtitle {
+      font-size: ${fontSize.sm};
+      color: ${grey.grey3};
       margin-bottom: ${spacing.md};
+      line-height: 1.5;
     }
 
+    /* Slim CommandBar above the table */
     .bulk-toolbar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: ${spacing.xs};
-      padding: ${spacing.sm} ${spacing.md};
-      background: ${purple.minus3};
-      border-bottom: 1px solid ${grey.grey2};
+      gap: 4px;
+      padding: 6px 8px;
+      margin-bottom: ${spacing.sm};
+      border: 1px solid ${grey.grey2};
+      border-radius: ${borderRadius.sm};
+      background: ${grey.grey1};
     }
     .bulk-toolbar-label {
+      font-family: ${fontFamilyMono};
       font-size: ${fontSize.xs};
       font-weight: ${fontWeight.semibold};
-      color: ${grey.grey4};
+      color: ${grey.grey3};
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-right: ${spacing.xs};
+      padding: 0 6px;
     }
     .bulk-btn {
-      padding: 4px 10px;
+      padding: 3px 10px;
       background: transparent;
-      border: none;
+      border: 1px solid transparent;
       border-radius: ${borderRadius.sm};
       color: ${purple.brand};
       font-family: ${fontFamily};
       font-size: ${fontSize.sm};
       font-weight: ${fontWeight.semibold};
       cursor: pointer;
-      transition: background 0.15s ease;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
-    .bulk-btn:hover { background: rgba(255, 255, 255, 0.55); }
+    .bulk-btn:hover {
+      background: ${grey.white};
+      border-color: ${grey.grey2};
+    }
     .row-summary {
       margin-left: auto;
+      font-family: ${fontFamilyMono};
       font-size: ${fontSize.xs};
       color: ${grey.grey4};
-      font-weight: ${fontWeight.regular};
+      padding: 0 6px;
     }
 
-    .row-list { display: block; }
-    .row {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: ${spacing.sm};
-      padding: 12px 14px;
-      border-bottom: 1px solid ${grey.grey1};
-      transition: background 0.15s ease;
+    /* Table */
+    .row-table-wrap {
+      border: 1px solid ${grey.grey2};
+      border-radius: ${borderRadius.sm};
+      overflow: auto;
+      background: ${grey.white};
+      max-height: calc(100vh - 240px);
     }
-    .row:last-child { border-bottom: none; }
-    .row:hover { background: ${grey.grey1}; }
-    @media (min-width: 520px) {
-      .row {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
-        gap: ${spacing.md};
-        align-items: start;
-      }
+    .row-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: ${fontSize.sm};
     }
-    .row.skipped .row-label { text-decoration: line-through; color: ${grey.grey3}; }
-    .row.skipped .row-subtitle,
-    .row.skipped .row-meta { color: ${grey.grey3}; }
+    .row-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      text-align: left;
+      padding: 7px 10px;
+      background: ${grey.grey1};
+      color: ${grey.grey3};
+      font-family: ${fontFamilyMono};
+      font-size: 0.7rem;
+      font-weight: ${fontWeight.semibold};
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-bottom: 1px solid ${grey.grey2};
+      white-space: nowrap;
+    }
+    .row-table thead th.col-include { width: 28px; }
+    .row-table thead th.col-decision { width: 200px; }
+    .row-table thead th.col-duration { width: 170px; }
 
-    .row-header {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
+    .row-table tbody tr.row {
+      border-top: 1px solid ${grey.grey1};
+      transition: background 0.1s ease;
     }
+    .row-table tbody tr.row:first-child { border-top: none; }
+    .row-table tbody tr.row:hover { background: ${purple.minus3}; }
+    .row-table tbody tr.row:hover .row-subtitle,
+    .row-table tbody tr.row:hover .cell-quote { color: ${grey.grey4}; }
+
+    .row-table td {
+      padding: 6px 10px;
+      vertical-align: top;
+      line-height: 1.45;
+    }
+
+    .cell-primary { min-width: 180px; }
     .row-label {
       font-size: ${fontSize.base};
       font-weight: ${fontWeight.semibold};
@@ -775,122 +818,73 @@ export const ROW_FORM_STYLE = `
       line-height: 1.35;
     }
     .row-subtitle {
-      font-size: ${fontSize.sm};
-      color: ${grey.grey3};
-      word-break: break-word;
-      line-height: 1.4;
-    }
-    .row-meta {
-      font-size: ${fontSize.sm};
-      color: ${grey.grey4};
-      word-break: break-word;
-      line-height: 1.5;
-    }
-    .row-meta-label { color: ${grey.grey3}; margin-right: 4px; }
-
-    .row-controls {
-      display: flex;
-      flex-direction: column;
-      gap: ${spacing.sm};
-      min-width: 0;
-    }
-    .control-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-    .control-label {
-      display: block;
+      font-family: ${fontFamilyMono};
       font-size: ${fontSize.xs};
-      font-weight: ${fontWeight.semibold};
       color: ${grey.grey3};
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0;
+      word-break: break-all;
+      margin-top: 1px;
     }
-    .control-hint {
-      font-weight: ${fontWeight.regular};
+    .cell-meta { color: ${grey.grey4}; }
+    .cell-meta-name { font-weight: ${fontWeight.semibold}; color: ${grey.grey4}; }
+    .cell-quote {
+      display: block;
+      margin-top: 1px;
+      font-style: italic;
       color: ${grey.grey3};
-      text-transform: none;
-      letter-spacing: 0;
-      margin-left: 4px;
+      font-size: ${fontSize.xs};
+    }
+    .cell-num {
+      font-family: ${fontFamilyMono};
+      color: ${grey.grey3};
+      font-size: ${fontSize.xs};
     }
 
-    .include-row {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: ${fontSize.sm};
-      color: ${grey.grey4};
-      cursor: pointer;
-      user-select: none;
+    /* Compact include checkbox cell */
+    .cell-include {
+      text-align: center;
+      vertical-align: middle;
     }
-    .include-row input[type="checkbox"] {
+    .cell-include input[type="checkbox"] {
       margin: 0;
+      width: 15px;
+      height: 15px;
       accent-color: ${purple.brand};
-      width: 16px;
-      height: 16px;
+      cursor: pointer;
     }
 
-    .row-controls textarea,
-    .row-controls input[type="number"],
-    .row-controls input[type="text"],
-    .row-controls select {
-      width: 100%;
-      padding: 6px 10px;
-      border: 1.5px solid ${grey.grey2};
-      border-radius: ${borderRadius.md};
-      font-family: ${fontFamily};
-      font-size: ${fontSize.sm};
-      background: ${grey.white};
-      color: inherit;
-      outline: none;
-      box-sizing: border-box;
-      resize: vertical;
-      transition: border-color 0.15s ease;
-    }
-    .row-controls textarea { min-height: 34px; line-height: 1.4; }
-    .row-controls textarea:focus,
-    .row-controls input:focus,
-    .row-controls select:focus { border-color: ${purple.brand}; }
-
-    .duration-group {
-      display: inline-flex;
-      gap: ${spacing.xs};
-      max-width: 220px;
-    }
-    .duration-group .duration-value { flex: 1 1 80px; min-width: 0; }
-    .duration-group .duration-unit { flex: 0 0 110px; }
-
-    /* Segmented control for the approver decision */
+    /* Compact segmented decision control */
     .decision-group {
       display: inline-flex;
       align-self: flex-start;
-      border: 1.5px solid ${grey.grey2};
-      border-radius: ${borderRadius.md};
+      border: 1px solid ${grey.grey2};
+      border-radius: ${borderRadius.sm};
       background: ${grey.white};
       overflow: hidden;
+      font-family: ${fontFamilyMono};
     }
     .decision-group label {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 5px 14px;
+      padding: 2px 10px;
       margin: 0;
       cursor: pointer;
-      font-size: ${fontSize.sm};
-      font-weight: ${fontWeight.regular};
+      font-size: ${fontSize.xs};
+      font-weight: ${fontWeight.semibold};
       color: ${grey.grey4};
-      border: none;
       border-right: 1px solid ${grey.grey2};
       background: transparent;
-      min-height: 28px;
-      transition: background 0.15s ease, color 0.15s ease;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: background 0.1s ease, color 0.1s ease;
+      min-height: 22px;
     }
     .decision-group label:last-child { border-right: none; }
     .decision-group label:hover { background: ${purple.minus3}; }
     .decision-group input[type="radio"] {
       position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
       overflow: hidden;
       clip: rect(0, 0, 0, 0);
       white-space: nowrap;
@@ -899,99 +893,174 @@ export const ROW_FORM_STYLE = `
     .decision-group label:has(input[type="radio"]:checked) {
       background: ${purple.minus3};
       color: ${purple.brand};
-      font-weight: ${fontWeight.semibold};
     }
-    .decision-group input[type="radio"]:focus-visible + span,
     .decision-group label:focus-within {
       box-shadow: inset 0 0 0 2px ${purple.brand};
     }
 
-    .row-error {
-      grid-column: 1 / -1;
-      color: ${complementary.peach.base};
+    /* Inline text inputs */
+    .row-table textarea,
+    .row-table input[type="text"],
+    .row-table input[type="number"],
+    .row-table select {
+      width: 100%;
+      padding: 3px 6px;
+      border: 1px solid ${grey.grey2};
+      border-radius: ${borderRadius.sm};
+      font-family: ${fontFamily};
       font-size: ${fontSize.sm};
+      background: ${grey.white};
+      color: inherit;
+      outline: none;
+      box-sizing: border-box;
+      line-height: 1.4;
+      resize: vertical;
+      transition: border-color 0.15s ease;
+    }
+    .row-table textarea {
+      min-height: 26px;
+      max-height: 120px;
+      font-family: ${fontFamily};
+    }
+    .row-table textarea:focus,
+    .row-table input:focus,
+    .row-table select:focus { border-color: ${purple.brand}; }
+
+    .duration-group {
+      display: inline-flex;
+      gap: 4px;
+      width: 100%;
+      max-width: 160px;
+    }
+    .duration-group .duration-value { width: 60px; flex: 0 0 60px; }
+    .duration-group .duration-unit { flex: 1 1 auto; min-width: 0; }
+    .duration-max {
+      display: block;
       margin-top: 2px;
+      font-family: ${fontFamilyMono};
+      font-size: 0.7rem;
+      color: ${grey.grey3};
+      letter-spacing: 0.04em;
     }
 
+    .row-error {
+      display: block;
+      margin-top: 3px;
+      font-family: ${fontFamilyMono};
+      color: ${complementary.peach.base};
+      font-size: ${fontSize.xs};
+    }
+
+    /* Skipped state — strikethrough + dim, never opacity */
+    tr.row.skipped .row-label { text-decoration: line-through; color: ${grey.grey3}; }
+    tr.row.skipped .row-subtitle,
+    tr.row.skipped .cell-meta,
+    tr.row.skipped .cell-quote { color: ${grey.grey3}; }
+
+    /* Sticky form-actions footer */
     .form-actions {
       display: flex;
       gap: ${spacing.sm};
-      margin-top: ${spacing.lg};
-      padding-top: ${spacing.md};
+      align-items: center;
+      margin-top: ${spacing.md};
+      padding-top: ${spacing.sm};
       position: sticky;
       bottom: 0;
       background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, ${grey.white} 30%);
-      z-index: 1;
+      z-index: 2;
     }
     .form-actions .submit-btn {
       flex: 1;
-      padding: 12px;
+      padding: 10px 16px;
       background: ${purple.brand};
       color: ${grey.white};
       border: none;
-      border-radius: ${borderRadius.md};
+      border-radius: ${borderRadius.sm};
       font-family: ${fontFamily};
-      font-size: ${fontSize.md};
+      font-size: ${fontSize.base};
       font-weight: ${fontWeight.semibold};
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background 0.15s ease;
     }
-    .form-actions .submit-btn:hover:not(:disabled) {
-      background: ${purple.plus1};
-      transform: translateY(-1px);
-      box-shadow: 0 4px 14px rgba(102, 89, 167, 0.25);
-    }
+    .form-actions .submit-btn:hover:not(:disabled) { background: ${purple.plus1}; }
     .form-actions .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .form-actions .cancel-btn { flex: 0 0 110px; padding: 12px; border-radius: ${borderRadius.md}; }
+    .form-actions .cancel-btn {
+      flex: 0 0 100px;
+      padding: 10px 16px;
+      border-radius: ${borderRadius.sm};
+    }
 
     .empty-state {
       text-align: center;
-      color: ${grey.grey4};
-      padding: ${spacing.lg} 0;
+      color: ${grey.grey3};
+      padding: ${spacing.xl} 0;
+      font-family: ${fontFamilyMono};
+      font-size: ${fontSize.sm};
     }
-    .done { text-align: center; }
-    .done h1 { color: ${complementary.teal.base}; }
+    .done { text-align: center; padding: ${spacing.xxl} ${spacing.xl}; }
+    .done h1 { color: ${complementary.teal.base}; text-align: center; }
+    .done .message, .done .countdown, .done #manual-close { text-align: center; }
     #manual-close { margin-top: ${spacing.lg}; color: ${grey.grey4}; font-size: ${fontSize.base}; }
     .error-banner {
       color: ${complementary.peach.base};
       text-align: center;
-      margin-top: ${spacing.md};
+      margin-top: ${spacing.sm};
       font-size: ${fontSize.sm};
     }
 
+    /* Narrow viewports — collapse the multi-column controls into a more
+       readable stack. The table still works because <td>s wrap, but we
+       widen the input columns and wrap meta inline. */
+    @media (max-width: 640px) {
+      body { padding: 12px 8px; }
+      .card { padding: 14px 12px 12px; }
+      .row-table { font-size: ${fontSize.sm}; }
+      .row-table thead th.col-decision { width: auto; }
+      .row-table thead th.col-duration { width: auto; }
+      .row-table td { padding: 6px 8px; }
+      .duration-group { max-width: 100%; }
+    }
+
     @media (prefers-color-scheme: dark) {
-      .row-section {
-        background: ${dark.surface};
-        border-color: ${dark.border};
-      }
+      .card h1 { color: ${dark.heading}; }
+      .card .subtitle { color: ${dark.textMuted}; }
       .bulk-toolbar {
-        background: ${dark.surfaceHover};
-        border-bottom-color: ${dark.border};
+        background: ${dark.bg2};
+        border-color: ${dark.border};
       }
       .bulk-toolbar-label, .row-summary { color: ${dark.textMuted}; }
       .bulk-btn { color: ${purple.minus1}; }
-      .bulk-btn:hover { background: rgba(255, 255, 255, 0.06); }
-      .row { border-bottom-color: ${dark.border}; color: ${dark.text}; }
-      .row:hover { background: ${dark.surfaceHover}; }
+      .bulk-btn:hover {
+        background: ${dark.surfaceHover};
+        border-color: ${dark.border};
+      }
+      .row-table-wrap {
+        background: ${dark.surface};
+        border-color: ${dark.border};
+      }
+      .row-table thead th {
+        background: ${dark.bg2};
+        color: ${dark.textMuted};
+        border-bottom-color: ${dark.border};
+      }
+      .row-table tbody tr.row { border-top-color: ${dark.border}; }
+      .row-table tbody tr.row:hover { background: ${dark.surfaceHover}; }
       .row-label { color: ${dark.heading}; }
-      .row-subtitle, .row-meta-label { color: ${dark.textMuted}; }
-      .row-meta { color: ${dark.text}; }
-      .row.skipped .row-label,
-      .row.skipped .row-subtitle,
-      .row.skipped .row-meta { color: ${dark.textMuted}; }
-      .control-label { color: ${dark.textMuted}; }
-      .include-row { color: ${dark.text}; }
-      .row-controls textarea,
-      .row-controls input[type="number"],
-      .row-controls input[type="text"],
-      .row-controls select {
+      .row-subtitle, .cell-quote, .cell-num, .duration-max { color: ${dark.textMuted}; }
+      .cell-meta { color: ${dark.text}; }
+      .cell-meta-name { color: ${dark.heading}; }
+      tr.row.skipped .row-label,
+      tr.row.skipped .row-subtitle,
+      tr.row.skipped .cell-meta,
+      tr.row.skipped .cell-quote { color: ${dark.textMuted}; }
+      .row-table textarea,
+      .row-table input[type="text"],
+      .row-table input[type="number"],
+      .row-table select {
         background: ${dark.bg2};
         border-color: ${dark.border};
         color: ${dark.text};
       }
-      .row-controls textarea:focus,
-      .row-controls input:focus,
-      .row-controls select:focus { border-color: ${purple.brand}; }
       .decision-group {
         background: ${dark.bg2};
         border-color: ${dark.border};
@@ -1005,7 +1074,8 @@ export const ROW_FORM_STYLE = `
         background: ${dark.surfaceHover};
         color: ${purple.minus1};
       }
-      .empty-state, #manual-close { color: ${dark.text}; }
+      .empty-state { color: ${dark.textMuted}; }
+      #manual-close { color: ${dark.text}; }
       .form-actions {
         background: linear-gradient(to bottom, rgba(28, 27, 41, 0) 0%, ${dark.surface} 30%);
       }
