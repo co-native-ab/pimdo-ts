@@ -3,7 +3,7 @@ title: "ADR-0001: Minimize Blast Radius for AI Agent Access"
 status: "Accepted"
 date: "2026-04-11"
 authors: "co-native-ab"
-tags: ["architecture", "security", "ai-agents", "microsoft-graph"]
+tags: ["architecture", "security", "ai-agents", "pim", "microsoft-graph", "azure-rm"]
 supersedes: ""
 superseded_by: ""
 ---
@@ -14,102 +14,291 @@ superseded_by: ""
 
 **Accepted**
 
+> **Update (2026-05-09):** This ADR was originally written when pimdo-ts
+> exposed Microsoft 365 mail / To Do tools. The product has since
+> narrowed to **Microsoft Entra Privileged Identity Management** —
+> Entra Groups, Entra (directory) roles, and Azure (resource) roles.
+> The principles below are unchanged; the examples have been rewritten
+> against the current PIM surface (24 tools across `auth`,
+> `pim_group_*`, `pim_role_entra_*`, `pim_role_azure_*`).
+
 ## Context
 
-pimdo-ts is a TypeScript MCP server that gives AI agents scoped, low-risk access to Microsoft Graph API. Current capabilities cover email and Microsoft To Do, with more Graph surfaces planned.
+pimdo-ts is a TypeScript MCP server that gives AI agents scoped access
+to **Microsoft Entra PIM** — the just-in-time elevation system for
+privileged access. The agent's job is to help a human elevate _their
+own_ standing eligibilities into active assignments (and back again),
+review approvals where the human is a reviewer, and read activation
+policy. It targets two Microsoft resources from a single login:
+Microsoft Graph (Entra Groups + directory roles) and Azure Resource
+Manager (Azure RBAC role assignments).
 
-AI agents acting on behalf of users inherently carry risk — they can make mistakes, be manipulated via prompt injection, or behave unexpectedly. An agent with broad access to a user's Microsoft account could send emails to arbitrary recipients, read sensitive mail, delete important data, or access resources the user did not intend to expose. The design must minimize the damage an agent can cause while still enabling useful work.
+PIM is, by design, the highest-stakes surface in an Entra tenant. A
+mistake or prompt-injection attack carries far more damage potential
+than the original mail/to-do scope did:
+
+- Activating a Global Administrator or Privileged Role Administrator
+  assignment for a longer duration than the user intended.
+- Approving someone else's pending request without the user reading
+  the justification.
+- Activating an unintended Azure subscription Owner role and changing
+  RBAC at a scope the user did not mean to touch.
 
 Key forces at play:
 
-- **Agent unpredictability**: AI agents may misinterpret instructions, hallucinate actions, or be manipulated by adversarial content in emails, documents, or tool outputs.
-- **Microsoft Graph breadth**: Graph API provides access to mail, calendar, files, contacts, teams, and more — each surface area increases potential exposure.
-- **User trust**: users need confidence that granting an AI agent access to their Microsoft account will not result in unintended consequences (e.g., emails sent to their boss, tasks deleted from the wrong list).
-- **Organizational compliance**: IT administrators must be able to evaluate and approve the application's access scope before granting tenant-wide consent.
-- **Usability vs. security**: overly restrictive access renders the agent useless; overly permissive access creates unacceptable risk.
+- **Agent unpredictability.** AI agents may misinterpret instructions,
+  hallucinate role IDs, or be manipulated by adversarial content in
+  group descriptions, justifications, or tool outputs.
+- **Two-resource breadth.** Graph + ARM together cover every
+  privileged elevation path in Entra and Azure. Each new surface is a
+  new escalation channel.
+- **User trust.** Users need confidence that letting an agent help
+  with PIM cannot quietly elevate them above what they intended, or
+  approve changes for other people without their explicit click.
+- **Organizational compliance.** Tenant administrators must be able
+  to evaluate and approve the application's requested permissions
+  and to see exactly which scopes are in play before consenting.
+- **Usability vs. security.** Forcing the human to retype every
+  argument removes the value of having an agent; granting the agent
+  unattended privilege-changing power is unacceptable for PIM.
 
 ## Decision
 
-pimdo-ts follows a **"minimize blast radius"** principle across all design decisions. Every capability is evaluated through the lens of: _what is the worst thing that could happen if the agent misuses this, and how do we limit that?_
+pimdo-ts follows a **"minimize blast radius"** principle across all
+design decisions. Every capability is evaluated through the lens of:
+_what is the worst thing that could happen if the agent misuses this,
+and how do we limit that?_
 
-### 1. Scoped Permissions (Delegated Only)
+### 1. Scoped, Delegated, PIM-Only Permissions
 
-Only delegated permissions are requested: `User.Read`, `Mail.Send`, `Tasks.ReadWrite`, `offline_access`. The agent acts as the signed-in user, never as an application with broader access. No application-level permissions are used. This means the agent can never access resources beyond what the specific signed-in user has access to, and an IT administrator can see exactly what is requested during consent.
+Only delegated permissions are requested, scoped to the PIM-specific
+Microsoft Graph + ARM resources the tools actually need. The agent
+acts as the signed-in user; no application-level permissions are
+used. Today's full scope set (`src/scopes.ts` `GraphScope`):
 
-### 2. Constrained Actions
+- Graph base: `User.Read`, `offline_access`.
+- Graph PIM Entra Groups: `PrivilegedAccess.ReadWrite.AzureADGroup`,
+  `PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup`,
+  `PrivilegedEligibilitySchedule.ReadWrite.AzureADGroup`,
+  `RoleManagementPolicy.Read.AzureADGroup`.
+- Graph PIM Entra Roles: `RoleManagement.Read.Directory`,
+  `RoleManagement.ReadWrite.Directory`,
+  `RoleManagementPolicy.Read.Directory`,
+  `RoleAssignmentSchedule.ReadWrite.Directory`,
+  `RoleEligibilitySchedule.Read.Directory`,
+  `RoleEligibilitySchedule.ReadWrite.Directory`.
+- ARM PIM Azure Roles:
+  `https://management.azure.com/user_impersonation` only.
 
-Each capability is scoped as narrowly as possible beyond what the permission model alone enforces:
+There are no scopes for unrelated Graph surfaces (Mail, Files,
+Calendar, Teams, …). An IT administrator can see exactly what is
+requested at consent time, and a tenant that downgrades a `ReadWrite`
+to `Read` at consent (a tenant-level option) automatically narrows
+which tools light up. See ADR-0017 (scope-gated dynamic tool
+visibility).
 
-- **Email**: the `mail_send` tool retrieves the signed-in user's profile via `GET /me` and sends the email **to that same address** (`user.mail`). The tool accepts no recipient parameter — the agent can only email the signed-in user themselves. This prevents the agent from sending emails to arbitrary recipients even though the `Mail.Send` scope technically allows it.
-- **To Do**: the agent can only access tasks in **one specific list**, selected by the user via a browser picker. The selected list ID is stored in the local config file. The agent cannot enumerate or access other lists.
+### 2. Privilege-Changing Tools Always Confirm in the Browser
 
-### 3. Human-in-the-Loop for Critical Decisions
+Every tool that mutates an active PIM assignment, an eligibility, or
+an approval routes through a local-loopback browser flow before it
+talks to Graph or ARM. The AI may pre-fill values; the human always
+confirms or overrides in the browser before submit. Today this
+covers:
 
-Operations that change the agent's access scope require human interaction via the browser, ensuring the AI agent cannot perform them programmatically:
+- `pim_group_request`, `pim_role_entra_request`,
+  `pim_role_azure_request` — the **requester** flow.
+- `pim_group_approval_review`, `pim_role_entra_approval_review`,
+  `pim_role_azure_approval_review` — the **approver** flow.
+- `pim_group_deactivate`, `pim_role_entra_deactivate`,
+  `pim_role_azure_deactivate` — the **confirmer** flow.
 
-- **Login**: the `login` tool opens a browser for interactive MSAL authentication. The agent cannot authenticate without a human completing the sign-in.
-- **List selection**: the `todo_select_list` tool starts a local HTTP server and opens a browser picker where the user clicks the list to use. The agent cannot programmatically change which list it operates on — the picker is served as an HTML page that requires a human click.
+The pattern (one local server primitive, three per-flow
+descriptors) is described in ADR-0008. The policy that
+privilege-changing tools must use a browser flow rather than a
+silent argument schema is documented in ADR-0014.
 
-### 4. Minimal Permissions
+### 3. Read-Only Tools Are Free of Browser Friction
 
-Only the permissions strictly needed for current capabilities are requested. The scope list (`Mail.Send`, `Tasks.ReadWrite`, `User.Read`, `offline_access`) is the minimum required for the 11 tools currently exposed. As new Graph surfaces are added, each new scope must be justified individually and evaluated for blast radius impact.
+`auth_status`, `pim_group_eligible_list`, `pim_group_active_list`,
+`pim_group_request_list`, `pim_group_approval_list` and the matching
+`pim_role_entra_*` / `pim_role_azure_*` list tools return data only.
+They do not change PIM state, do not write to Graph or ARM, and do
+not require a browser interaction — so the agent can use them freely
+to plan an activation. Scope gating still applies: a list tool is
+visible only when the corresponding `Read` (or `ReadWrite`) scope
+was granted at login.
 
-### 5. No Application Permissions
+### 4. Login + Logout Are Always Browser-Driven
 
-All permissions are delegated (user-level). The Azure AD app registration does not request or use any application-level permissions. The application never acts independently of a signed-in user, and tokens are always scoped to a specific user session.
+`login` and `logout` open the system browser via `src/browser/open.ts`
+(ADR-0003, ADR-0008, ADR-0011). The agent cannot authenticate, change
+the active account, or sign the user out without a human completing
+the page. There is no device-code or static-credential fallback in
+the shipped binary.
+
+### 5. Defence-in-Depth Beyond What the Permissions Express
+
+`Mail.Send` could theoretically be misused to send mail to anyone the
+user can reach. PIM scopes have similar shape: `RoleAssignmentSchedule.
+ReadWrite.Directory` is "manage role-assignment schedules" — it does
+not constrain _which_ schedule. We layer additional checks on top
+(see ADR-0016):
+
+- `validateApiBaseUrl` rejects any `PIMDO_*_URL` that would send a
+  Bearer token over plaintext to a non-loopback host.
+- `MsalAuthenticator` validates `clientId` (GUID shape) and
+  `tenantId` (`common` / `consumers` / `organizations` / GUID /
+  `*.onmicrosoft.com`) before they reach MSAL.
+- The loopback HTTP server pins `Host`, `Origin`, `Sec-Fetch-Site`,
+  Content-Type, and uses a per-request CSP nonce + per-flow CSRF
+  token (ADR-0008 §8, `src/browser/security.ts`).
+- All PIM tool inputs are Zod-validated; the request tools accept an
+  `eligibilityId` opaque string (returned by the matching list tool)
+  rather than caller-shaped role / group / scope identifiers.
+
+### 6. No Application Permissions, No Persisted Tokens Beyond MSAL
+
+The Entra app registration requests no application-level permissions
+and is multi-tenant only by audience selection. Tokens are persisted
+through MSAL's cache plugin to `<configDir>/msal_cache.json` with
+atomic writes and `0o600` permissions (`src/auth.ts`,
+`src/fs-options.ts`). No long-lived secret or refresh token is
+exposed to tool code.
 
 ## Consequences
 
 ### Positive
 
-- **POS-001**: An agent mistake or prompt injection attack is contained — the worst case for email is the user receives an unwanted email from themselves; the worst case for To Do is modifications to a single chosen list.
-- **POS-002**: IT administrators can confidently grant tenant-wide consent because the requested permissions are minimal and all delegated — no application-level permissions that could affect other users.
-- **POS-003**: The human-in-the-loop pattern for login and list selection ensures the agent cannot escalate its own access or silently change its operating scope.
-- **POS-004**: The principle scales to future Graph surfaces — each new capability is evaluated against the same blast radius criteria, preventing scope creep.
-- **POS-005**: Users can audit exactly what the agent has access to: one email address (their own), one todo list (the one they picked), and nothing else.
+- **POS-001:** A bad agent activation request cannot exceed the
+  user's standing eligibility — Graph and ARM enforce that. The
+  browser confirmation step also gives the human a final read of
+  every justification + duration before submission.
+- **POS-002:** IT admins evaluating consent see only PIM-related
+  scopes, not a wide-open Graph footprint. Tenants can downgrade
+  `ReadWrite` to `Read` at consent time and pimdo silently narrows
+  which tools light up.
+- **POS-003:** Approver flows cannot be auto-approved by the agent;
+  every approve/deny click is a human action. The same is true for
+  deactivations (rare in practice, but irreversible without
+  reactivation through PIM).
+- **POS-004:** New Graph or ARM surfaces (entitlement management,
+  PIM for Azure Resources at MG scope, etc.) inherit this template:
+  a list tool, a request/approve/deactivate browser-confirmed
+  triplet, scope gating in `tool-registry.ts`.
+- **POS-005:** Users can audit at any time what is enabled — the MCP
+  instructions block (`buildInstructions` in `src/tool-registry.ts`)
+  enumerates which scope each gated tool requires.
 
 ### Negative
 
-- **NEG-001**: Some useful features are intentionally excluded or constrained — for example, the agent cannot send email to other recipients, which limits its utility as a general-purpose email assistant.
-- **NEG-002**: Adding new capabilities requires careful evaluation and may be slower than in a less security-conscious design — each new scope and action must be justified against blast radius.
-- **NEG-003**: The human-in-the-loop pattern adds friction for initial setup (browser login, list selection), though this only needs to happen once per session or configuration change.
-- **NEG-004**: Constraining actions beyond what the permission model enforces (e.g., email-to-self only) requires application-level enforcement in tool code, which must be maintained and tested as new tools are added.
-- **NEG-005**: Using an AI agent is never risk-free — this design minimizes but does not eliminate risk. A compromised or misbehaving agent could still spam the user's own inbox or corrupt tasks in the selected list.
+- **NEG-001:** Privilege-changing flows always require a browser
+  context. In headless or remote-only setups (SSH, devcontainer
+  without browser launch), the user must run the request manually.
+- **NEG-002:** Two-resource auth (Graph + ARM) adds complexity to
+  the authenticator (`tokenForResource(resource, signal)`,
+  ADR-0013) and means consent is asked once per resource. ARM-gated
+  tools stay disabled until ARM consent is granted (silently
+  probed at login post-Graph; falls back to interactive on first
+  tool call if needed).
+- **NEG-003:** Adding new PIM-adjacent tools requires evaluating
+  blast radius per tool, listing required scopes, and slotting the
+  tool into either "list" or "browser-confirmed mutation"
+  categories. There is no fast path that bypasses scope gating or
+  the browser flow.
+- **NEG-004:** Defence-in-depth checks have a maintenance cost —
+  every URL/host/clientId/tenantId/scope allow-list (ADR-0016) is
+  a regex or set that must stay in sync with Microsoft's accepted
+  values.
+- **NEG-005:** AI agent use of PIM is never risk-free. This design
+  minimises but does not eliminate risk. A user who clicks "OK" on
+  every browser page without reading still bears the consequences
+  of whatever the agent prefilled.
 
 ## Alternatives Considered
 
-### Broad Delegated Permissions with Full Graph Access
+### Broad Graph + ARM Permissions, Silent Activation
 
-- **ALT-001**: **Description**: Request broad delegated permissions (e.g., `Mail.ReadWrite`, `Calendars.ReadWrite`, `Files.ReadWrite.All`) and expose the full range of Graph API actions — send email to anyone, access all todo lists, read/write calendar events, manage files.
-- **ALT-002**: **Rejection Reason**: Maximizes blast radius. A single agent mistake or prompt injection could send emails to arbitrary recipients, delete calendar events, or modify files. The damage potential is unbounded and unacceptable for an AI agent that may act unpredictably.
+- **ALT-001:** **Description:** Request `Directory.ReadWrite.All`,
+  `RoleManagement.ReadWrite.All`, ARM Owner-equivalent scopes, and
+  let the agent activate / approve / deactivate from tool args
+  alone, without a browser confirmation step.
+- **ALT-002:** **Rejection Reason:** Maximises blast radius. A
+  prompt-injection attack on a meeting invite or approval
+  justification could chain into a Global Admin activation or a
+  subscription-Owner activation with no human touch. Unacceptable
+  for PIM.
 
-### Application-Level Permissions (No User Required)
+### Application-Level Permissions
 
-- **ALT-003**: **Description**: Use application permissions instead of delegated permissions, allowing the server to act on behalf of any user in the organization without requiring individual sign-in.
-- **ALT-004**: **Rejection Reason**: Fundamentally violates the principle of least privilege. Application permissions grant access to all users' data in the tenant, making the blast radius organization-wide rather than scoped to a single user. No human-in-the-loop is possible since no user sign-in occurs.
+- **ALT-003:** **Description:** Use `RoleManagement.ReadWrite.All`
+  application permissions so the server can act tenant-wide
+  without a signed-in user.
+- **ALT-004:** **Rejection Reason:** Application permissions grant
+  access across every user in the tenant. The "agent is signed in
+  as me, helping me with my own elevations" framing is gone. No
+  human-in-the-loop is possible.
 
-### No Constraints Beyond Permission Scopes
+### Browser Confirmation for List Tools Too
 
-- **ALT-005**: **Description**: Request only the current scopes (`Mail.Send`, `Tasks.ReadWrite`, `User.Read`, `offline_access`) but allow the agent to use them without application-level constraints — e.g., let `mail_send` accept a recipient parameter, let the agent access any todo list.
-- **ALT-006**: **Rejection Reason**: The permission model alone is insufficient. `Mail.Send` allows sending to any recipient, and `Tasks.ReadWrite` allows access to all lists. Without application-level constraints, the blast radius is determined by the permission scope rather than the minimum needed for the use case. The email-to-self and single-list constraints are deliberate reductions that the permission model cannot express.
+- **ALT-005:** **Description:** Require a browser confirmation
+  step for every read tool as well, not just the
+  privilege-changing ones.
+- **ALT-006:** **Rejection Reason:** Destroys the value of the
+  agent on the planning side. List tools have no side-effects on
+  Graph or ARM — making the user click through every "show me my
+  eligibilities" reduces pimdo to a verbose CLI. The chosen split
+  (free reads, browser-confirmed mutations) preserves utility
+  where it is safe.
 
-### Require Human Approval for Every Action
+### One Resource Only (Graph) — Skip Azure Roles
 
-- **ALT-007**: **Description**: Require explicit human confirmation (e.g., via MCP elicitation or a browser prompt) before every tool call — every email sent, every task created, every task updated.
-- **ALT-008**: **Rejection Reason**: Destroys the utility of having an AI agent. The value of an agent is that it can act autonomously within safe boundaries. Requiring approval for every action reduces the agent to a verbose CLI tool. The chosen approach instead defines safe boundaries (email to self, single list) within which the agent can act freely.
+- **ALT-007:** **Description:** Drop the ARM scope and ship only
+  Entra Groups + directory roles via Microsoft Graph.
+- **ALT-008:** **Rejection Reason:** Entra-only PIM coverage
+  leaves Azure RBAC out of scope, and Azure subscription / RG
+  Owner / Contributor activations are exactly the kind of
+  privilege moves users want help with. The two-resource design
+  (ADR-0013) makes this a single-login experience without
+  granting any new Graph scopes.
 
 ## Implementation Notes
 
-- **IMP-001**: The `mail_send` tool enforces the email-to-self constraint by fetching the user profile (`getMe`) and using `user.mail` as the recipient — the tool's input schema does not accept a recipient parameter.
-- **IMP-002**: The `todo_select_list` tool uses the generic browser picker (`src/picker.ts`) which starts a local HTTP server on `127.0.0.1` with a random port, serves clickable options, and waits for a human selection (2-minute timeout). The selected list ID is persisted to `config.json` in the OS config directory.
-- **IMP-003**: When adding new Graph surfaces (e.g., Calendar, OneDrive), developers must document which new scopes are required, what constraints limit blast radius, and whether any operations require human-in-the-loop confirmation. This ADR should be referenced in the PR.
-- **IMP-004**: All tool handlers follow the pattern of catching errors and returning `{ isError: true }` rather than throwing — this prevents agent confusion from unhandled exceptions and ensures error messages guide the agent toward correct usage (e.g., "Please use the login tool first").
-- **IMP-005**: Success criteria for this principle: no tool should allow the agent to affect resources outside the explicitly configured scope (the user's own email address and the selected todo list) without human interaction.
+- **IMP-001:** Tool descriptors live one-per-file under
+  `src/tools/auth/*`, `src/tools/pim/group/*`,
+  `src/tools/pim/role-entra/*`, `src/tools/pim/role-azure/*`
+  (ADR-0007). Each descriptor declares its `requiredScopes`; the
+  registry disables tools whose scopes were not granted.
+- **IMP-002:** `MsalAuthenticator` enforces input validation on
+  `clientId` and `tenantId` at construction time and refuses to
+  build an authority URL from a malformed value
+  (`src/auth.ts:CLIENT_ID_RE`, `TENANT_ID_RE`).
+- **IMP-003:** `validateApiBaseUrl` (in `src/index.ts`) rejects
+  any `PIMDO_GRAPH_URL`, `PIMDO_GRAPH_BETA_URL`, or `PIMDO_ARM_URL`
+  that would cause the client to send a Bearer token over
+  plaintext to a non-loopback host.
+- **IMP-004:** Browser flows live under `src/browser/flows/`
+  (login, logout, requester, approver, confirmer) and share the
+  hardened loopback-server primitive in `src/browser/server.ts`
+  (ADR-0008).
+- **IMP-005:** When adding a new PIM-adjacent tool, follow the
+  pattern: list tool with `Read*` scope, mutation tool with
+  `ReadWrite*` scope and a row-form browser flow. Update the
+  scope enum, the `AVAILABLE_SCOPES` table, and add a per-tool
+  test under `test/tools/`.
 
 ## References
 
-- **REF-001**: [Model Context Protocol specification](https://modelcontextprotocol.io) — the protocol pimdo-ts implements for AI agent communication.
-- **REF-002**: [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference) — documentation for delegated vs. application permission types.
-- **REF-003**: [MSAL Node documentation](https://learn.microsoft.com/en-us/entra/msal/node/) — the authentication library used for interactive browser login and device code flow.
-- **REF-004**: [pimdo-ts README — Privacy & Security](../README.md) — user-facing documentation of the blast radius minimization approach.
-- **REF-005**: [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) — industry guidance on risks specific to AI/LLM-powered applications, including prompt injection and excessive agency.
+- **REF-001:** [Model Context Protocol specification](https://modelcontextprotocol.io)
+  — the protocol pimdo-ts implements for AI agent communication.
+- **REF-002:** [Microsoft Entra ID Privileged Identity Management overview](https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-configure)
+  — what PIM is and what it protects.
+- **REF-003:** [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference)
+  — delegated vs. application permission types.
+- **REF-004:** [Azure RBAC documentation](https://learn.microsoft.com/en-us/azure/role-based-access-control/overview)
+  — the Azure-resource roles surfaced via ARM PIM.
+- **REF-005:** [pimdo-ts README — Privacy & Security](../../README.md)
+  — user-facing documentation of the blast radius minimization
+  approach.
+- **REF-006:** [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+  — industry guidance on risks specific to AI/LLM-powered
+  applications, including prompt injection and excessive agency.
