@@ -1,6 +1,13 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generator": "scripts/preview/generate.ts",
+  "build": {
+    "kind": "main",
+    "id": "main",
+    "sha": "226bf4412e04ef097239b6ce580cbc1443977d0e",
+    "shortSha": "226bf44",
+    "repoUrl": "https://github.com/co-native-ab/pimdo-ts"
+  },
   "views": [
     {
       "name": "login",
@@ -45,24 +52,16 @@
       "kind": "row-form",
       "scenarios": [
         {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
           "id": "single",
-          "label": "single"
+          "label": "Single"
         },
         {
           "id": "pair",
-          "label": "pair"
+          "label": "Pair"
         },
         {
           "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
+          "label": "Full page"
         }
       ]
     },
@@ -73,24 +72,16 @@
       "kind": "row-form",
       "scenarios": [
         {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
           "id": "single",
-          "label": "single"
+          "label": "Single"
         },
         {
           "id": "pair",
-          "label": "pair"
+          "label": "Pair"
         },
         {
           "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
+          "label": "Full page"
         }
       ]
     },
@@ -101,350 +92,16 @@
       "kind": "row-form",
       "scenarios": [
         {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
           "id": "single",
-          "label": "single"
+          "label": "Single"
         },
         {
           "id": "pair",
-          "label": "pair"
+          "label": "Pair"
         },
         {
           "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    }
-  ],
-  "tools": [
-    {
-      "name": "pim_group_eligible_list",
-      "family": "Group",
-      "description": "Groups the signed-in user is eligible to activate via PIM.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    },
-    {
-      "name": "pim_group_active_list",
-      "family": "Group",
-      "description": "Currently active PIM group assignments for the signed-in user.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    },
-    {
-      "name": "pim_group_request_list",
-      "family": "Group",
-      "description": "Pending PIM group requests submitted by the signed-in user.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    },
-    {
-      "name": "pim_group_approval_list",
-      "family": "Group",
-      "description": "Pending PIM group approvals assigned to the signed-in user.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    },
-    {
-      "name": "pim_role_entra_eligible_list",
-      "family": "Entra Role",
-      "description": "Entra directory roles the signed-in user is eligible to activate.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    },
-    {
-      "name": "pim_role_entra_active_list",
-      "family": "Entra Role",
-      "description": "Currently active PIM Entra-role assignments for the signed-in user.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    },
-    {
-      "name": "pim_role_entra_request_list",
-      "family": "Entra Role",
-      "description": "Pending PIM Entra-role requests submitted by the signed-in user.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    },
-    {
-      "name": "pim_role_entra_approval_list",
-      "family": "Entra Role",
-      "description": "Pending PIM Entra-role approvals assigned to the signed-in user.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    },
-    {
-      "name": "pim_role_azure_eligible_list",
-      "family": "Azure Role",
-      "description": "Azure resource roles the signed-in user is eligible to activate.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    },
-    {
-      "name": "pim_role_azure_active_list",
-      "family": "Azure Role",
-      "description": "Currently active PIM Azure-role assignments for the signed-in user.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    },
-    {
-      "name": "pim_role_azure_request_list",
-      "family": "Azure Role",
-      "description": "Pending PIM Azure-role requests submitted by the signed-in user.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
-        }
-      ]
-    },
-    {
-      "name": "pim_role_azure_approval_list",
-      "family": "Azure Role",
-      "description": "Pending PIM Azure-role approvals assigned to the signed-in user.",
-      "scenarios": [
-        {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
-          "id": "single",
-          "label": "single"
-        },
-        {
-          "id": "pair",
-          "label": "pair"
-        },
-        {
-          "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
+          "label": "Full page"
         }
       ]
     }
