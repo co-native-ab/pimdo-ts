@@ -27,54 +27,69 @@ export interface ConfirmerPageConfig {
   rows: readonly ConfirmerRowSpec[];
 }
 
-function renderRow(row: ConfirmerRowSpec, reasonLabel: string): string {
+function renderRow(row: ConfirmerRowSpec, reasonLabel: string, index: number): string {
   const included = row.includedByDefault !== false;
   const reason = row.prefilledReason ?? "";
-  return `<div class="row" data-row-id="${escapeHtml(row.id)}">
-        <div class="row-header">
-          <div>
-            <div class="row-label">${escapeHtml(row.label)}</div>
-            ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
-          </div>
-          <label class="row-meta">
-            <input type="checkbox" class="include-toggle" ${included ? "checked" : ""}>
-            Include
-          </label>
-        </div>
-        <div class="row-controls">
-          <div>
-            <label>${escapeHtml(reasonLabel)} (optional)</label>
-            <textarea class="reason" rows="2"></textarea>
-          </div>
-        </div>
-        <p class="row-error" hidden></p>
-      </div>`.replace(
-    `<textarea class="reason" rows="2"></textarea>`,
-    `<textarea class="reason" rows="2">${escapeHtml(reason)}</textarea>`,
-  );
+  const id = `confirmer-${String(index)}`;
+  return `<tr class="row" data-row-id="${escapeHtml(row.id)}">
+        <td class="cell-include">
+          <input type="checkbox" class="include-toggle" aria-label="Include" ${included ? "checked" : ""}>
+        </td>
+        <td class="cell-primary">
+          <div class="row-label">${escapeHtml(row.label)}</div>
+          ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
+        </td>
+        <td class="cell-input">
+          <textarea id="${id}-reason" class="reason" rows="2" aria-label="${escapeHtml(reasonLabel)}" placeholder="Optional ${escapeHtml(reasonLabel.toLowerCase())}">${escapeHtml(reason)}</textarea>
+          <p class="row-error" hidden></p>
+        </td>
+      </tr>`;
 }
 
 export function confirmerPageHtml(config: ConfirmerPageConfig): string {
   const reasonLabel = config.reasonLabel ?? "Reason";
-  const rowsHtml =
+  const bulkToolbar = renderBulkToolbar(
+    [
+      { id: "include-all", label: "Include all" },
+      { id: "include-none", label: "Include none" },
+    ],
+    "row-summary",
+  );
+
+  const formContent =
     config.rows.length > 0
-      ? `<div class="row-list">${config.rows.map((r) => renderRow(r, reasonLabel)).join("\n      ")}</div>`
-      : `<p class="empty-state">No items to confirm.</p>`;
-
-  const bulkToolbar = renderBulkToolbar([
-    { id: "include-all", label: "Include all" },
-    { id: "include-none", label: "Include none" },
-  ]);
-
-  const formContent = `${bulkToolbar}
-      ${rowsHtml}`;
+      ? `${bulkToolbar}
+      <div class="row-table-wrap">
+        <table class="row-table">
+          <thead>
+            <tr>
+              <th class="col-include" scope="col" aria-label="Include"></th>
+              <th class="col-primary" scope="col">Group / role</th>
+              <th class="col-input" scope="col">${escapeHtml(reasonLabel)} <span class="cell-num">(optional)</span></th>
+            </tr>
+          </thead>
+          <tbody>${config.rows.map((r, i) => renderRow(r, reasonLabel, i)).join("\n          ")}</tbody>
+        </table>
+      </div>`
+      : `<p class="empty-state">// no items to confirm</p>`;
 
   const perFlowScript = `    function applyBulk(action) {
       var include = action === 'include-all';
       document.querySelectorAll('.row .include-toggle').forEach(function (cb) {
         cb.checked = include;
       });
+      updateRowSummary();
     }
+
+    function updateRowSummary() {
+      var summaryEl = document.getElementById('row-summary');
+      if (!summaryEl) return;
+      var total = document.querySelectorAll('.row').length;
+      var selected = document.querySelectorAll('.row .include-toggle:checked').length;
+      summaryEl.textContent = selected + ' of ' + total + ' selected';
+    }
+    document.addEventListener('change', updateRowSummary);
+    updateRowSummary();
 
     function isFormValid() {
       var toggles = document.querySelectorAll('.row .include-toggle');

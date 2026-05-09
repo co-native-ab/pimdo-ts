@@ -115,6 +115,26 @@ The following patterns are prohibited in all current and future HTML-serving cod
 - **No template engines or frontend frameworks**: no Handlebars, EJS, Pug, React, Vue, Svelte, or similar. Only TypeScript functions returning strings.
 - **No external image requests**: all images and icons are embedded as base64 data URIs. The MCPB bundle must render correctly with no network access beyond Google Fonts (which degrades gracefully).
 
+### 7. Row-Form Layout Pattern
+
+Multi-row decision pages — `requesterFlow`, `approverFlow`, and `confirmerFlow` — diverge from the centred login/logout/picker shell on purpose. They are **high-density, console-inspired tables**, not marketing cards: a reviewer triaging twenty pending requests benefits from compact rows, sticky column headers, and tabular metadata far more than from generous whitespace. This pattern is informed by Microsoft Fluent 2 (DataGrid + CommandBar), Atlassian (TableTree + Inline Edit), GitHub Primer (ActionList), Shopify Polaris (ResourceList), and IBM Carbon (DataTable + batch actions bar).
+
+The canonical structure is:
+
+- **Wide left-aligned card.** Override the centred 400px container with a left-aligned `max-width: 1080px` card and reduced padding (`18px 22px 14px`). The body itself flows to `align-items: flex-start` so a long table doesn't try to vertically centre.
+- **Slim CommandBar above the table.** A monospace uppercase `BULK` label, a row of borderless text-buttons (e.g. "Approve all", "Include none"), and an aria-live `.row-summary` count on the right (e.g. `3 approve · 0 deny · 2 skip`). Background: `grey1`, border: `grey2`, no rounded corners larger than `borderRadius.sm`.
+- **Real `<table class="row-table">` markup** wrapped in a `.row-table-wrap` with `max-height: calc(100vh - 240px)` and `overflow: auto`. Use semantic `<thead>` / `<tbody>` / `<tr>` / `<td>` so screen readers and keyboards get table navigation for free.
+- **Sticky uppercase monospace `<thead>`.** Column titles are 0.7rem, `grey3`, `letter-spacing: 0.08em`, `text-transform: uppercase`, `position: sticky; top: 0;` so they remain visible while scrolling long lists.
+- **Compact `<tr class="row">`.** Approximately 30–36px tall: cell padding `6px 10px`, line-height `1.45`, `font-size: sm`. Hover row tint: `purple.minus3` (light) / `dark.surfaceHover` (dark). 1px `grey1` separators between rows, no per-row border, no border-radius.
+- **Monospace metadata cells.** IDs (subtitle), durations, "max" hints, and the bulk-toolbar `BULK` label use `fontFamilyMono` (the system monospace stack — no extra font load). Names use Lexend; quoted requestor text is italic Lexend in `grey3`.
+- **Ultra-compact segmented decision control.** Inside the decision `<td>`, `.decision-group` is a connected segmented control with `border-radius: sm`, ~22px tall, `font-family: fontFamilyMono`, uppercase APPROVE/DENY/SKIP labels at `fontSize.xs`. Selected segment fills with `purple.minus3` and switches text to `purple.brand`. Native radios are visually hidden (`clip: rect(0,0,0,0)`) but kept for keyboard a11y.
+- **Inline single-cell controls.** Justification: a 2-row `<textarea class="justification">` with `min-height: 26px` and `max-height: 120px` so it grows on focus / long input. Duration: a `.duration-group` (60px number + flex-1 unit select) capped at 160px with a monospace "max NN h" hint below. Include: a centred 15px native checkbox (`accent-color: purple.brand`).
+- **Sticky form-actions footer** with a token-derived white-to-transparent gradient backdrop so Cancel/Submit stay reachable on long lists.
+- **Skipped state via typography, not opacity.** Strikethrough `.row-label` plus dimmed `.cell-meta` / `.cell-quote`. Applied only after explicit user action (radio change to Skip or bulk Skip-all) — never on initial paint, even if "Skip" is the default radio.
+- **Empty state in console voice.** A single muted monospace line such as `// no pending approvals`, no card chrome.
+
+These rules apply to every new row-form surface added in `src/browser/flows/`. Reuse `ROW_FORM_STYLE` and the helpers in `src/templates/row-form.ts` rather than authoring per-flow CSS, and add `fontFamilyMono` from `tokens.ts` (never an inline font stack).
+
 ## Consequences
 
 ### Positive

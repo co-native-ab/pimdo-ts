@@ -23,7 +23,7 @@ export interface BulkAction {
   label: string;
 }
 
-export function renderBulkToolbar(actions: readonly BulkAction[]): string {
+export function renderBulkToolbar(actions: readonly BulkAction[], summaryId?: string): string {
   if (actions.length === 0) return "";
   const buttons = actions
     .map(
@@ -31,7 +31,10 @@ export function renderBulkToolbar(actions: readonly BulkAction[]): string {
         `<button type="button" class="bulk-btn" data-bulk="${escapeHtml(a.id)}">${escapeHtml(a.label)}</button>`,
     )
     .join("");
-  return `<div class="bulk-toolbar">${buttons}</div>`;
+  const summary = summaryId
+    ? `<span class="row-summary" id="${escapeHtml(summaryId)}" aria-live="polite"></span>`
+    : "";
+  return `<div class="bulk-toolbar"><span class="bulk-toolbar-label">Bulk</span>${buttons}${summary}</div>`;
 }
 
 export interface RowFormPageConfig {

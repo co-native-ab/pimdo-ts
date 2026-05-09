@@ -45,6 +45,15 @@ export const complementary = {
 
 export const fontFamily = "'Lexend', Arial, sans-serif";
 
+/**
+ * Monospace font stack used by the high-density row-form pages
+ * (ADR-0002 §7) to give IDs, durations, and tabular metadata a
+ * console-inspired feel. Uses only system-installed faces — no extra
+ * webfont load and no new bundle weight.
+ */
+export const fontFamilyMono =
+  "ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace";
+
 export const fontWeight = {
   light: 300,
   regular: 400,
