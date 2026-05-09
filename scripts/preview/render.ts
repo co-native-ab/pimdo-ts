@@ -2,9 +2,7 @@
 // thin on purpose — all heavy lifting lives in `views.ts` / `tools.ts`,
 // which in turn call the production template / format modules.
 
-import { TOOL_PREVIEWS, type ToolPreview } from "./tools.js";
 import { VIEW_PREVIEWS, type ViewPreview, type ViewScenario } from "./views.js";
-import { LIST_SCENARIO_IDS, type ListScenarioId } from "./scenarios.js";
 
 export interface ManifestView {
   name: string;
@@ -14,18 +12,10 @@ export interface ManifestView {
   scenarios: { id: string; label: string }[];
 }
 
-export interface ManifestTool {
-  name: string;
-  family: string;
-  description: string;
-  scenarios: { id: ListScenarioId; label: string }[];
-}
-
 export interface Manifest {
   schemaVersion: 1;
   generator: "scripts/preview/generate.ts";
   views: ManifestView[];
-  tools: ManifestTool[];
 }
 
 export function buildManifest(): Manifest {
@@ -38,12 +28,6 @@ export function buildManifest(): Manifest {
       description: v.description,
       kind: v.kind,
       scenarios: v.scenarios.map((s: ViewScenario) => ({ id: s.id, label: s.label })),
-    })),
-    tools: TOOL_PREVIEWS.map((t: ToolPreview) => ({
-      name: t.name,
-      family: t.family,
-      description: t.description,
-      scenarios: LIST_SCENARIO_IDS.map((id) => ({ id, label: id })),
     })),
   };
 }
@@ -127,13 +111,6 @@ function findMatchingBrace(input: string, bodyStart: number): number {
     }
   }
   return -1;
-}
-
-/** Render the markdown the MCP tool would return for this scenario. */
-export function renderToolText(toolName: string, scenario: ListScenarioId): string {
-  const tool = TOOL_PREVIEWS.find((t) => t.name === toolName);
-  if (!tool) throw new Error(`Unknown tool: ${toolName}`);
-  return tool.render(scenario);
 }
 
 /** Render the HTML for a (view, scenario, theme) triple. */

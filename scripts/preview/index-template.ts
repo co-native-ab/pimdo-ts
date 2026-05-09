@@ -101,12 +101,11 @@ const INDEX_SCRIPT = `'use strict';
   // ---- Group entries by family ---------------------------------------------
   var families = {};
   function add(family, kind, item) {
-    var key = family + ' · ' + (kind === 'view' ? 'Views' : 'Tools');
+    var key = family + ' · Views';
     if (!families[key]) families[key] = [];
     families[key].push({ kind: kind, item: item });
   }
   manifest.views.forEach(function (v) { add(v.family, 'view', v); });
-  manifest.tools.forEach(function (t) { add(t.family, 'tool', t); });
 
   function renderSidebar() {
     sidebar.innerHTML = '';
@@ -201,12 +200,8 @@ const INDEX_SCRIPT = `'use strict';
     sidebar.querySelectorAll('button[data-kind]').forEach(function (b) {
       b.classList.toggle('active', b.dataset.kind === kind && b.dataset.name === name && b.dataset.scenario === scenario);
     });
-    var basePath = kind === 'view'
-      ? 'views/' + name + '/' + scenario + '/' + theme + '.html'
-      : 'tools/' + name + '/' + scenario + '/' + theme + '.html';
-    var sourcePath = kind === 'view'
-      ? 'views/' + name + '/' + scenario + '/' + theme + '.html'
-      : 'tools/' + name + '/' + scenario + '/source.md';
+    var basePath = 'views/' + name + '/' + scenario + '/' + theme + '.html';
+    var sourcePath = 'views/' + name + '/' + scenario + '/' + theme + '.html';
     content.innerHTML = '';
     var tabs = document.createElement('div');
     tabs.className = 'tabs';
@@ -270,8 +265,8 @@ const INDEX_SCRIPT = `'use strict';
   renderSidebar();
 
   // Restore from hash if present.
-  var m = window.location.hash.match(/^#(view|tool)\\/([^\\/]+)\\/(.+)$/);
-  if (m) select(m[1], m[2], m[3]);
+  var m = window.location.hash.match(/^#view\\/([^\\/]+)\\/(.+)$/);
+  if (m) select('view', m[1], m[2]);
 })();
 `;
 

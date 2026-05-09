@@ -20,10 +20,8 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { LIST_SCENARIOS, type ListScenarioId } from "./scenarios.js";
-import { TOOL_PREVIEWS } from "./tools.js";
 import { VIEW_PREVIEWS } from "./views.js";
-import { buildManifest, renderToolText, renderViewHtml, themedHtml } from "./render.js";
+import { buildManifest, renderViewHtml } from "./render.js";
 import { renderIndexHtml, INDEX_STYLES } from "./index-template.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -77,24 +75,11 @@ export function plan(): FileEntry[] {
     }
   }
 
-  // ---- MCP list-tool text ------------------------------------------------
-  for (const tool of TOOL_PREVIEWS) {
-    for (const sc of LIST_SCENARIOS) {
-      const id: ListScenarioId = sc.id;
-      const base = resolve(outDir, "tools", tool.name, id);
-      const text = renderToolText(tool.name, id);
-      files.push({ path: resolve(base, `source.md`), content: text + "\n" });
-      const rawHtml = toolHtmlPage(tool.name, id, sc.label, sc.description, text);
-      files.push({
-        path: resolve(base, `light.html`),
-        content: themedHtml(rawHtml, "light") + "\n",
-      });
-      files.push({
-        path: resolve(base, `dark.html`),
-        content: themedHtml(rawHtml, "dark") + "\n",
-      });
-    }
-  }
+  // MCP `*_list` tools intentionally not emitted: they return plain text
+  // to the AI by contract, so there's nothing meaningful to render in
+  // the preview site. Their registration coverage is still validated by
+  // `scripts/preview/check.ts` (every registered tool must render for
+  // every list scenario).
 
   // ---- Index + manifest --------------------------------------------------
   const manifest = buildManifest();
@@ -112,38 +97,6 @@ export function plan(): FileEntry[] {
   });
 
   return files;
-}
-
-/** Wrap a tool's raw text output in a self-contained themed page. */
-function toolHtmlPage(
-  name: string,
-  scenario: string,
-  scenarioLabel: string,
-  scenarioDescription: string,
-  text: string,
-): string {
-  // Minimal escaping — text comes from our own format functions.
-  const safe = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="color-scheme" content="light dark">
-  <title>pimdo preview — ${name} · ${scenario}</title>
-  <style>
-    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #f6f6f8; color: #1f1f24; }
-    @media (prefers-color-scheme: dark) { body { background: #15151a; color: #e7e7ec; } pre { background: #1c1b29; color: #e7e7ec; } }
-    h1 { font-size: 1rem; margin: 0 0 4px; font-weight: 600; }
-    p.meta { font-size: 0.85rem; color: #6e6e7a; margin: 0 0 16px; }
-    pre { background: #fff; border-radius: 8px; padding: 16px; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9rem; line-height: 1.45; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
-  </style>
-</head>
-<body>
-  <h1>${name} · ${scenarioLabel}</h1>
-  <p class="meta">${scenarioDescription}</p>
-  <pre>${safe}</pre>
-</body>
-</html>`;
 }
 
 function writeAll(files: readonly FileEntry[]): void {
