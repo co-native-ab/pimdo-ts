@@ -74,6 +74,18 @@ describe("login templates", () => {
       expect(xssHtml).toContain("&lt;script&gt;");
     });
 
+    it("rejects javascript: URLs (defence-in-depth against href injection)", () => {
+      expect(() => landingPageHtml("javascript:alert(1)")).toThrow(/protocol must be https/i);
+    });
+
+    it("rejects http:// URLs", () => {
+      expect(() => landingPageHtml("http://login.example.com/")).toThrow(/protocol must be https/i);
+    });
+
+    it("rejects malformed URLs", () => {
+      expect(() => landingPageHtml("not-a-url")).toThrow(/not a valid URL/i);
+    });
+
     describe("loopback hardening", () => {
       it("embeds the CSRF token in a <meta> tag when provided", () => {
         const out = landingPageHtml("https://login.example.com/", {

@@ -57,4 +57,28 @@ describe("confirmerFlow", () => {
       { id: "active-2", reason: "Done with task" },
     ]);
   });
+
+  it("rejects submissions for an unknown row id (defence-in-depth)", async () => {
+    handle = await runConfirmerFlow(
+      {
+        heading: "Deactivate access",
+        subtitle: "Confirm",
+        submitLabel: "Deactivate",
+        rows: [{ id: "active-1", label: "Group A" }],
+      },
+      testSignal(),
+    );
+
+    const csrf = await fetchCsrfToken(handle.url);
+    const res = await postJson(`${handle.url}/submit`, {
+      csrfToken: csrf,
+      rows: [{ id: "active-other", reason: "" }],
+    });
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("Unknown row id");
+
+    const expectation = expect(handle.result).rejects.toThrow();
+    await postJson(`${handle.url}/cancel`, { csrfToken: csrf });
+    await expectation;
+  });
 });

@@ -93,4 +93,67 @@ describe("requesterFlow", () => {
     await postJson(`${handle.url}/cancel`, { csrfToken: csrf });
     await expectation;
   });
+
+  it("rejects submissions for an unknown row id (defence-in-depth)", async () => {
+    handle = await runRequesterFlow(
+      {
+        rows: [{ id: "group-a", label: "Group A", maxDuration: "PT8H" }],
+      },
+      testSignal(),
+    );
+
+    const csrf = await fetchCsrfToken(handle.url);
+    const { res, json } = await postJson(`${handle.url}/submit`, {
+      csrfToken: csrf,
+      rows: [{ id: "group-other", justification: "j", duration: "PT1H" }],
+    });
+    expect(res.status).toBe(500);
+    expect(String(json)).toContain("Unknown row id");
+
+    const expectation = expect(handle.result).rejects.toThrow();
+    await postJson(`${handle.url}/cancel`, { csrfToken: csrf });
+    await expectation;
+  });
+
+  it("rejects submissions whose duration exceeds the policy max", async () => {
+    handle = await runRequesterFlow(
+      {
+        rows: [{ id: "group-a", label: "Group A", maxDuration: "PT1H" }],
+      },
+      testSignal(),
+    );
+
+    const csrf = await fetchCsrfToken(handle.url);
+    const { res, json } = await postJson(`${handle.url}/submit`, {
+      csrfToken: csrf,
+      rows: [{ id: "group-a", justification: "j", duration: "PT8H" }],
+    });
+    expect(res.status).toBe(500);
+    expect(String(json)).toContain("exceeds policy maximum");
+
+    const expectation = expect(handle.result).rejects.toThrow();
+    await postJson(`${handle.url}/cancel`, { csrfToken: csrf });
+    await expectation;
+  });
+
+  it("rejects submissions whose duration is malformed", async () => {
+    handle = await runRequesterFlow(
+      {
+        rows: [{ id: "group-a", label: "Group A", maxDuration: "PT1H" }],
+      },
+      testSignal(),
+    );
+
+    const csrf = await fetchCsrfToken(handle.url);
+    const { res, json } = await postJson(`${handle.url}/submit`, {
+      csrfToken: csrf,
+      rows: [{ id: "group-a", justification: "j", duration: "not-iso" }],
+    });
+    expect(res.status).toBe(500);
+    expect(String(json)).toContain("Invalid duration");
+
+    const expectation = expect(handle.result).rejects.toThrow();
+    await postJson(`${handle.url}/cancel`, { csrfToken: csrf });
+    await expectation;
+  });
 });

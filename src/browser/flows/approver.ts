@@ -41,14 +41,23 @@ export function runApproverFlow(
   config: ApproverConfig,
   signal: AbortSignal,
 ): Promise<RowFormHandle<ApproverResult>> {
+  const allowedIds = new Set(config.rows.map((r) => r.id));
   return runRowForm(
     {
       name: "approver",
       timeoutMs: config.timeoutMs,
       renderHtml: (csrfToken, nonce) => approverPageHtml({ csrfToken, nonce, rows: config.rows }),
       submitSchema: ApproverSubmissionSchema,
-      onSubmit: (data): Promise<ApproverResult> =>
-        Promise.resolve({ rows: data.rows.map((r) => ({ ...r })) }),
+      onSubmit: (data): Promise<ApproverResult> => {
+        // Defence-in-depth: a CSRF-token holder must not be able to
+        // approve / deny an id that was not in the rendered form.
+        for (const row of data.rows) {
+          if (!allowedIds.has(row.id)) {
+            throw new Error(`Unknown row id: ${row.id}`);
+          }
+        }
+        return Promise.resolve({ rows: data.rows.map((r) => ({ ...r })) });
+      },
     },
     signal,
   );

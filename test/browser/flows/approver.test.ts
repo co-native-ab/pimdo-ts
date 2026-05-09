@@ -64,4 +64,32 @@ describe("approverFlow", () => {
       { id: "approval-2", decision: "Deny", justification: "Wrong scope" },
     ]);
   });
+
+  it("rejects submissions for an unknown row id (defence-in-depth)", async () => {
+    handle = await runApproverFlow(
+      {
+        rows: [
+          {
+            id: "approval-1",
+            label: "Group A",
+            requestor: "Alice",
+            requestorJustification: "On-call",
+          },
+        ],
+      },
+      testSignal(),
+    );
+
+    const csrf = await fetchCsrfToken(handle.url);
+    const res = await postJson(`${handle.url}/submit`, {
+      csrfToken: csrf,
+      rows: [{ id: "approval-other", decision: "Approve", justification: "j" }],
+    });
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("Unknown row id");
+
+    const expectation = expect(handle.result).rejects.toThrow();
+    await postJson(`${handle.url}/cancel`, { csrfToken: csrf });
+    await expectation;
+  });
 });
