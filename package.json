@@ -50,23 +50,23 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "@azure/msal-node": "^5.1.2",
+    "@azure/msal-node": "^5.2.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "open": "^11.0.0",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "2.1.2",
-    "@types/node": "^25.6.0",
-    "@typescript-eslint/eslint-plugin": "^8.58.1",
-    "@typescript-eslint/parser": "^8.58.1",
+    "@types/node": "^25.6.2",
+    "@typescript-eslint/eslint-plugin": "^8.59.2",
+    "@typescript-eslint/parser": "^8.59.2",
     "@vitest/coverage-v8": "^4.1.4",
     "esbuild": "^0.28.0",
     "eslint": "^10.2.0",
     "prettier": "^3.8.2",
     "tsx": "^4.20.6",
     "typescript": "^6.0.2",
-    "typescript-eslint": "^8.58.1",
+    "typescript-eslint": "^8.59.2",
     "vitest": "^4.1.4"
   }
 }
