@@ -234,7 +234,7 @@ const INDEX_SCRIPT = `'use strict';
     contentEyebrow.textContent = family ? family + ' · ' + name : name;
     contentName.textContent = scenarioLabel;
     contentDesc.textContent = description;
-    if (description) contentDesc.hidden = false; else contentDesc.hidden = true;
+    contentDesc.hidden = !description;
 
     contentBody.innerHTML = '';
     var iframe = document.createElement('iframe');
