@@ -95,84 +95,121 @@
     }
     .cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     
-    .container { max-width: 720px; }
-    .card { text-align: left; padding: 32px 32px 24px; }
-    .card h1 { text-align: center; }
-    .subtitle { text-align: center; margin-bottom: 16px; }
-
-    .row-section {
-      border: 1px solid #c7c8ca;
+    body { align-items: flex-start; padding: 24px 16px; }
+    .container { max-width: 1080px; text-align: left; }
+    .card {
+      padding: 18px 22px 14px;
       border-radius: 12px;
-      background: #ffffff;
-      overflow: hidden;
+      text-align: left;
+    }
+    .card h1 {
+      font-size: 1.3rem;
+      color: #120457;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 2px;
+    }
+    .card .subtitle {
+      font-size: 0.85rem;
+      color: #8a8c8e;
       margin-bottom: 12px;
+      line-height: 1.5;
     }
 
+    /* Slim CommandBar above the table */
     .bulk-toolbar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 4px;
-      padding: 8px 12px;
-      background: #eae8f3;
-      border-bottom: 1px solid #c7c8ca;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+      border: 1px solid #c7c8ca;
+      border-radius: 6px;
+      background: #efeff0;
     }
     .bulk-toolbar-label {
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
       font-size: 0.8rem;
       font-weight: 600;
-      color: #636466;
+      color: #8a8c8e;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-right: 4px;
+      padding: 0 6px;
     }
     .bulk-btn {
-      padding: 4px 10px;
+      padding: 3px 10px;
       background: transparent;
-      border: none;
+      border: 1px solid transparent;
       border-radius: 6px;
       color: #6659a7;
       font-family: 'Lexend', Arial, sans-serif;
       font-size: 0.85rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s ease;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
-    .bulk-btn:hover { background: rgba(255, 255, 255, 0.55); }
+    .bulk-btn:hover {
+      background: #ffffff;
+      border-color: #c7c8ca;
+    }
     .row-summary {
       margin-left: auto;
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
       font-size: 0.8rem;
       color: #636466;
-      font-weight: 400;
+      padding: 0 6px;
     }
 
-    .row-list { display: block; }
-    .row {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 8px;
-      padding: 12px 14px;
-      border-bottom: 1px solid #efeff0;
-      transition: background 0.15s ease;
+    /* Table */
+    .row-table-wrap {
+      border: 1px solid #c7c8ca;
+      border-radius: 6px;
+      overflow: auto;
+      background: #ffffff;
+      max-height: calc(100vh - 240px);
     }
-    .row:last-child { border-bottom: none; }
-    .row:hover { background: #efeff0; }
-    @media (min-width: 520px) {
-      .row {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
-        gap: 12px;
-        align-items: start;
-      }
+    .row-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
     }
-    .row.skipped .row-label { text-decoration: line-through; color: #8a8c8e; }
-    .row.skipped .row-subtitle,
-    .row.skipped .row-meta { color: #8a8c8e; }
+    .row-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      text-align: left;
+      padding: 7px 10px;
+      background: #efeff0;
+      color: #8a8c8e;
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-bottom: 1px solid #c7c8ca;
+      white-space: nowrap;
+    }
+    .row-table thead th.col-include { width: 28px; }
+    .row-table thead th.col-decision { width: 200px; }
+    .row-table thead th.col-duration { width: 170px; }
 
-    .row-header {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
+    .row-table tbody tr.row {
+      border-top: 1px solid #efeff0;
+      transition: background 0.1s ease;
     }
+    .row-table tbody tr.row:first-child { border-top: none; }
+    .row-table tbody tr.row:hover { background: #eae8f3; }
+    .row-table tbody tr.row:hover .row-subtitle,
+    .row-table tbody tr.row:hover .cell-quote { color: #636466; }
+
+    .row-table td {
+      padding: 6px 10px;
+      vertical-align: top;
+      line-height: 1.45;
+    }
+
+    .cell-primary { min-width: 180px; }
     .row-label {
       font-size: 0.95rem;
       font-weight: 600;
@@ -181,122 +218,73 @@
       line-height: 1.35;
     }
     .row-subtitle {
-      font-size: 0.85rem;
-      color: #8a8c8e;
-      word-break: break-word;
-      line-height: 1.4;
-    }
-    .row-meta {
-      font-size: 0.85rem;
-      color: #636466;
-      word-break: break-word;
-      line-height: 1.5;
-    }
-    .row-meta-label { color: #8a8c8e; margin-right: 4px; }
-
-    .row-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      min-width: 0;
-    }
-    .control-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-    .control-label {
-      display: block;
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
       font-size: 0.8rem;
-      font-weight: 600;
       color: #8a8c8e;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0;
+      word-break: break-all;
+      margin-top: 1px;
     }
-    .control-hint {
-      font-weight: 400;
+    .cell-meta { color: #636466; }
+    .cell-meta-name { font-weight: 600; color: #636466; }
+    .cell-quote {
+      display: block;
+      margin-top: 1px;
+      font-style: italic;
       color: #8a8c8e;
-      text-transform: none;
-      letter-spacing: 0;
-      margin-left: 4px;
+      font-size: 0.8rem;
+    }
+    .cell-num {
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+      color: #8a8c8e;
+      font-size: 0.8rem;
     }
 
-    .include-row {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.85rem;
-      color: #636466;
-      cursor: pointer;
-      user-select: none;
+    /* Compact include checkbox cell */
+    .cell-include {
+      text-align: center;
+      vertical-align: middle;
     }
-    .include-row input[type="checkbox"] {
+    .cell-include input[type="checkbox"] {
       margin: 0;
+      width: 15px;
+      height: 15px;
       accent-color: #6659a7;
-      width: 16px;
-      height: 16px;
+      cursor: pointer;
     }
 
-    .row-controls textarea,
-    .row-controls input[type="number"],
-    .row-controls input[type="text"],
-    .row-controls select {
-      width: 100%;
-      padding: 6px 10px;
-      border: 1.5px solid #c7c8ca;
-      border-radius: 8px;
-      font-family: 'Lexend', Arial, sans-serif;
-      font-size: 0.85rem;
-      background: #ffffff;
-      color: inherit;
-      outline: none;
-      box-sizing: border-box;
-      resize: vertical;
-      transition: border-color 0.15s ease;
-    }
-    .row-controls textarea { min-height: 34px; line-height: 1.4; }
-    .row-controls textarea:focus,
-    .row-controls input:focus,
-    .row-controls select:focus { border-color: #6659a7; }
-
-    .duration-group {
-      display: inline-flex;
-      gap: 4px;
-      max-width: 220px;
-    }
-    .duration-group .duration-value { flex: 1 1 80px; min-width: 0; }
-    .duration-group .duration-unit { flex: 0 0 110px; }
-
-    /* Segmented control for the approver decision */
+    /* Compact segmented decision control */
     .decision-group {
       display: inline-flex;
       align-self: flex-start;
-      border: 1.5px solid #c7c8ca;
-      border-radius: 8px;
+      border: 1px solid #c7c8ca;
+      border-radius: 6px;
       background: #ffffff;
       overflow: hidden;
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
     }
     .decision-group label {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 5px 14px;
+      padding: 2px 10px;
       margin: 0;
       cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 400;
+      font-size: 0.8rem;
+      font-weight: 600;
       color: #636466;
-      border: none;
       border-right: 1px solid #c7c8ca;
       background: transparent;
-      min-height: 28px;
-      transition: background 0.15s ease, color 0.15s ease;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: background 0.1s ease, color 0.1s ease;
+      min-height: 22px;
     }
     .decision-group label:last-child { border-right: none; }
     .decision-group label:hover { background: #eae8f3; }
     .decision-group input[type="radio"] {
       position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
       overflow: hidden;
       clip: rect(0, 0, 0, 0);
       white-space: nowrap;
@@ -305,64 +293,132 @@
     .decision-group label:has(input[type="radio"]:checked) {
       background: #eae8f3;
       color: #6659a7;
-      font-weight: 600;
     }
-    .decision-group input[type="radio"]:focus-visible + span,
     .decision-group label:focus-within {
       box-shadow: inset 0 0 0 2px #6659a7;
     }
 
-    .row-error {
-      grid-column: 1 / -1;
-      color: #F9AA8F;
+    /* Inline text inputs */
+    .row-table textarea,
+    .row-table input[type="text"],
+    .row-table input[type="number"],
+    .row-table select {
+      width: 100%;
+      padding: 3px 6px;
+      border: 1px solid #c7c8ca;
+      border-radius: 6px;
+      font-family: 'Lexend', Arial, sans-serif;
       font-size: 0.85rem;
+      background: #ffffff;
+      color: inherit;
+      outline: none;
+      box-sizing: border-box;
+      line-height: 1.4;
+      resize: vertical;
+      transition: border-color 0.15s ease;
+    }
+    .row-table textarea {
+      min-height: 26px;
+      max-height: 120px;
+      font-family: 'Lexend', Arial, sans-serif;
+    }
+    .row-table textarea:focus,
+    .row-table input:focus,
+    .row-table select:focus { border-color: #6659a7; }
+
+    .duration-group {
+      display: inline-flex;
+      gap: 4px;
+      width: 100%;
+      max-width: 160px;
+    }
+    .duration-group .duration-value { width: 60px; flex: 0 0 60px; }
+    .duration-group .duration-unit { flex: 1 1 auto; min-width: 0; }
+    .duration-max {
+      display: block;
       margin-top: 2px;
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+      font-size: 0.7rem;
+      color: #8a8c8e;
+      letter-spacing: 0.04em;
     }
 
+    .row-error {
+      display: block;
+      margin-top: 3px;
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+      color: #F9AA8F;
+      font-size: 0.8rem;
+    }
+
+    /* Skipped state — strikethrough + dim, never opacity */
+    tr.row.skipped .row-label { text-decoration: line-through; color: #8a8c8e; }
+    tr.row.skipped .row-subtitle,
+    tr.row.skipped .cell-meta,
+    tr.row.skipped .cell-quote { color: #8a8c8e; }
+
+    /* Sticky form-actions footer */
     .form-actions {
       display: flex;
       gap: 8px;
-      margin-top: 16px;
-      padding-top: 12px;
+      align-items: center;
+      margin-top: 12px;
+      padding-top: 8px;
       position: sticky;
       bottom: 0;
       background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 30%);
-      z-index: 1;
+      z-index: 2;
     }
     .form-actions .submit-btn {
       flex: 1;
-      padding: 12px;
+      padding: 10px 16px;
       background: #6659a7;
       color: #ffffff;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       font-family: 'Lexend', Arial, sans-serif;
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background 0.15s ease;
     }
-    .form-actions .submit-btn:hover:not(:disabled) {
-      background: #3c2f7f;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 14px rgba(102, 89, 167, 0.25);
-    }
+    .form-actions .submit-btn:hover:not(:disabled) { background: #3c2f7f; }
     .form-actions .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .form-actions .cancel-btn { flex: 0 0 110px; padding: 12px; border-radius: 8px; }
+    .form-actions .cancel-btn {
+      flex: 0 0 100px;
+      padding: 10px 16px;
+      border-radius: 6px;
+    }
 
     .empty-state {
       text-align: center;
-      color: #636466;
-      padding: 16px 0;
+      color: #8a8c8e;
+      padding: 24px 0;
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+      font-size: 0.85rem;
     }
-    .done { text-align: center; }
-    .done h1 { color: #AABDB5; }
+    .done { text-align: center; padding: 32px 24px; }
+    .done h1 { color: #AABDB5; text-align: center; }
+    .done .message, .done .countdown, .done #manual-close { text-align: center; }
     #manual-close { margin-top: 16px; color: #636466; font-size: 0.95rem; }
     .error-banner {
       color: #F9AA8F;
       text-align: center;
-      margin-top: 12px;
+      margin-top: 8px;
       font-size: 0.85rem;
+    }
+
+    /* Narrow viewports — collapse the multi-column controls into a more
+       readable stack. The table still works because <td>s wrap, but we
+       widen the input columns and wrap meta inline. */
+    @media (max-width: 640px) {
+      body { padding: 12px 8px; }
+      .card { padding: 14px 12px 12px; }
+      .row-table { font-size: 0.85rem; }
+      .row-table thead th.col-decision { width: auto; }
+      .row-table thead th.col-duration { width: auto; }
+      .row-table td { padding: 6px 8px; }
+      .duration-group { max-width: 100%; }
     }
 
     
@@ -374,42 +430,43 @@
     <div class="card" id="form-card">
       <h1>Deactivate assignments</h1>
       <p class="subtitle">Confirm which active assignments to deactivate.</p>
-      <div class="row-section">
-        <div class="bulk-toolbar"><span class="bulk-toolbar-label">Bulk</span><button type="button" class="bulk-btn" data-bulk="include-all">Include all</button><button type="button" class="bulk-btn" data-bulk="include-none">Include none</button><span class="row-summary" id="row-summary" aria-live="polite"></span></div>
-        <div class="row-list"><div class="row" data-row-id="00000000-0000-0000-0000-000000000001">
-        <div class="row-header">
+      <div class="bulk-toolbar"><span class="bulk-toolbar-label">Bulk</span><button type="button" class="bulk-btn" data-bulk="include-all">Include all</button><button type="button" class="bulk-btn" data-bulk="include-none">Include none</button><span class="row-summary" id="row-summary" aria-live="polite"></span></div>
+      <div class="row-table-wrap">
+        <table class="row-table">
+          <thead>
+            <tr>
+              <th class="col-include" scope="col" aria-label="Include"></th>
+              <th class="col-primary" scope="col">Group / role</th>
+              <th class="col-input" scope="col">Reason <span class="cell-num">(optional)</span></th>
+            </tr>
+          </thead>
+          <tbody><tr class="row" data-row-id="00000000-0000-0000-0000-000000000001">
+        <td class="cell-include">
+          <input type="checkbox" class="include-toggle" aria-label="Include" checked>
+        </td>
+        <td class="cell-primary">
           <div class="row-label">Sample Group 1</div>
           <div class="row-subtitle">Eligible member — 00000000-0000-0000-0000-000000000001</div>
-        </div>
-        <div class="row-controls">
-          <label class="include-row">
-            <input type="checkbox" class="include-toggle" checked>
-            <span>Include</span>
-          </label>
-          <div class="control-group">
-            <label class="control-label" for="confirmer-0-reason">Reason <span class="control-hint">optional</span></label>
-            <textarea id="confirmer-0-reason" class="reason" rows="2"></textarea>
-          </div>
-        </div>
-        <p class="row-error" hidden></p>
-      </div>
-      <div class="row" data-row-id="00000000-0000-0000-0000-000000000002">
-        <div class="row-header">
+        </td>
+        <td class="cell-input">
+          <textarea id="confirmer-0-reason" class="reason" rows="2" aria-label="Reason" placeholder="Optional reason"></textarea>
+          <p class="row-error" hidden></p>
+        </td>
+      </tr>
+          <tr class="row" data-row-id="00000000-0000-0000-0000-000000000002">
+        <td class="cell-include">
+          <input type="checkbox" class="include-toggle" aria-label="Include" checked>
+        </td>
+        <td class="cell-primary">
           <div class="row-label">Sample Group 2</div>
           <div class="row-subtitle">Eligible member — 00000000-0000-0000-0000-000000000002</div>
-        </div>
-        <div class="row-controls">
-          <label class="include-row">
-            <input type="checkbox" class="include-toggle" checked>
-            <span>Include</span>
-          </label>
-          <div class="control-group">
-            <label class="control-label" for="confirmer-1-reason">Reason <span class="control-hint">optional</span></label>
-            <textarea id="confirmer-1-reason" class="reason" rows="2"></textarea>
-          </div>
-        </div>
-        <p class="row-error" hidden></p>
-      </div></div>
+        </td>
+        <td class="cell-input">
+          <textarea id="confirmer-1-reason" class="reason" rows="2" aria-label="Reason" placeholder="Optional reason"></textarea>
+          <p class="row-error" hidden></p>
+        </td>
+      </tr></tbody>
+        </table>
       </div>
       <div class="form-actions">
         <button type="button" id="cancel-btn" class="cancel-btn">Cancel</button>
