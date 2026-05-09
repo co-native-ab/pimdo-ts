@@ -9,7 +9,7 @@
 </head>
 <body>
   <header class="topbar">
-    <button id="sidebar-toggle" type="button" class="sidebar-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation">☰</button>
+    <button id="sidebar-toggle" type="button" class="sidebar-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation"><span aria-hidden="true">☰</span></button>
     <div class="brand">pimdo · preview</div>
     <div class="controls">
       <label class="control">
@@ -184,10 +184,10 @@
     });
     var basePath = kind === 'view'
       ? 'views/' + name + '/' + scenario + '/' + theme + '.html'
-      : 'tools/' + name + '/' + scenario + '.html';
+      : 'tools/' + name + '/' + scenario + '/' + theme + '.html';
     var sourcePath = kind === 'view'
       ? 'views/' + name + '/' + scenario + '/' + theme + '.html'
-      : 'tools/' + name + '/' + scenario + '.md';
+      : 'tools/' + name + '/' + scenario + '/source.md';
     content.innerHTML = '';
     var tabs = document.createElement('div');
     tabs.className = 'tabs';
