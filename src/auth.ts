@@ -12,7 +12,7 @@ import { z } from "zod";
 import { createMsalLoopback } from "./browser/flows/login.js";
 import { showLogoutConfirmation } from "./browser/flows/logout.js";
 import { AuthenticationRequiredError, isNodeError, UserCancelledError } from "./errors.js";
-import { writeFileAtomic } from "./fs-options.js";
+import { writeFileAtomic, writeJsonAtomic } from "./fs-options.js";
 import { logger } from "./logger.js";
 import { Resource, type GraphScope, toGraphScopes, defaultScopes } from "./scopes.js";
 
@@ -209,8 +209,10 @@ async function saveAccount(
   signal: AbortSignal,
 ): Promise<void> {
   const accountPath = path.join(configDir, ACCOUNT_FILE_NAME);
-  // Atomic write — see afterCacheAccess for rationale.
-  await writeFileAtomic(accountPath, JSON.stringify(account, undefined, 2) + "\n", signal);
+  // Atomic write — see afterCacheAccess for rationale. JSON formatting
+  // is delegated to writeJsonAtomic so it stays consistent with every
+  // other persisted JSON file in the codebase.
+  await writeJsonAtomic(accountPath, account, signal);
   logger.debug("saved account", { path: accountPath });
 }
 
