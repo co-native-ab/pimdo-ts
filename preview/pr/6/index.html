@@ -10,12 +10,8 @@
 <body>
   <header class="topbar">
     <button id="sidebar-toggle" type="button" class="sidebar-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation"><span aria-hidden="true">☰</span></button>
-    <div class="brand">pimdo · preview</div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">◆</span><span class="brand-text">pimdo<span class="brand-sub"> · preview</span></span></div>
     <div class="controls">
-      <label class="control">
-        <span>Search</span>
-        <input id="search" type="search" placeholder="name, family, scenario…" autocomplete="off" spellcheck="false">
-      </label>
       <label class="control">
         <span>Theme</span>
         <select id="theme">
@@ -24,25 +20,37 @@
           <option value="dark">Dark</option>
         </select>
       </label>
-      <button id="copy-link" type="button">Copy link</button>
+      <button id="copy-link" type="button" title="Copy link to this scenario">Copy link</button>
     </div>
   </header>
 
   <main class="layout">
     <nav id="sidebar" aria-label="Preview index"></nav>
     <section id="content">
-      <div class="empty">Select an entry from the sidebar.</div>
+      <header id="content-header" class="content-header" hidden>
+        <div class="content-title">
+          <div class="content-eyebrow"></div>
+          <h1 class="content-name"></h1>
+          <p class="content-desc"></p>
+        </div>
+      </header>
+      <div id="content-body" class="content-body">
+        <div class="empty">Select a scenario from the sidebar.</div>
+      </div>
     </section>
   </main>
 
-  <script id="manifest" type="application/json">{"schemaVersion":1,"generator":"scripts/preview/generate.ts","views":[{"name":"login","family":"Auth","description":"MSAL loopback landing / success / error pages.","kind":"static","scenarios":[{"id":"landing","label":"Landing"},{"id":"success","label":"Success"},{"id":"error","label":"Error"}]},{"name":"logout","family":"Auth","description":"Logout confirmation + signed-out state.","kind":"static","scenarios":[{"id":"confirm","label":"Confirm"},{"id":"done","label":"Done"}]},{"name":"requester","family":"Group","description":"Multi-row activation form. Each row is one requestable item.","kind":"row-form","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"approver","family":"Group","description":"Reviewer flow. One row per pending approval.","kind":"row-form","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]},{"name":"confirmer","family":"Group","description":"Confirmation flow used by deactivate. One row per item.","kind":"row-form","scenarios":[{"id":"empty","label":"empty"},{"id":"single","label":"single"},{"id":"pair","label":"pair"},{"id":"full","label":"full"},{"id":"next-page","label":"next-page"}]}]}</script>
+  <script id="manifest" type="application/json">{"schemaVersion":1,"generator":"scripts/preview/generate.ts","views":[{"name":"login","family":"Auth","description":"MSAL loopback landing / success / error pages.","kind":"static","scenarios":[{"id":"landing","label":"Landing"},{"id":"success","label":"Success"},{"id":"error","label":"Error"}]},{"name":"logout","family":"Auth","description":"Logout confirmation + signed-out state.","kind":"static","scenarios":[{"id":"confirm","label":"Confirm"},{"id":"done","label":"Done"}]},{"name":"requester","family":"Group","description":"Multi-row activation form. Each row is one requestable item.","kind":"row-form","scenarios":[{"id":"single","label":"Single"},{"id":"pair","label":"Pair"},{"id":"full","label":"Full page"}]},{"name":"approver","family":"Group","description":"Reviewer flow. One row per pending approval.","kind":"row-form","scenarios":[{"id":"single","label":"Single"},{"id":"pair","label":"Pair"},{"id":"full","label":"Full page"}]},{"name":"confirmer","family":"Group","description":"Confirmation flow used by deactivate. One row per item.","kind":"row-form","scenarios":[{"id":"single","label":"Single"},{"id":"pair","label":"Pair"},{"id":"full","label":"Full page"}]}]}</script>
   <script>
 'use strict';
 (function () {
   var manifest = JSON.parse(document.getElementById('manifest').textContent);
   var sidebar = document.getElementById('sidebar');
-  var content = document.getElementById('content');
-  var searchEl = document.getElementById('search');
+  var contentBody = document.getElementById('content-body');
+  var contentHeader = document.getElementById('content-header');
+  var contentEyebrow = contentHeader.querySelector('.content-eyebrow');
+  var contentName = contentHeader.querySelector('.content-name');
+  var contentDesc = contentHeader.querySelector('.content-desc');
   var themeEl = document.getElementById('theme');
   var copyBtn = document.getElementById('copy-link');
   var sidebarToggle = document.getElementById('sidebar-toggle');
@@ -81,146 +89,134 @@
 
   // ---- Group entries by family ---------------------------------------------
   var families = {};
-  function add(family, kind, item) {
-    var key = family + ' · Views';
-    if (!families[key]) families[key] = [];
-    families[key].push({ kind: kind, item: item });
+  manifest.views.forEach(function (v) {
+    if (!families[v.family]) families[v.family] = [];
+    families[v.family].push(v);
+  });
+
+  var EXPAND_KEY = 'pimdo-preview-expanded';
+  var expandedState = {};
+  try {
+    var savedExpand = JSON.parse(localStorage.getItem(EXPAND_KEY) || '{}');
+    if (savedExpand && typeof savedExpand === 'object') expandedState = savedExpand;
+  } catch (_) { /* ignore */ }
+  function persistExpansion() {
+    try { localStorage.setItem(EXPAND_KEY, JSON.stringify(expandedState)); } catch (_) { /* ignore */ }
   }
-  manifest.views.forEach(function (v) { add(v.family, 'view', v); });
+  function isExpanded(key, fallback) {
+    if (Object.prototype.hasOwnProperty.call(expandedState, key)) return !!expandedState[key];
+    return fallback;
+  }
 
   function renderSidebar() {
     sidebar.innerHTML = '';
-    Object.keys(families).sort().forEach(function (familyKey) {
-      var section = document.createElement('section');
-      section.dataset.family = familyKey;
-      var h = document.createElement('h2');
-      h.textContent = familyKey;
-      section.appendChild(h);
-      families[familyKey].forEach(function (entry) {
-        var name = entry.item.name;
-        var group = document.createElement('div');
-        group.className = 'entry';
-        group.dataset.name = name;
-        group.dataset.family = entry.item.family;
-        group.dataset.description = entry.item.description || '';
-        var label = document.createElement('div');
-        label.className = 'entry-label';
-        label.textContent = name;
-        group.appendChild(label);
-        var sub = document.createElement('div');
-        sub.className = 'entry-desc';
-        sub.textContent = entry.item.description;
-        group.appendChild(sub);
-        var sList = document.createElement('div');
-        sList.className = 'scenarios';
-        entry.item.scenarios.forEach(function (sc) {
+    var familyNames = Object.keys(families).sort();
+    familyNames.forEach(function (familyName) {
+      var familyKey = 'family:' + familyName;
+      var familyOpen = isExpanded(familyKey, true);
+      var familyEl = document.createElement('section');
+      familyEl.className = 'family' + (familyOpen ? ' open' : '');
+      familyEl.dataset.family = familyName;
+
+      var familyHeader = document.createElement('button');
+      familyHeader.type = 'button';
+      familyHeader.className = 'family-header';
+      familyHeader.setAttribute('aria-expanded', familyOpen ? 'true' : 'false');
+      familyHeader.innerHTML = '<span class="caret" aria-hidden="true"></span><span class="family-name"></span>';
+      familyHeader.querySelector('.family-name').textContent = familyName;
+      familyHeader.addEventListener('click', function () {
+        var nextOpen = !familyEl.classList.contains('open');
+        familyEl.classList.toggle('open', nextOpen);
+        familyHeader.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        expandedState[familyKey] = nextOpen;
+        persistExpansion();
+      });
+      familyEl.appendChild(familyHeader);
+
+      var viewList = document.createElement('div');
+      viewList.className = 'view-list';
+      families[familyName].forEach(function (view) {
+        var viewKey = 'view:' + view.name;
+        var viewOpen = isExpanded(viewKey, true);
+        var viewEl = document.createElement('div');
+        viewEl.className = 'view' + (viewOpen ? ' open' : '');
+        viewEl.dataset.view = view.name;
+
+        var viewHeader = document.createElement('button');
+        viewHeader.type = 'button';
+        viewHeader.className = 'view-header';
+        viewHeader.setAttribute('aria-expanded', viewOpen ? 'true' : 'false');
+        viewHeader.innerHTML = '<span class="caret" aria-hidden="true"></span><span class="view-name"></span>';
+        viewHeader.querySelector('.view-name').textContent = view.name;
+        viewHeader.addEventListener('click', function () {
+          var nextOpen = !viewEl.classList.contains('open');
+          viewEl.classList.toggle('open', nextOpen);
+          viewHeader.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+          expandedState[viewKey] = nextOpen;
+          persistExpansion();
+        });
+        viewEl.appendChild(viewHeader);
+
+        var scenarioList = document.createElement('div');
+        scenarioList.className = 'scenario-list';
+        view.scenarios.forEach(function (sc) {
           var btn = document.createElement('button');
           btn.type = 'button';
-          btn.textContent = sc.label;
-          btn.dataset.kind = entry.kind;
-          btn.dataset.name = name;
+          btn.className = 'scenario';
+          btn.dataset.kind = 'view';
+          btn.dataset.name = view.name;
           btn.dataset.scenario = sc.id;
-          btn.dataset.scenarioLabel = sc.label;
+          btn.dataset.family = view.family;
+          btn.dataset.description = view.description || '';
+          btn.innerHTML = '<span class="scenario-dot" aria-hidden="true"></span><span class="scenario-label"></span>';
+          btn.querySelector('.scenario-label').textContent = sc.label;
           btn.addEventListener('click', function () {
-            select(entry.kind, name, sc.id);
-            // Auto-collapse the sidebar after selection on small screens.
+            select('view', view.name, sc.id);
             if (window.matchMedia && window.matchMedia('(max-width: 800px)').matches) {
               setSidebarOpen(false);
             }
           });
-          sList.appendChild(btn);
+          scenarioList.appendChild(btn);
         });
-        group.appendChild(sList);
-        section.appendChild(group);
+        viewEl.appendChild(scenarioList);
+        viewList.appendChild(viewEl);
       });
-      sidebar.appendChild(section);
-    });
-    applyFilter();
-  }
-
-  // ---- Free-text filter -----------------------------------------------------
-  function applyFilter() {
-    var q = (searchEl.value || '').trim().toLowerCase();
-    var sections = sidebar.querySelectorAll('section');
-    sections.forEach(function (section) {
-      var familyHaystack = (section.dataset.family || '').toLowerCase();
-      var anyEntryVisible = false;
-      section.querySelectorAll('.entry').forEach(function (entry) {
-        var entryHay = [
-          entry.dataset.name || '',
-          entry.dataset.family || '',
-          entry.dataset.description || '',
-          familyHaystack,
-        ].join(' ').toLowerCase();
-        var entryMatches = !q || entryHay.indexOf(q) !== -1;
-        var anyButtonVisible = false;
-        entry.querySelectorAll('button').forEach(function (b) {
-          var btnHay = entryHay + ' ' + (b.dataset.scenario || '') + ' ' + (b.dataset.scenarioLabel || '');
-          btnHay = btnHay.toLowerCase();
-          var match = !q || entryMatches || btnHay.indexOf(q) !== -1;
-          b.style.display = match ? '' : 'none';
-          if (match) anyButtonVisible = true;
-        });
-        var show = !q || entryMatches || anyButtonVisible;
-        entry.style.display = show ? '' : 'none';
-        if (show) anyEntryVisible = true;
-      });
-      section.style.display = anyEntryVisible ? '' : 'none';
+      familyEl.appendChild(viewList);
+      sidebar.appendChild(familyEl);
     });
   }
 
   // ---- Selection / content panel -------------------------------------------
   function refreshActiveIframeTheme() {
-    var active = sidebar.querySelector('button.active');
+    var active = sidebar.querySelector('button.scenario.active');
     if (active) select(active.dataset.kind, active.dataset.name, active.dataset.scenario);
   }
 
   function select(kind, name, scenario) {
     var theme = effectiveTheme();
     history.replaceState(null, '', '#' + kind + '/' + name + '/' + scenario);
-    sidebar.querySelectorAll('button[data-kind]').forEach(function (b) {
-      b.classList.toggle('active', b.dataset.kind === kind && b.dataset.name === name && b.dataset.scenario === scenario);
+    var activeBtn = null;
+    sidebar.querySelectorAll('button.scenario').forEach(function (b) {
+      var match = b.dataset.kind === kind && b.dataset.name === name && b.dataset.scenario === scenario;
+      b.classList.toggle('active', match);
+      if (match) activeBtn = b;
     });
-    var basePath = 'views/' + name + '/' + scenario + '/' + theme + '.html';
-    var sourcePath = 'views/' + name + '/' + scenario + '/' + theme + '.html';
-    content.innerHTML = '';
-    var tabs = document.createElement('div');
-    tabs.className = 'tabs';
-    var rendered = tab('Rendered');
-    var source = tab('Source');
-    [rendered, source].forEach(function (t) { tabs.appendChild(t); });
-    content.appendChild(tabs);
-    var panel = document.createElement('div');
-    panel.className = 'panel';
-    content.appendChild(panel);
 
-    function show(which) {
-      [rendered, source].forEach(function (t) { t.classList.remove('active'); });
-      which.classList.add('active');
-      panel.innerHTML = '';
-      if (which === rendered) {
-        var iframe = document.createElement('iframe');
-        iframe.src = basePath;
-        iframe.title = name + ' / ' + scenario + ' / ' + theme;
-        panel.appendChild(iframe);
-      } else {
-        var pre = document.createElement('pre');
-        fetch(sourcePath).then(function (r) { return r.text(); }).then(function (t) { pre.textContent = t; });
-        panel.appendChild(pre);
-      }
-    }
+    var family = activeBtn ? (activeBtn.dataset.family || '') : '';
+    var description = activeBtn ? (activeBtn.dataset.description || '') : '';
+    var scenarioLabel = activeBtn ? activeBtn.querySelector('.scenario-label').textContent : scenario;
+    contentHeader.hidden = false;
+    contentEyebrow.textContent = family ? family + ' · ' + name : name;
+    contentName.textContent = scenarioLabel;
+    contentDesc.textContent = description;
+    if (description) contentDesc.hidden = false; else contentDesc.hidden = true;
 
-    rendered.addEventListener('click', function () { show(rendered); });
-    source.addEventListener('click', function () { show(source); });
-    show(rendered);
-  }
-
-  function tab(label) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'tab';
-    b.textContent = label;
-    return b;
+    contentBody.innerHTML = '';
+    var iframe = document.createElement('iframe');
+    iframe.src = 'views/' + name + '/' + scenario + '/' + theme + '.html';
+    iframe.title = name + ' / ' + scenario + ' / ' + theme;
+    iframe.className = 'preview-frame';
+    contentBody.appendChild(iframe);
   }
 
   // ---- Sidebar toggle (mobile) ---------------------------------------------
@@ -233,7 +229,6 @@
   });
 
   // ---- Wire up controls -----------------------------------------------------
-  searchEl.addEventListener('input', applyFilter);
   themeEl.addEventListener('change', function () {
     try { localStorage.setItem(THEME_KEY, themeEl.value); } catch (_) { /* ignore */ }
     applyTheme();
@@ -245,9 +240,14 @@
 
   renderSidebar();
 
-  // Restore from hash if present.
+  // Restore from hash, otherwise auto-select the first scenario.
   var m = window.location.hash.match(/^#view\/([^\/]+)\/(.+)$/);
-  if (m) select('view', m[1], m[2]);
+  if (m) {
+    select('view', m[1], m[2]);
+  } else if (manifest.views.length > 0 && manifest.views[0].scenarios.length > 0) {
+    var first = manifest.views[0];
+    select('view', first.name, first.scenarios[0].id);
+  }
 })();
 
   </script>

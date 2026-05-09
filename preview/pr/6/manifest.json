@@ -45,24 +45,16 @@
       "kind": "row-form",
       "scenarios": [
         {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
           "id": "single",
-          "label": "single"
+          "label": "Single"
         },
         {
           "id": "pair",
-          "label": "pair"
+          "label": "Pair"
         },
         {
           "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
+          "label": "Full page"
         }
       ]
     },
@@ -73,24 +65,16 @@
       "kind": "row-form",
       "scenarios": [
         {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
           "id": "single",
-          "label": "single"
+          "label": "Single"
         },
         {
           "id": "pair",
-          "label": "pair"
+          "label": "Pair"
         },
         {
           "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
+          "label": "Full page"
         }
       ]
     },
@@ -101,24 +85,16 @@
       "kind": "row-form",
       "scenarios": [
         {
-          "id": "empty",
-          "label": "empty"
-        },
-        {
           "id": "single",
-          "label": "single"
+          "label": "Single"
         },
         {
           "id": "pair",
-          "label": "pair"
+          "label": "Pair"
         },
         {
           "id": "full",
-          "label": "full"
-        },
-        {
-          "id": "next-page",
-          "label": "next-page"
+          "label": "Full page"
         }
       ]
     }
