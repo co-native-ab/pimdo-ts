@@ -35,7 +35,7 @@ function renderRow(row: ApproverRowSpec, index: number): string {
   const radio = (value: "Approve" | "Deny" | "Skip"): string =>
     `<label><input type="radio" name="${id}" value="${value}"${
       decision === value ? " checked" : ""
-    }><span>${value}</span></label>`;
+    }>${value}</label>`;
 
   return `<tr class="row" data-row-id="${escapeHtml(row.id)}" data-row-index="${String(index)}">
         <td class="cell-primary">
