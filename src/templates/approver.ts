@@ -109,7 +109,6 @@ export function approverPageHtml(config: ApproverPageConfig): string {
       summaryEl.textContent = approve + ' approve · ' + deny + ' deny · ' + skip + ' skip';
     }
     document.addEventListener('change', updateRowSummary);
-    document.addEventListener('DOMContentLoaded', updateRowSummary);
     updateRowSummary();
 
     function isFormValid() {
