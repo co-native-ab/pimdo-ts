@@ -5,7 +5,7 @@ import { getMyObjectId } from "../../../graph/me.js";
 import { listEligibleGroupAssignments, requestGroupActivation } from "../../../graph/pim-group.js";
 import { getGroupMaxDuration } from "../../../graph/policies.js";
 import type { GroupEligibleAssignment } from "../../../graph/types.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import { buildRequestTool } from "../factories/request.js";
 
 export const pimGroupRequestTool = buildRequestTool<GroupEligibleAssignment>({
@@ -18,10 +18,10 @@ export const pimGroupRequestTool = buildRequestTool<GroupEligibleAssignment>({
       "and duration per row, then submits. Each confirmed row creates a " +
       "selfActivate assignment-schedule request via Microsoft Graph.",
     requiredScopes: [
-      GraphScope.PrivilegedAccessReadWriteAzureADGroup,
-      GraphScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
-      GraphScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup,
-      GraphScope.RoleManagementPolicyReadAzureADGroup,
+      OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
+      OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
+      OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup,
+      OAuthScope.RoleManagementPolicyReadAzureADGroup,
     ],
   },
   noun: "PIM group",

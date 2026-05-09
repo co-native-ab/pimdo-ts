@@ -8,7 +8,7 @@ import {
 } from "../../../arm/pim-role-azure.js";
 import type { RoleAzureActiveAssignment } from "../../../arm/types.js";
 import { getMyObjectId } from "../../../graph/me.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import { buildDeactivateTool } from "../factories/deactivate.js";
 import { roleLabel, scopeFromAssignment, scopeLabel } from "./format.js";
 
@@ -20,7 +20,7 @@ export const pimRoleAzureDeactivateTool = buildDeactivateTool<RoleAzureActiveAss
       "Open a browser form for the signed-in user to confirm deactivation of " +
       "one or more currently-active PIM Azure-role assignments. Each confirmed " +
       "row submits a SelfDeactivate role-assignment-schedule request via Azure Resource Manager.",
-    requiredScopes: [GraphScope.ArmUserImpersonation],
+    requiredScopes: [OAuthScope.ArmUserImpersonation],
   },
   noun: "PIM Azure-role",
   activeListToolName: "pim_role_azure_active_list",

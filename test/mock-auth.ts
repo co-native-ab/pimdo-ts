@@ -7,7 +7,7 @@
 
 import type { Authenticator, LoginResult, AccountInfo } from "../src/auth.js";
 import { AuthenticationRequiredError } from "../src/errors.js";
-import { type GraphScope, GraphScope as GS, type Resource } from "../src/scopes.js";
+import { type OAuthScope, OAuthScope as GS, type Resource } from "../src/scopes.js";
 
 /**
  * Default scopes returned by {@link MockAuthenticator}. Picks one
@@ -15,7 +15,7 @@ import { type GraphScope, GraphScope as GS, type Resource } from "../src/scopes.
  * always-required login scopes — enough for tool-registry / scope
  * gating tests without enumerating every PIM scope.
  */
-const DEFAULT_GRANTED_SCOPES: readonly GraphScope[] = [
+const DEFAULT_GRANTED_SCOPES: readonly OAuthScope[] = [
   GS.UserRead,
   GS.OfflineAccess,
   GS.PrivilegedAccessReadWriteAzureADGroup,
@@ -34,13 +34,13 @@ export class MockAuthenticator implements Authenticator {
   private _username: string;
   private _browserLogin: boolean;
   private _logoutCalled = false;
-  private _grantedScopes: GraphScope[];
+  private _grantedScopes: OAuthScope[];
 
   constructor(opts?: {
     token?: string;
     username?: string;
     browserLogin?: boolean;
-    grantedScopes?: GraphScope[];
+    grantedScopes?: OAuthScope[];
   }) {
     this._token = opts?.token ?? null;
     this._username = opts?.username ?? "test@example.com";
@@ -99,7 +99,7 @@ export class MockAuthenticator implements Authenticator {
     return Promise.resolve({ username: this._username });
   }
 
-  grantedScopes(signal: AbortSignal): Promise<GraphScope[]> {
+  grantedScopes(signal: AbortSignal): Promise<OAuthScope[]> {
     if (signal.aborted)
       return Promise.reject(signal.reason instanceof Error ? signal.reason : new Error("Aborted"));
     if (!this._token) return Promise.resolve([]);

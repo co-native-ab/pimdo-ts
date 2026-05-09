@@ -15,7 +15,7 @@ pimdo is a local MCP server that gives an AI agent **scoped, just-in-time** acce
 ```
 src/
   index.ts                 server bootstrap; registers all 24 tools
-  scopes.ts                GraphScope + Resource enums; PIM-specific scope set
+  scopes.ts                OAuthScope + Resource enums; PIM-specific scope set
   auth.ts                  MSAL + StaticAuthenticator; tokenForResource(Graph|Arm)
   config.ts                configDir + a no-op forward-compatible migration hook
   duration.ts              ISO-8601 PIM-subset duration parser/formatter

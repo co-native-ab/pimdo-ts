@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { listGroupApprovalRequests } from "../../../graph/pim-group.js";
 import type { ServerConfig } from "../../../server-config.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../shared.js";
 import { formatRequestsText } from "./format.js";
@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List pending PIM group activation requests where the signed-in user " +
     "is an approver and has not yet recorded a decision.",
-  requiredScopes: [GraphScope.PrivilegedAccessReadWriteAzureADGroup],
+  requiredScopes: [OAuthScope.PrivilegedAccessReadWriteAzureADGroup],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { listEligibleRoleEntraAssignments } from "../../../graph/pim-role-entra.js";
 import type { ServerConfig } from "../../../server-config.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../shared.js";
 import { formatEligibleAssignmentsText } from "./format.js";
@@ -20,8 +20,8 @@ const def: ToolDef = {
     "List Entra (directory) roles the signed-in user is eligible to activate via PIM. " +
     "Returns the role display name, role definition id, eligibility id, directory scope, and any time bounds.",
   requiredScopes: [
-    GraphScope.RoleEligibilityScheduleReadDirectory,
-    GraphScope.RoleEligibilityScheduleReadWriteDirectory,
+    OAuthScope.RoleEligibilityScheduleReadDirectory,
+    OAuthScope.RoleEligibilityScheduleReadWriteDirectory,
   ],
 };
 

@@ -21,6 +21,7 @@
 
 import http from "node:http";
 
+import { jsonResponse, readJson, startMockServer } from "./mock-server-base.js";
 import type {
   AssignmentApproval,
   AssignmentApprovalStage,
@@ -272,24 +273,7 @@ export class MockGraphState {
 export function createMockGraphServer(
   state: MockGraphState,
 ): Promise<{ server: http.Server; url: string }> {
-  return new Promise((resolve, reject) => {
-    const server = http.createServer((req, res) => {
-      void handleRequest(state, req, res).catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err);
-        if (!res.headersSent) errorResponse(res, 500, "InternalError", message);
-        else res.end();
-      });
-    });
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const addr = server.address();
-      if (addr === null || typeof addr === "string") {
-        reject(new Error("unexpected server address"));
-        return;
-      }
-      resolve({ server, url: `http://127.0.0.1:${addr.port}` });
-    });
-  });
+  return startMockServer((req, res) => handleRequest(state, req, res), errorResponse);
 }
 
 async function handleRequest(
@@ -521,11 +505,6 @@ async function handleRequest(
 // Helpers
 // ---------------------------------------------------------------------------
 
-function jsonResponse(res: http.ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(body));
-}
-
 function errorResponse(
   res: http.ServerResponse,
   status: number,
@@ -534,14 +513,6 @@ function errorResponse(
 ): void {
   const env: GraphErrorEnvelope = { error: { code, message } };
   jsonResponse(res, status, env);
-}
-
-async function readJson(req: http.IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(chunk as Buffer);
-  const text = Buffer.concat(chunks).toString("utf-8");
-  if (text.length === 0) return {};
-  return JSON.parse(text) as Record<string, unknown>;
 }
 
 function stringField(body: Record<string, unknown>, key: string): string | undefined {

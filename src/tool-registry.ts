@@ -27,7 +27,7 @@ import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 
 import type { ServerConfig } from "./server-config.js";
-import type { GraphScope } from "./scopes.js";
+import type { OAuthScope } from "./scopes.js";
 import { logger } from "./logger.js";
 
 // ---------------------------------------------------------------------------
@@ -43,7 +43,7 @@ export interface ToolDef {
    * Scopes that enable this tool. The tool is enabled when the granted scopes
    * include ANY of these. An empty array means the tool is always enabled.
    */
-  requiredScopes: GraphScope[];
+  requiredScopes: OAuthScope[];
 }
 
 /** ToolDef + the live RegisteredTool handle from the MCP SDK. */
@@ -141,7 +141,7 @@ export function registerTool<Args extends ZodRawShape>(
  */
 export function syncToolState(
   entries: readonly ToolEntry[],
-  grantedScopes: readonly GraphScope[],
+  grantedScopes: readonly OAuthScope[],
   server: McpServer,
 ): void {
   const granted = new Set(grantedScopes);

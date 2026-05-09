@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { listEligibleGroupAssignments } from "../../../graph/pim-group.js";
 import type { ServerConfig } from "../../../server-config.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../shared.js";
 import { formatEligibleAssignmentsText } from "./format.js";
@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List Entra groups the signed-in user is eligible to activate via PIM. " +
     "Returns the group display name, id, eligibility id, and any time bounds.",
-  requiredScopes: [GraphScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup],
+  requiredScopes: [OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

@@ -5,7 +5,7 @@
 import { getMyObjectId } from "../../../graph/me.js";
 import { listActiveGroupAssignments, requestGroupDeactivation } from "../../../graph/pim-group.js";
 import type { GroupActiveAssignment } from "../../../graph/types.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import { buildDeactivateTool } from "../factories/deactivate.js";
 
 export const pimGroupDeactivateTool = buildDeactivateTool<GroupActiveAssignment>({
@@ -17,8 +17,8 @@ export const pimGroupDeactivateTool = buildDeactivateTool<GroupActiveAssignment>
       "one or more currently-active PIM group assignments. Each confirmed " +
       "row submits a selfDeactivate assignment-schedule request via Graph.",
     requiredScopes: [
-      GraphScope.PrivilegedAccessReadWriteAzureADGroup,
-      GraphScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
+      OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
+      OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
     ],
   },
   noun: "PIM group",

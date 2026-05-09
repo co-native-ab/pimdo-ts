@@ -14,7 +14,7 @@ import { showLogoutConfirmation } from "./browser/flows/logout.js";
 import { AuthenticationRequiredError, isNodeError, UserCancelledError } from "./errors.js";
 import { writeFileAtomic, writeJsonAtomic } from "./fs-options.js";
 import { logger } from "./logger.js";
-import { Resource, type GraphScope, toGraphScopes, defaultScopes } from "./scopes.js";
+import { Resource, type OAuthScope, toOAuthScopes, defaultScopes } from "./scopes.js";
 
 /**
  * Per-resource scope sets used for silent token acquisition.
@@ -97,14 +97,14 @@ export interface Authenticator {
   accountInfo(signal: AbortSignal): Promise<AccountInfo | null>;
 
   /** Get the scopes granted in the current auth session. Empty if not authenticated. */
-  grantedScopes(signal: AbortSignal): Promise<GraphScope[]>;
+  grantedScopes(signal: AbortSignal): Promise<OAuthScope[]>;
 }
 
 export interface LoginResult {
   /** Human-readable message about the login attempt. */
   message: string;
   /** Scopes granted by the auth server. */
-  grantedScopes: GraphScope[];
+  grantedScopes: OAuthScope[];
 }
 
 /** Basic info about the logged-in account. */
@@ -265,7 +265,7 @@ export class MsalAuthenticator implements Authenticator {
   private readonly tenantId: string;
   private readonly configDir: string;
   private readonly openBrowser: (url: string) => Promise<void>;
-  private cachedScopes: GraphScope[] = [];
+  private cachedScopes: OAuthScope[] = [];
 
   constructor(
     clientId: string,
@@ -355,7 +355,7 @@ export class MsalAuthenticator implements Authenticator {
       }
 
       await saveAccount(result.account, this.configDir, signal);
-      this.cachedScopes = toGraphScopes(result.scopes);
+      this.cachedScopes = toOAuthScopes(result.scopes);
       logger.info("browser login successful", {
         resource: Resource.Graph,
         username: result.account.username,
@@ -440,7 +440,7 @@ export class MsalAuthenticator implements Authenticator {
         signal,
       );
 
-      this.mergeCachedScopes(toGraphScopes(result.scopes));
+      this.mergeCachedScopes(toOAuthScopes(result.scopes));
       logger.debug("token acquired", { resource });
       return result.accessToken;
     } catch (err: unknown) {
@@ -457,9 +457,9 @@ export class MsalAuthenticator implements Authenticator {
    * resource the authenticator has acquired a token for in this
    * session, not just the most recent one.
    */
-  private mergeCachedScopes(scopes: readonly GraphScope[]): void {
+  private mergeCachedScopes(scopes: readonly OAuthScope[]): void {
     if (scopes.length === 0) return;
-    const merged = new Set<GraphScope>(this.cachedScopes);
+    const merged = new Set<OAuthScope>(this.cachedScopes);
     for (const s of scopes) merged.add(s);
     this.cachedScopes = Array.from(merged);
   }
@@ -515,7 +515,7 @@ export class MsalAuthenticator implements Authenticator {
     return { username: account.username };
   }
 
-  async grantedScopes(signal: AbortSignal): Promise<GraphScope[]> {
+  async grantedScopes(signal: AbortSignal): Promise<OAuthScope[]> {
     // Always probe every resource silently so cachedScopes reflects the
     // full set of audiences the cached refresh token can mint tokens
     // for, not just the most-recently-used one. Without this, an MCP
@@ -563,7 +563,7 @@ export class StaticAuthenticator implements Authenticator {
     return Promise.resolve({ username: "static-token" });
   }
 
-  grantedScopes(_signal: AbortSignal): Promise<GraphScope[]> {
+  grantedScopes(_signal: AbortSignal): Promise<OAuthScope[]> {
     return Promise.resolve(defaultScopes());
   }
 }

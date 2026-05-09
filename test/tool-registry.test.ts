@@ -1,7 +1,7 @@
 // Unit tests for tool registry: syncToolState, buildInstructions, registerTool.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GraphScope } from "../src/scopes.js";
+import { OAuthScope } from "../src/scopes.js";
 import {
   syncToolState,
   buildInstructions,
@@ -14,7 +14,7 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Create a fake ToolEntry with a mock RegisteredTool. */
-function fakeEntry(name: string, requiredScopes: GraphScope[], enabled = true): ToolEntry {
+function fakeEntry(name: string, requiredScopes: OAuthScope[], enabled = true): ToolEntry {
   return {
     name,
     title: `Title: ${name}`,
@@ -49,23 +49,23 @@ describe("syncToolState", () => {
     entries = [
       fakeEntry("login", [], true), // always enabled
       fakeEntry("auth_status", [], true), // always enabled
-      fakeEntry("logout", [GraphScope.UserRead], false),
-      fakeEntry("pim_group_request", [GraphScope.PrivilegedAccessReadWriteAzureADGroup], false),
+      fakeEntry("logout", [OAuthScope.UserRead], false),
+      fakeEntry("pim_group_request", [OAuthScope.PrivilegedAccessReadWriteAzureADGroup], false),
       fakeEntry(
         "pim_role_entra_eligible_list",
-        [GraphScope.RoleManagementReadWriteDirectory],
+        [OAuthScope.RoleManagementReadWriteDirectory],
         false,
       ),
-      fakeEntry("pim_role_entra_active_list", [GraphScope.RoleManagementReadWriteDirectory], false),
+      fakeEntry("pim_role_entra_active_list", [OAuthScope.RoleManagementReadWriteDirectory], false),
     ];
     server = fakeServer();
   });
 
   it("enables all tools when all scopes are granted", () => {
     const scopes = [
-      GraphScope.UserRead,
-      GraphScope.PrivilegedAccessReadWriteAzureADGroup,
-      GraphScope.RoleManagementReadWriteDirectory,
+      OAuthScope.UserRead,
+      OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
+      OAuthScope.RoleManagementReadWriteDirectory,
     ];
     syncToolState(entries, scopes, server);
 
@@ -88,7 +88,7 @@ describe("syncToolState", () => {
   });
 
   it("enables PrivilegedAccess.ReadWrite.AzureADGroup tools only when group-PIM scope granted", () => {
-    syncToolState(entries, [GraphScope.PrivilegedAccessReadWriteAzureADGroup], server);
+    syncToolState(entries, [OAuthScope.PrivilegedAccessReadWriteAzureADGroup], server);
 
     expect(entries[3]!.registeredTool.enabled).toBe(true); // mail_send
     expect(entries[4]!.registeredTool.enabled).toBe(false); // todo_list
@@ -96,7 +96,7 @@ describe("syncToolState", () => {
   });
 
   it("RoleManagement.ReadWrite.Directory enables both read and write tools", () => {
-    syncToolState(entries, [GraphScope.RoleManagementReadWriteDirectory], server);
+    syncToolState(entries, [OAuthScope.RoleManagementReadWriteDirectory], server);
 
     expect(entries[4]!.registeredTool.enabled).toBe(true); // todo_list
     expect(entries[5]!.registeredTool.enabled).toBe(true); // todo_create
@@ -127,8 +127,8 @@ describe("syncToolState", () => {
     syncToolState(
       entries,
       [
-        GraphScope.PrivilegedAccessReadWriteAzureADGroup,
-        GraphScope.RoleManagementReadWriteDirectory,
+        OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
+        OAuthScope.RoleManagementReadWriteDirectory,
       ],
       server,
     );
@@ -154,19 +154,19 @@ describe("buildInstructions", () => {
       name: "pim_role_entra_request",
       title: "Send Email",
       description: "Send an email",
-      requiredScopes: [GraphScope.PrivilegedAccessReadWriteAzureADGroup],
+      requiredScopes: [OAuthScope.PrivilegedAccessReadWriteAzureADGroup],
     },
     {
       name: "pim_role_entra_eligible_list",
       title: "List Tasks",
       description: "List todo items",
-      requiredScopes: [GraphScope.RoleManagementReadWriteDirectory],
+      requiredScopes: [OAuthScope.RoleManagementReadWriteDirectory],
     },
     {
       name: "pim_role_entra_active_list",
       title: "Create Task",
       description: "Create a todo",
-      requiredScopes: [GraphScope.RoleManagementReadWriteDirectory],
+      requiredScopes: [OAuthScope.RoleManagementReadWriteDirectory],
     },
   ];
 

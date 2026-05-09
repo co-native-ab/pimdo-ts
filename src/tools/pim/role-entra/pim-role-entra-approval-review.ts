@@ -7,7 +7,7 @@ import {
   listRoleEntraApprovalRequests,
 } from "../../../graph/pim-role-entra.js";
 import type { RoleEntraAssignmentRequest } from "../../../graph/types.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import { buildApprovalReviewTool } from "../factories/approval-review.js";
 
 function scopeLabel(directoryScopeId: string | undefined): string {
@@ -23,7 +23,7 @@ export const pimRoleEntraApprovalReviewTool = buildApprovalReviewTool<RoleEntraA
       "Open a browser form for the signed-in user (acting as approver) to " +
       "Approve, Deny, or Skip pending PIM Entra-role activation approvals. " +
       "Each Approve/Deny PATCHes the live approval stage via the Microsoft Graph beta endpoint.",
-    requiredScopes: [GraphScope.RoleManagementReadWriteDirectory],
+    requiredScopes: [OAuthScope.RoleManagementReadWriteDirectory],
   },
   noun: "PIM Entra-role",
   approvalListToolName: "pim_role_entra_approval_list",

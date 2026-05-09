@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { listActiveGroupAssignments } from "../../../graph/pim-group.js";
 import type { ServerConfig } from "../../../server-config.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../shared.js";
 import { formatActiveAssignmentsText } from "./format.js";
@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List Entra groups the signed-in user currently has activated via PIM, " +
     "with their active-until time.",
-  requiredScopes: [GraphScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup],
+  requiredScopes: [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
