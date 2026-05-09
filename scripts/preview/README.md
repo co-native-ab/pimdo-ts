@@ -67,7 +67,9 @@ repo root.
 
 Byte-deterministic PNGs across operating systems require an extra
 image-diff tool, so they are not part of `npm run preview` or
-`npm run preview:check`. The index has a "Screenshot" tab that
-gracefully degrades when no PNG is present. A future
-`npm run preview:screenshots` job (Playwright) can fill in the PNG
-slots without changing the rest of the framework.
+`npm run preview:check`. The index renders each view live in an
+iframe, in either light or dark theme, which already shows what
+the page looks like — a separate "Screenshot" tab is therefore
+not exposed today. A future `npm run preview:screenshots` job
+(Playwright) could add PNG snapshots without changing the rest
+of the framework.
