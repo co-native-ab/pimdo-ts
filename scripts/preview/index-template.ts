@@ -346,7 +346,7 @@ section#content { display: flex; flex-direction: column; min-height: 0; }
 .tab.active { background: var(--bg); color: var(--text); border-color: var(--border); margin-bottom: -1px; }
 .panel { flex: 1; min-height: 0; display: flex; }
 .panel iframe { flex: 1; border: 0; background: #fff; width: 100%; }
-.panel pre { flex: 1; margin: 0; padding: 16px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem; background: var(--bg); white-space: pre-wrap; word-break: break-word; }
+.panel pre { flex: 1; margin: 0; padding: 16px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem; background: var(--bg); }
 
 /* ---- Responsive: stack sidebar under content on narrow viewports -------- */
 @media (max-width: 800px) {
