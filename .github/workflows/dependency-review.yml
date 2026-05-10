@@ -23,3 +23,16 @@ jobs:
         with:
           fail-on-severity: moderate
           comment-summary-in-pr: always
+          # Permissive licenses only. Drift into copyleft (GPL/AGPL/LGPL)
+          # or unrecognised licenses must be an explicit decision, not a
+          # silent transitive bump.
+          allow-licenses: >-
+            MIT,
+            ISC,
+            Apache-2.0,
+            BSD-2-Clause,
+            BSD-3-Clause,
+            0BSD,
+            Unlicense,
+            CC0-1.0,
+            BlueOak-1.0.0

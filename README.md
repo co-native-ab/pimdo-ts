@@ -1,5 +1,7 @@
 # pimdo-ts
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/co-native-ab/pimdo-ts/badge)](https://scorecard.dev/viewer/?uri=github.com/co-native-ab/pimdo-ts)
+
 Local MCP server (Model Context Protocol) written in TypeScript that gives an AI assistant scoped access to **Microsoft Entra Privileged Identity Management (PIM)** — for groups, Entra roles, and Azure resource roles — without granting it standing access.
 
 > **Status:** pre-release, no version tagged yet. Full PIM surface end-to-end: seven `pim_group_*`, seven `pim_role_entra_*`, and seven `pim_role_azure_*` tools (21 PIM tools + 3 auth tools = 24 total).
@@ -167,16 +169,18 @@ If your organization requires its own app registration (for example to lock down
 
 ## Configuration
 
-| Environment variable   | Default                                | Purpose                                                                                                                                                          |
-| ---------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PIMDO_CLIENT_ID`      | `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff` | Entra application client ID (defaults to the shared Co-native multi-tenant pimdo-ts app)                                                                         |
-| `PIMDO_TENANT_ID`      | `common`                               | Entra tenant ID (`common` / `organizations` / GUID)                                                                                                              |
-| `PIMDO_DEBUG`          | unset                                  | Set to `true` for verbose stderr logging                                                                                                                         |
-| `PIMDO_CONFIG_DIR`     | OS-default config dir                  | Override the on-disk config / token-cache location (Linux: `~/.config/pimdo-ts`, macOS: `~/Library/Application Support/pimdo-ts`, Windows: `%APPDATA%/pimdo-ts`) |
-| `PIMDO_GRAPH_URL`      | `https://graph.microsoft.com/v1.0`     | Override Microsoft Graph base URL (sovereign clouds, testing)                                                                                                    |
-| `PIMDO_GRAPH_BETA_URL` | `https://graph.microsoft.com/beta`     | Override Microsoft Graph beta base URL                                                                                                                           |
-| `PIMDO_ARM_URL`        | `https://management.azure.com`         | Override Azure Resource Manager base URL                                                                                                                         |
-| `PIMDO_ACCESS_TOKEN`   | unset                                  | Static access token for testing (bypasses MSAL); not for production use                                                                                          |
+| Environment variable             | Default                                | Purpose                                                                                                                                                            |
+| -------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PIMDO_CLIENT_ID`                | `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff` | Entra application client ID (defaults to the shared Co-native multi-tenant pimdo-ts app)                                                                           |
+| `PIMDO_TENANT_ID`                | `common`                               | Entra tenant ID (`common` / `organizations` / GUID)                                                                                                                |
+| `PIMDO_DEBUG`                    | unset                                  | Set to `true` for verbose stderr logging                                                                                                                           |
+| `PIMDO_CONFIG_DIR`               | OS-default config dir                  | Override the on-disk config / token-cache location (Linux: `~/.config/pimdo-ts`, macOS: `~/Library/Application Support/pimdo-ts`, Windows: `%APPDATA%/pimdo-ts`)   |
+| `PIMDO_GRAPH_URL`                | `https://graph.microsoft.com/v1.0`     | Override Microsoft Graph base URL (sovereign clouds, testing). Hostname must be on the built-in Microsoft allow-list unless `PIMDO_ALLOW_INSECURE_API_HOSTS=true`. |
+| `PIMDO_GRAPH_BETA_URL`           | `https://graph.microsoft.com/beta`     | Override Microsoft Graph beta base URL (same allow-list as above)                                                                                                  |
+| `PIMDO_ARM_URL`                  | `https://management.azure.com`         | Override Azure Resource Manager base URL (same allow-list as above)                                                                                                |
+| `PIMDO_ALLOW_INSECURE_API_HOSTS` | unset                                  | Set to `true` to allow `PIMDO_*_URL` to point at non-Microsoft `https://` hosts. Intended for local mock servers; never set in production.                         |
+| `PIMDO_ACCESS_TOKEN`             | unset                                  | Static access token for testing (bypasses MSAL). Requires `PIMDO_ALLOW_STATIC_TOKEN=true` to opt in; not for production use.                                       |
+| `PIMDO_ALLOW_STATIC_TOKEN`       | unset                                  | Set to `true` to enable the `PIMDO_ACCESS_TOKEN` static-token bypass.                                                                                              |
 
 ## Security model
 
