@@ -252,7 +252,7 @@ describe("MsalAuthenticator.login", () => {
     await expect(auth.login(testSignal())).rejects.toThrow("cannot open browser");
   });
 
-  it("saves the account file with mode 0o600", async () => {
+  it.skipIf(process.platform === "win32")("saves the account file with mode 0o600", async () => {
     const dir = getTempDir();
     const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
     const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);

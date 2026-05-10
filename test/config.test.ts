@@ -34,7 +34,7 @@ afterEach(() => {
 describe("configDir", () => {
   it("returns a resolved override when one is provided", () => {
     expect(configDir("./relative/path")).toBe(path.resolve("./relative/path"));
-    expect(configDir("/abs/path")).toBe("/abs/path");
+    expect(configDir("/abs/path")).toBe(path.resolve("/abs/path"));
   });
 
   it("uses %APPDATA%/pimdo-ts on win32 when APPDATA is set", () => {
