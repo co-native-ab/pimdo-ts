@@ -7,15 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-05-08
-
-First publishable release. Ships the full PIM tool surface end-to-end:
-3 auth tools + 21 PIM tools (7 each for groups, Entra roles, Azure
-resource roles).
+No version has been tagged yet. The first release will be cut once the
+audit-driven follow-up work tracked in `AUDIT_PLAN.md` lands.
 
 ### Added
 
-- Phase 5: Shared multi-tenant `pimdo-ts` Entra application client ID
+- Shared multi-tenant `pimdo-ts` Entra application client ID
   (`30cdf00b-19c8-4fe6-94bd-2674ee51a3ff`, published by Co-native AB)
   baked in as the default for `CLIENT_ID` / `PIMDO_CLIENT_ID` /
   manifest `client_id`. Custom registrations can still be wired up by
@@ -34,7 +31,7 @@ resource roles).
   `pimdo-ts-vX.Y.Z.mcpb` and `pimdo-ts-vX.Y.Z.js`, attests provenance,
   uploads release artifacts, and publishes
   `@co-native-ab/pimdo-ts` to npm via OIDC trusted publishing.
-- Phase 5: README rewritten for v0.1.0 — install via MCPB / npm /
+- Phase 5: README rewritten for the upcoming first release — install via MCPB / npm /
   standalone JS, full 24-tool listing, manual Entra app-registration
   steps, configuration and security model, FAQ.
 - Phase 4: PIM Azure-role tool surface (`pim_role_azure_eligible_list`, `pim_role_azure_active_list`, `pim_role_azure_request_list`, `pim_role_azure_request`, `pim_role_azure_deactivate`, `pim_role_azure_approval_list`, `pim_role_azure_approval_review`). All seven tools speak Azure Resource Manager (ARM) instead of Microsoft Graph and are gated by the single ARM `user_impersonation` scope.

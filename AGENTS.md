@@ -4,7 +4,7 @@ Guidance for AI agents (and humans) working on this codebase.
 
 ## Status
 
-**v0.1.0 candidate.** All four phases of the roadmap (foundation, group, Entra-role, Azure-role surfaces) are complete. The MCP server exposes the full **24 tools**: 3 auth + 7 group + 7 Entra-role + 7 Azure-role. Phase 5 (polish & ship) is in progress: per-tool JSON Schemas, MCPB bundle, README, CI/release pipeline. See `.tmp/roadmap.md` and `.tmp/progress.md`.
+**Pre-release.** All four phases of the roadmap (foundation, group, Entra-role, Azure-role surfaces) are complete. The MCP server exposes the full **24 tools**: 3 auth + 7 group + 7 Entra-role + 7 Azure-role. No version has been tagged yet. The audit-driven follow-up work is tracked in `AUDIT_PLAN.md`; the first release will happen once it is done. See `.tmp/roadmap.md` and `.tmp/progress.md` for historical context.
 
 ## What pimdo is
 
