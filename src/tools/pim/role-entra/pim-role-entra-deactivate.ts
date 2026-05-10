@@ -9,7 +9,7 @@ import {
   requestRoleEntraDeactivation,
 } from "../../../graph/pim-role-entra.js";
 import type { RoleEntraActiveAssignment } from "../../../graph/types.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import { buildDeactivateTool } from "../factories/deactivate.js";
 
 function scopeLabel(directoryScopeId: string | undefined): string {
@@ -26,8 +26,8 @@ export const pimRoleEntraDeactivateTool = buildDeactivateTool<RoleEntraActiveAss
       "one or more currently-active PIM Entra-role assignments. Each confirmed " +
       "row submits a selfDeactivate role-assignment-schedule request via Graph.",
     requiredScopes: [
-      GraphScope.RoleManagementReadWriteDirectory,
-      GraphScope.RoleAssignmentScheduleReadWriteDirectory,
+      OAuthScope.RoleManagementReadWriteDirectory,
+      OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
     ],
   },
   noun: "PIM Entra-role",

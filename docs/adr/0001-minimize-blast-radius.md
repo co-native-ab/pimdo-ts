@@ -74,7 +74,7 @@ and how do we limit that?_
 Only delegated permissions are requested, scoped to the PIM-specific
 Microsoft Graph + ARM resources the tools actually need. The agent
 acts as the signed-in user; no application-level permissions are
-used. Today's full scope set (`src/scopes.ts` `GraphScope`):
+used. Today's full scope set (`src/scopes.ts` `OAuthScope`):
 
 - Graph base: `User.Read`, `offline_access`.
 - Graph PIM Entra Groups: `PrivilegedAccess.ReadWrite.AzureADGroup`,

@@ -15,7 +15,7 @@ import { openBrowser } from "./browser/open.js";
 import { configDir, migrateConfig } from "./config.js";
 import { GraphClient } from "./graph/client.js";
 import { logger, setLogLevel } from "./logger.js";
-import { Resource, type GraphScope } from "./scopes.js";
+import { Resource, type OAuthScope } from "./scopes.js";
 import type { ServerConfig } from "./server-config.js";
 import { AUTH_TOOLS } from "./tools/auth/index.js";
 import { GROUP_TOOLS } from "./tools/pim/group/index.js";
@@ -94,7 +94,7 @@ export async function createMcpServer(
   }
 
   // Wire up the callback that login/logout tools use to sync tool visibility
-  config.onScopesChanged = (grantedScopes: GraphScope[]) => {
+  config.onScopesChanged = (grantedScopes: OAuthScope[]) => {
     syncToolState(registry, grantedScopes, mcpServer);
   };
 

@@ -11,7 +11,7 @@ import type { Authenticator } from "../../../src/auth.js";
 import { GraphClient } from "../../../src/graph/client.js";
 import { UserCancelledError } from "../../../src/errors.js";
 import type { ServerConfig } from "../../../src/index.js";
-import { GraphScope } from "../../../src/scopes.js";
+import { OAuthScope } from "../../../src/scopes.js";
 import { authStatusTool } from "../../../src/tools/auth/auth-status.js";
 import { loginTool } from "../../../src/tools/auth/login.js";
 import { logoutTool } from "../../../src/tools/auth/logout.js";
@@ -25,7 +25,7 @@ interface ToolResult {
 
 function buildConfig(
   authenticator: Authenticator,
-  onScopesChanged?: (scopes: GraphScope[]) => void,
+  onScopesChanged?: (scopes: OAuthScope[]) => void,
 ): ServerConfig {
   return {
     authenticator,
@@ -80,7 +80,7 @@ describe("auth_status tool", () => {
     expect(text).toContain("Status: Logged in");
     expect(text).toContain("alice@example.com");
     expect(text).toContain("Scopes: ");
-    expect(text).toContain(GraphScope.UserRead);
+    expect(text).toContain(OAuthScope.UserRead);
   });
 
   it("omits the Scopes line when grantedScopes is empty", async () => {
@@ -99,7 +99,7 @@ describe("auth_status tool", () => {
     const auth = stubAuth({
       isAuthenticated: () => Promise.resolve(true),
       accountInfo: () => Promise.resolve(null),
-      grantedScopes: () => Promise.resolve([GraphScope.UserRead]),
+      grantedScopes: () => Promise.resolve([OAuthScope.UserRead]),
     });
     const res = await call(authStatusTool, buildConfig(auth));
     const text = res.content[0]?.text ?? "";
@@ -126,7 +126,7 @@ describe("login tool", () => {
 
   it("performs a browser login and notifies onScopesChanged", async () => {
     const auth = new MockAuthenticator({ browserLogin: true });
-    const seen: GraphScope[][] = [];
+    const seen: OAuthScope[][] = [];
     const res = await call(
       loginTool,
       buildConfig(auth, (s) => seen.push(s)),
@@ -134,7 +134,7 @@ describe("login tool", () => {
     expect(res.isError).toBeFalsy();
     expect(res.content[0]?.text).toContain("Logged in as");
     expect(seen).toHaveLength(1);
-    expect(seen[0]).toContain(GraphScope.UserRead);
+    expect(seen[0]).toContain(OAuthScope.UserRead);
   });
 
   it("returns 'Login cancelled.' on UserCancelledError", async () => {
@@ -169,7 +169,7 @@ describe("logout tool", () => {
 
   it("clears tokens and notifies onScopesChanged with [] on success", async () => {
     const auth = new MockAuthenticator({ token: "tok" });
-    const seen: GraphScope[][] = [];
+    const seen: OAuthScope[][] = [];
     const res = await call(
       logoutTool,
       buildConfig(auth, (s) => seen.push(s)),

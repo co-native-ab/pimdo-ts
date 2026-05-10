@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { listMyRoleEntraRequests } from "../../../graph/pim-role-entra.js";
 import type { ServerConfig } from "../../../server-config.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../shared.js";
 import { formatRequestsText } from "./format.js";
@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List PIM Entra-role activation/deactivation requests the signed-in user " +
     "has submitted that are still pending approval.",
-  requiredScopes: [GraphScope.RoleManagementReadWriteDirectory],
+  requiredScopes: [OAuthScope.RoleManagementReadWriteDirectory],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

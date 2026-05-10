@@ -7,7 +7,7 @@
 import type { Authenticator } from "./auth.js";
 import type { ArmClient } from "./arm/client.js";
 import type { GraphClient } from "./graph/client.js";
-import type { GraphScope } from "./scopes.js";
+import type { OAuthScope } from "./scopes.js";
 
 /** Configuration for the MCP server - all dependencies injected here. */
 export interface ServerConfig {
@@ -39,5 +39,5 @@ export interface ServerConfig {
   /** Opens a URL in the system browser. Injected for testability. */
   openBrowser: (url: string) => Promise<void>;
   /** Set by createMcpServer() — login/logout tools call this to sync tool visibility. */
-  onScopesChanged?: (grantedScopes: GraphScope[]) => void;
+  onScopesChanged?: (grantedScopes: OAuthScope[]) => void;
 }

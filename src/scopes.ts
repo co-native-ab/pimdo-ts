@@ -20,7 +20,7 @@ export enum Resource {
 }
 
 /** Typed enum for all OAuth scopes used by pimdo. */
-export enum GraphScope {
+export enum OAuthScope {
   // Graph — always required
   UserRead = "User.Read",
   OfflineAccess = "offline_access",
@@ -44,18 +44,18 @@ export enum GraphScope {
 }
 
 /** Map a scope to the Microsoft resource it targets. */
-export function resourceForScope(scope: GraphScope): Resource {
-  return scope === GraphScope.ArmUserImpersonation ? Resource.Arm : Resource.Graph;
+export function resourceForScope(scope: OAuthScope): Resource {
+  return scope === OAuthScope.ArmUserImpersonation ? Resource.Arm : Resource.Graph;
 }
 
 /** Filter a list of scopes down to those targeting `resource`. */
-export function scopesForResource(scopes: readonly GraphScope[], resource: Resource): GraphScope[] {
+export function scopesForResource(scopes: readonly OAuthScope[], resource: Resource): OAuthScope[] {
   return scopes.filter((s) => resourceForScope(s) === resource);
 }
 
 /** Human-friendly scope metadata for the login page UI. */
 export interface ScopeDefinition {
-  scope: GraphScope;
+  scope: OAuthScope;
   label: string;
   description: string;
   /** When true, this scope is always included and cannot be deselected. */
@@ -65,79 +65,79 @@ export interface ScopeDefinition {
 /** All scopes available for selection, in display order. */
 export const AVAILABLE_SCOPES: readonly ScopeDefinition[] = [
   {
-    scope: GraphScope.UserRead,
+    scope: OAuthScope.UserRead,
     label: "User Profile",
     description: "Read your basic profile information",
     required: true,
   },
   {
-    scope: GraphScope.OfflineAccess,
+    scope: OAuthScope.OfflineAccess,
     label: "Stay Signed In",
     description: "Maintain access without re-authenticating",
     required: true,
   },
   {
-    scope: GraphScope.PrivilegedAccessReadWriteAzureADGroup,
+    scope: OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
     label: "Group PIM",
     description: "Manage your eligibility and activations for PIM-managed Entra groups",
     required: false,
   },
   {
-    scope: GraphScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
+    scope: OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
     label: "Group PIM (active assignments)",
     description: "Read and manage your active assignment schedules for Entra groups",
     required: false,
   },
   {
-    scope: GraphScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup,
+    scope: OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup,
     label: "Group PIM (eligible assignments)",
     description: "Read and manage your eligible assignment schedules for Entra groups",
     required: false,
   },
   {
-    scope: GraphScope.RoleManagementPolicyReadAzureADGroup,
+    scope: OAuthScope.RoleManagementPolicyReadAzureADGroup,
     label: "Group PIM (policy)",
     description: "Read activation policy (max duration, approval) for PIM-managed Entra groups",
     required: false,
   },
   {
-    scope: GraphScope.RoleManagementReadDirectory,
+    scope: OAuthScope.RoleManagementReadDirectory,
     label: "Entra Roles (read)",
     description: "Read directory role definitions and assignments",
     required: false,
   },
   {
-    scope: GraphScope.RoleManagementReadWriteDirectory,
+    scope: OAuthScope.RoleManagementReadWriteDirectory,
     label: "Entra Roles (PIM)",
     description: "Manage your eligibility and activations for PIM-managed directory roles",
     required: false,
   },
   {
-    scope: GraphScope.RoleManagementPolicyReadDirectory,
+    scope: OAuthScope.RoleManagementPolicyReadDirectory,
     label: "Entra Roles (policy)",
     description: "Read activation policy (max duration, approval) for PIM-managed directory roles",
     required: false,
   },
   {
-    scope: GraphScope.RoleAssignmentScheduleReadWriteDirectory,
+    scope: OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
     label: "Entra Roles (active assignments)",
     description: "Read and manage your active assignment schedules for directory roles",
     required: false,
   },
   {
-    scope: GraphScope.RoleEligibilityScheduleReadDirectory,
+    scope: OAuthScope.RoleEligibilityScheduleReadDirectory,
     label: "Entra Roles (eligible assignments, read-only)",
     description: "Read your eligible assignment schedules for directory roles",
     required: false,
   },
   {
-    scope: GraphScope.RoleEligibilityScheduleReadWriteDirectory,
+    scope: OAuthScope.RoleEligibilityScheduleReadWriteDirectory,
     label: "Entra Roles (eligible assignments)",
     description: "Read and manage your eligible assignment schedules for directory roles",
     required: false,
   },
   {
-    scope: GraphScope.ArmUserImpersonation,
+    scope: OAuthScope.ArmUserImpersonation,
     label: "Azure Roles (PIM)",
     description: "Manage your Azure RBAC role assignments via Azure Resource Manager",
     required: false,
@@ -145,23 +145,23 @@ export const AVAILABLE_SCOPES: readonly ScopeDefinition[] = [
 ];
 
 /** Scopes that are always required and cannot be deselected. */
-export const ALWAYS_REQUIRED_SCOPES: readonly GraphScope[] = AVAILABLE_SCOPES.filter(
+export const ALWAYS_REQUIRED_SCOPES: readonly OAuthScope[] = AVAILABLE_SCOPES.filter(
   (s) => s.required,
 ).map((s) => s.scope);
 
 /** Returns all scopes (the default selection). */
-export function defaultScopes(): GraphScope[] {
+export function defaultScopes(): OAuthScope[] {
   return AVAILABLE_SCOPES.map((s) => s.scope);
 }
 
-const SCOPE_VALUES = new Set<string>(Object.values(GraphScope));
+const SCOPE_VALUES = new Set<string>(Object.values(OAuthScope));
 
-/** Type guard: checks whether a string is a valid GraphScope value. */
-export function isGraphScope(value: string): value is GraphScope {
+/** Type guard: checks whether a string is a valid OAuthScope value. */
+export function isOAuthScope(value: string): value is OAuthScope {
   return SCOPE_VALUES.has(value);
 }
 
-/** Filter a string array to only valid GraphScope values. */
-export function toGraphScopes(values: readonly string[]): GraphScope[] {
-  return values.filter(isGraphScope);
+/** Filter a string array to only valid OAuthScope values. */
+export function toOAuthScopes(values: readonly string[]): OAuthScope[] {
+  return values.filter(isOAuthScope);
 }

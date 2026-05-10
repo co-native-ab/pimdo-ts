@@ -10,7 +10,7 @@ import {
 } from "../../../graph/pim-role-entra.js";
 import { getDirectoryRoleMaxDuration } from "../../../graph/policies.js";
 import type { RoleEntraEligibleAssignment } from "../../../graph/types.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import { buildRequestTool } from "../factories/request.js";
 
 function scopeLabel(directoryScopeId: string | undefined): string {
@@ -28,10 +28,10 @@ export const pimRoleEntraRequestTool = buildRequestTool<RoleEntraEligibleAssignm
       "justification and duration per row, then submits. Each confirmed " +
       "row creates a selfActivate role-assignment-schedule request via Microsoft Graph.",
     requiredScopes: [
-      GraphScope.RoleManagementReadWriteDirectory,
-      GraphScope.RoleAssignmentScheduleReadWriteDirectory,
-      GraphScope.RoleEligibilityScheduleReadWriteDirectory,
-      GraphScope.RoleManagementPolicyReadDirectory,
+      OAuthScope.RoleManagementReadWriteDirectory,
+      OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+      OAuthScope.RoleEligibilityScheduleReadWriteDirectory,
+      OAuthScope.RoleManagementPolicyReadDirectory,
     ],
   },
   noun: "PIM Entra-role",

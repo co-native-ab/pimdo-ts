@@ -4,7 +4,7 @@
 
 import { approveGroupAssignment, listGroupApprovalRequests } from "../../../graph/pim-group.js";
 import type { GroupAssignmentRequest } from "../../../graph/types.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import { buildApprovalReviewTool } from "../factories/approval-review.js";
 
 export const pimGroupApprovalReviewTool = buildApprovalReviewTool<GroupAssignmentRequest>({
@@ -15,7 +15,7 @@ export const pimGroupApprovalReviewTool = buildApprovalReviewTool<GroupAssignmen
       "Open a browser form for the signed-in user (acting as approver) to " +
       "Approve, Deny, or Skip pending PIM group activation approvals. Each " +
       "Approve/Deny PATCHes the live approval stage via Microsoft Graph.",
-    requiredScopes: [GraphScope.PrivilegedAccessReadWriteAzureADGroup],
+    requiredScopes: [OAuthScope.PrivilegedAccessReadWriteAzureADGroup],
   },
   noun: "PIM group",
   approvalListToolName: "pim_group_approval_list",

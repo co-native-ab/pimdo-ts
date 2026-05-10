@@ -249,7 +249,7 @@ const MAIL_SEND_DEF: ToolDef = {
   name: "mail_send",
   title: "Send Email",
   description: "Send an email to yourself via Outlook…",
-  requiredScopes: [GraphScope.MailSend],
+  requiredScopes: [OAuthScope.MailSend],
 };
 
 export const MAIL_TOOL_DEFS: readonly ToolDef[] = [MAIL_SEND_DEF];
@@ -294,7 +294,7 @@ import { z } from "zod";
 import { getMe, sendMail } from "../../graph/mail.js";
 import type { ServerConfig } from "../../index.js";
 import { logger } from "../../logger.js";
-import { GraphScope } from "../../scopes.js";
+import { OAuthScope } from "../../scopes.js";
 import type { Tool, ToolDef } from "../../tool-registry.js";
 import { formatError } from "../shared.js";
 
@@ -308,7 +308,7 @@ const def: ToolDef = {
   name: "mail_send",
   title: "Send Email",
   description: "Send an email to yourself via Outlook…",
-  requiredScopes: [GraphScope.MailSend],
+  requiredScopes: [OAuthScope.MailSend],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { listEligibleRoleAzureAssignments } from "../../../arm/pim-role-azure.js";
 import type { ServerConfig } from "../../../server-config.js";
-import { GraphScope } from "../../../scopes.js";
+import { OAuthScope } from "../../../scopes.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../shared.js";
 import { formatEligibleAssignmentsText } from "./format.js";
@@ -20,7 +20,7 @@ const def: ToolDef = {
     "List Azure resource roles (subscriptions, resource groups, resources) the " +
     "signed-in user is eligible to activate via PIM. Returns the role display " +
     "name, role definition id, eligibility id, ARM scope, and any time bounds.",
-  requiredScopes: [GraphScope.ArmUserImpersonation],
+  requiredScopes: [OAuthScope.ArmUserImpersonation],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

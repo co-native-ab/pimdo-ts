@@ -1,37 +1,37 @@
-// Unit tests for GraphScope/Resource enums, scope definitions, and helpers.
+// Unit tests for OAuthScope/Resource enums, scope definitions, and helpers.
 
 import { describe, it, expect } from "vitest";
 import {
-  GraphScope,
+  OAuthScope,
   Resource,
   AVAILABLE_SCOPES,
   ALWAYS_REQUIRED_SCOPES,
   defaultScopes,
-  isGraphScope,
+  isOAuthScope,
   resourceForScope,
   scopesForResource,
-  toGraphScopes,
+  toOAuthScopes,
 } from "../src/scopes.js";
 
-describe("GraphScope enum", () => {
+describe("OAuthScope enum", () => {
   it("has expected Graph PIM scope values", () => {
-    expect(GraphScope.UserRead).toBe("User.Read");
-    expect(GraphScope.OfflineAccess).toBe("offline_access");
-    expect(GraphScope.PrivilegedAccessReadWriteAzureADGroup).toBe(
+    expect(OAuthScope.UserRead).toBe("User.Read");
+    expect(OAuthScope.OfflineAccess).toBe("offline_access");
+    expect(OAuthScope.PrivilegedAccessReadWriteAzureADGroup).toBe(
       "PrivilegedAccess.ReadWrite.AzureADGroup",
     );
-    expect(GraphScope.RoleManagementReadWriteDirectory).toBe("RoleManagement.ReadWrite.Directory");
+    expect(OAuthScope.RoleManagementReadWriteDirectory).toBe("RoleManagement.ReadWrite.Directory");
   });
 
   it("has the ARM user_impersonation scope", () => {
-    expect(GraphScope.ArmUserImpersonation).toBe("https://management.azure.com/user_impersonation");
+    expect(OAuthScope.ArmUserImpersonation).toBe("https://management.azure.com/user_impersonation");
   });
 });
 
 describe("AVAILABLE_SCOPES", () => {
-  it("contains every GraphScope enum value", () => {
+  it("contains every OAuthScope enum value", () => {
     const scopeValues = AVAILABLE_SCOPES.map((s) => s.scope);
-    for (const val of Object.values(GraphScope)) {
+    for (const val of Object.values(OAuthScope)) {
       expect(scopeValues).toContain(val);
     }
   });
@@ -45,34 +45,34 @@ describe("AVAILABLE_SCOPES", () => {
 
   it("marks User.Read and offline_access as required", () => {
     const requiredScopes = AVAILABLE_SCOPES.filter((s) => s.required).map((s) => s.scope);
-    expect(requiredScopes).toContain(GraphScope.UserRead);
-    expect(requiredScopes).toContain(GraphScope.OfflineAccess);
+    expect(requiredScopes).toContain(OAuthScope.UserRead);
+    expect(requiredScopes).toContain(OAuthScope.OfflineAccess);
   });
 
   it("marks PIM scopes (graph + ARM) as not required", () => {
     const optional = AVAILABLE_SCOPES.filter((s) => !s.required).map((s) => s.scope);
-    expect(optional).toContain(GraphScope.PrivilegedAccessReadWriteAzureADGroup);
-    expect(optional).toContain(GraphScope.RoleManagementReadWriteDirectory);
-    expect(optional).toContain(GraphScope.ArmUserImpersonation);
+    expect(optional).toContain(OAuthScope.PrivilegedAccessReadWriteAzureADGroup);
+    expect(optional).toContain(OAuthScope.RoleManagementReadWriteDirectory);
+    expect(optional).toContain(OAuthScope.ArmUserImpersonation);
   });
 });
 
 describe("ALWAYS_REQUIRED_SCOPES", () => {
   it("contains User.Read and offline_access", () => {
-    expect(ALWAYS_REQUIRED_SCOPES).toContain(GraphScope.UserRead);
-    expect(ALWAYS_REQUIRED_SCOPES).toContain(GraphScope.OfflineAccess);
+    expect(ALWAYS_REQUIRED_SCOPES).toContain(OAuthScope.UserRead);
+    expect(ALWAYS_REQUIRED_SCOPES).toContain(OAuthScope.OfflineAccess);
   });
 
   it("does not contain optional PIM scopes", () => {
-    expect(ALWAYS_REQUIRED_SCOPES).not.toContain(GraphScope.PrivilegedAccessReadWriteAzureADGroup);
-    expect(ALWAYS_REQUIRED_SCOPES).not.toContain(GraphScope.ArmUserImpersonation);
+    expect(ALWAYS_REQUIRED_SCOPES).not.toContain(OAuthScope.PrivilegedAccessReadWriteAzureADGroup);
+    expect(ALWAYS_REQUIRED_SCOPES).not.toContain(OAuthScope.ArmUserImpersonation);
   });
 });
 
 describe("defaultScopes", () => {
   it("returns all scopes", () => {
     const result = defaultScopes();
-    for (const val of Object.values(GraphScope)) {
+    for (const val of Object.values(OAuthScope)) {
       expect(result).toContain(val);
     }
   });
@@ -85,26 +85,26 @@ describe("defaultScopes", () => {
   });
 });
 
-describe("isGraphScope", () => {
+describe("isOAuthScope", () => {
   it("returns true for valid scope strings", () => {
-    expect(isGraphScope("User.Read")).toBe(true);
-    expect(isGraphScope("offline_access")).toBe(true);
-    expect(isGraphScope("PrivilegedAccess.ReadWrite.AzureADGroup")).toBe(true);
-    expect(isGraphScope("https://management.azure.com/user_impersonation")).toBe(true);
+    expect(isOAuthScope("User.Read")).toBe(true);
+    expect(isOAuthScope("offline_access")).toBe(true);
+    expect(isOAuthScope("PrivilegedAccess.ReadWrite.AzureADGroup")).toBe(true);
+    expect(isOAuthScope("https://management.azure.com/user_impersonation")).toBe(true);
   });
 
   it("returns false for invalid strings", () => {
-    expect(isGraphScope("Mail.Read")).toBe(false);
-    expect(isGraphScope("Tasks.ReadWrite")).toBe(false);
-    expect(isGraphScope("")).toBe(false);
-    expect(isGraphScope("user.read")).toBe(false);
-    expect(isGraphScope("USER.READ")).toBe(false);
+    expect(isOAuthScope("Mail.Read")).toBe(false);
+    expect(isOAuthScope("Tasks.ReadWrite")).toBe(false);
+    expect(isOAuthScope("")).toBe(false);
+    expect(isOAuthScope("user.read")).toBe(false);
+    expect(isOAuthScope("USER.READ")).toBe(false);
   });
 });
 
-describe("toGraphScopes", () => {
+describe("toOAuthScopes", () => {
   it("filters valid scopes from a mixed array", () => {
-    const result = toGraphScopes([
+    const result = toOAuthScopes([
       "User.Read",
       "invalid",
       "PrivilegedAccess.ReadWrite.AzureADGroup",
@@ -112,50 +112,50 @@ describe("toGraphScopes", () => {
       "https://management.azure.com/user_impersonation",
     ]);
     expect(result).toEqual([
-      GraphScope.UserRead,
-      GraphScope.PrivilegedAccessReadWriteAzureADGroup,
-      GraphScope.ArmUserImpersonation,
+      OAuthScope.UserRead,
+      OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
+      OAuthScope.ArmUserImpersonation,
     ]);
   });
 
   it("returns empty array for empty input", () => {
-    expect(toGraphScopes([])).toEqual([]);
+    expect(toOAuthScopes([])).toEqual([]);
   });
 
   it("preserves all valid scopes", () => {
-    const all = Object.values(GraphScope);
-    expect(toGraphScopes(all)).toEqual(all);
+    const all = Object.values(OAuthScope);
+    expect(toOAuthScopes(all)).toEqual(all);
   });
 });
 
 describe("resourceForScope", () => {
   it("maps the ARM scope to Resource.Arm", () => {
-    expect(resourceForScope(GraphScope.ArmUserImpersonation)).toBe(Resource.Arm);
+    expect(resourceForScope(OAuthScope.ArmUserImpersonation)).toBe(Resource.Arm);
   });
 
   it("maps every other scope to Resource.Graph", () => {
-    for (const s of Object.values(GraphScope)) {
-      if (s === GraphScope.ArmUserImpersonation) continue;
+    for (const s of Object.values(OAuthScope)) {
+      if (s === OAuthScope.ArmUserImpersonation) continue;
       expect(resourceForScope(s)).toBe(Resource.Graph);
     }
   });
 });
 
 describe("scopesForResource", () => {
-  const all = Object.values(GraphScope);
+  const all = Object.values(OAuthScope);
 
   it("returns only Graph scopes for Resource.Graph", () => {
     const graph = scopesForResource(all, Resource.Graph);
-    expect(graph).not.toContain(GraphScope.ArmUserImpersonation);
-    expect(graph).toContain(GraphScope.UserRead);
-    expect(graph).toContain(GraphScope.PrivilegedAccessReadWriteAzureADGroup);
+    expect(graph).not.toContain(OAuthScope.ArmUserImpersonation);
+    expect(graph).toContain(OAuthScope.UserRead);
+    expect(graph).toContain(OAuthScope.PrivilegedAccessReadWriteAzureADGroup);
   });
 
   it("returns only ARM scopes for Resource.Arm", () => {
-    expect(scopesForResource(all, Resource.Arm)).toEqual([GraphScope.ArmUserImpersonation]);
+    expect(scopesForResource(all, Resource.Arm)).toEqual([OAuthScope.ArmUserImpersonation]);
   });
 
   it("returns [] when no scopes match", () => {
-    expect(scopesForResource([GraphScope.UserRead], Resource.Arm)).toEqual([]);
+    expect(scopesForResource([OAuthScope.UserRead], Resource.Arm)).toEqual([]);
   });
 });

@@ -66,7 +66,7 @@ preserved as a thin alias for `tokenForResource(Resource.Graph,
 signal)`; new call sites should prefer the explicit form.
 
 Each scope is tagged with the resource it targets via
-`resourceForScope(scope: GraphScope): Resource`. The single ARM
+`resourceForScope(scope: OAuthScope): Resource`. The single ARM
 scope today is the `https://management.azure.com/user_impersonation`
 constant; everything else maps to `Resource.Graph`.
 

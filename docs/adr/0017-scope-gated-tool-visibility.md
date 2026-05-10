@@ -65,7 +65,7 @@ interface ToolDef {
    * granted scopes include ANY of these. An empty array means
    * always-enabled.
    */
-  requiredScopes: GraphScope[];
+  requiredScopes: OAuthScope[];
 }
 ```
 
@@ -197,7 +197,7 @@ scope would make it appear.
   descriptor.
 - **ALT-006:** **Rejection:** Loses type safety; a typo in a
   scope literal silently disables the tool forever. The
-  `GraphScope` enum (ADR-0001 §1) is the single source of
+  `OAuthScope` enum (ADR-0001 §1) is the single source of
   truth for valid scopes.
 
 ## Implementation Notes
@@ -235,4 +235,4 @@ scope would make it appear.
 - **REF-005:** [MCP `tools/list_changed` notification](https://modelcontextprotocol.io).
 - **REF-006:** `src/tool-registry.ts` (`syncToolState`,
   `buildInstructions`), `src/index.ts` (`createMcpServer`),
-  `src/scopes.ts` (`GraphScope`).
+  `src/scopes.ts` (`OAuthScope`).
