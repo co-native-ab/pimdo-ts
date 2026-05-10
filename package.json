@@ -47,7 +47,7 @@
   "author": "co-native-ab",
   "license": "MIT",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.11.0"
   },
   "dependencies": {
     "@azure/msal-node": "^5.2.0",

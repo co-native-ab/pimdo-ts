@@ -4,7 +4,12 @@ Thanks for considering a contribution! This document covers the basics.
 
 ## Prerequisites
 
-- Node.js 22+
+- Node.js 22.11.0 (the first `22` LTS) or newer. CI runs the `check`
+  job on Node 22 and 24 across Ubuntu, Windows, and macOS, so
+  contributions must keep working on the lowest tested minor (`22.11`)
+  and on the latest current line. Bumping the minimum requires
+  updating `engines.node` in `package.json` and the CI matrix in
+  `.github/workflows/ci.yml` together.
 - npm (ships with Node.js)
 
 ## Getting Started
