@@ -146,9 +146,9 @@ small, otherwise spin off Phase 2a.
 **Touches:** `.github/ISSUE_TEMPLATE/{bug.yml,feature.yml,config.yml}`,
 `.github/pull_request_template.md`, `AGENTS.md`, `docs/adr/000{4,5,6,9,10}-removed.md`.
 
-- **D-1** Add minimal issue + PR templates. The `config.yml` `contact_links` should point at `SECURITY.md` for security disclosure.
+- **D-1** Add minimal issue + PR templates. The `config.yml` `contact_links` should point at `SECURITY.md` for security disclosure. ✅ landed in Phase 3.
 - **D-2** Already addressed in this audit pass (README banner, `AGENTS.md` status, `CHANGELOG.md` `[Unreleased]` rolled back). No further work needed in this phase.
-- **D-4** Tombstone or compact removed-ADR placeholders.
+- **D-4** Tombstone or compact removed-ADR placeholders. ✅ landed in Phase 3 (one-line tombstone explaining the numbers are preserved for stable references).
 
 Effort: **S**. Diff: ~150 lines, no code. No tests.
 

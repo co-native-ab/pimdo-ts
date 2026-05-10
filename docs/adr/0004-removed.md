@@ -8,4 +8,7 @@ supersedes: ""
 superseded_by: ""
 ---
 
-# 0004 - removed
+# ADR-0004: Removed
+
+Retired during the PIM-era refactor. The number is preserved so existing
+references in commit history and prior ADR cross-links remain stable.

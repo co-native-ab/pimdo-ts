@@ -1,0 +1,76 @@
+name: Bug report
+description: Report a defect in pimdo-ts
+title: "bug: <short summary>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report.
+
+        **Do not report security vulnerabilities here.** See
+        [SECURITY.md](https://github.com/co-native-ab/pimdo-ts/blob/main/SECURITY.md)
+        for the private disclosure channel.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear, concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal, deterministic steps. Include the exact MCP tool call or CLI invocation if applicable.
+      placeholder: |
+        1. Start the server with `node dist/index.js`
+        2. Call tool `pim_role_entra_eligible_list` with `…`
+        3. Observe `…`
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Include any error output from stderr. Redact tokens, usernames, and tenant IDs.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: pimdo-ts version
+      description: Commit SHA, release tag, or `npm` version. Run `node dist/index.js --version` if unsure.
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: Output of `node --version`. Must be >= 22.11.0.
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Logs, screenshots, related ADRs, or context. Redact secrets.
+    validations:
+      required: false
