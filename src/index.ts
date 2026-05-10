@@ -131,25 +131,60 @@ export async function createMcpServer(
 // ---------------------------------------------------------------------------
 
 /**
+ * Allow-list of Microsoft Graph and Azure Resource Manager hostnames that
+ * may receive delegated Bearer access tokens. Covers the public cloud and
+ * the published sovereign clouds (US Government, US Government DoD, China,
+ * and the now-retired Germany cloud — kept for completeness).
+ *
+ * A misconfigured `PIMDO_*_URL` env var pointing at any other host would
+ * silently exfiltrate the user's access token to an arbitrary endpoint,
+ * so the default policy is to refuse those URLs. Set
+ * `PIMDO_ALLOW_INSECURE_API_HOSTS=true` to opt out (intended for local
+ * test harnesses pointing at non-loopback mocks; never for production).
+ */
+const ALLOWED_API_HOSTS: readonly string[] = [
+  // Microsoft Graph (public + sovereign clouds)
+  "graph.microsoft.com",
+  "graph.microsoft.us",
+  "dod-graph.microsoft.us",
+  "microsoftgraph.chinacloudapi.cn",
+  "graph.microsoft.de",
+  // Azure Resource Manager (public + sovereign clouds)
+  "management.azure.com",
+  "management.usgovcloudapi.net",
+  "management.chinacloudapi.cn",
+  "management.microsoftazure.de",
+];
+
+/**
  * Reject any API base URL that would cause the Graph or ARM HTTP clients
- * to send a delegated Bearer token over plaintext to a non-loopback host.
+ * to send a delegated Bearer token over plaintext to a non-loopback host
+ * or to an unrecognised cloud endpoint.
  *
  * - Must parse as an absolute URL.
- * - `https://` is always allowed.
+ * - `https://` is allowed only when the hostname is in the Microsoft
+ *   allow-list above, unless `allowInsecureHosts` is `true`.
  * - `http://` is only allowed when the host is `localhost` or `127.0.0.1`
  *   (the test harness uses loopback HTTP for the mock Graph/ARM servers).
  *
  * Throws on any other value. Called once for each `PIMDO_*_URL` env var
  * before the corresponding HTTP client is constructed.
  */
-export function validateApiBaseUrl(envName: string, url: string): void {
+export function validateApiBaseUrl(envName: string, url: string, allowInsecureHosts = false): void {
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
     throw new Error(`${envName}: not a valid absolute URL: ${JSON.stringify(url)}`);
   }
-  if (parsed.protocol === "https:") return;
+  if (parsed.protocol === "https:") {
+    if (allowInsecureHosts) return;
+    if (ALLOWED_API_HOSTS.includes(parsed.hostname)) return;
+    throw new Error(
+      `${envName}: host ${parsed.hostname} is not a recognised Microsoft Graph or ARM endpoint. ` +
+        `Set PIMDO_ALLOW_INSECURE_API_HOSTS=true to bypass (testing only).`,
+    );
+  }
   if (parsed.protocol === "http:") {
     const host = parsed.hostname;
     if (host === "localhost" || host === "127.0.0.1") return;
@@ -158,6 +193,35 @@ export function validateApiBaseUrl(envName: string, url: string): void {
     );
   }
   throw new Error(`${envName}: unsupported protocol ${parsed.protocol}`);
+}
+
+/**
+ * Resolve the optional `PIMDO_ACCESS_TOKEN` static-token bypass.
+ *
+ * The static-token path replaces MSAL with a caller-supplied Bearer
+ * token. It is intended for local development and integration tests
+ * only. To prevent an attacker who can set environment variables (for
+ * example via a compromised MCP client config) from silently swapping
+ * authentication, the bypass requires an explicit interlock:
+ * `PIMDO_ALLOW_STATIC_TOKEN=true` must also be set.
+ *
+ * Returns the token when both env vars are set correctly, `undefined`
+ * when no static token is configured, and throws when the token is set
+ * without the interlock.
+ */
+export function resolveStaticToken(env: Readonly<Record<string, string | undefined>>): {
+  token: string | undefined;
+} {
+  const token = env["PIMDO_ACCESS_TOKEN"];
+  if (!token) return { token: undefined };
+  if (env["PIMDO_ALLOW_STATIC_TOKEN"] !== "true") {
+    throw new Error(
+      "PIMDO_ACCESS_TOKEN is set but PIMDO_ALLOW_STATIC_TOKEN=true is required to enable the " +
+        "static-token bypass. The static-token path is intended for local development and tests " +
+        "only; refusing to start to avoid silently replacing the MSAL login flow.",
+    );
+  }
+  return { token };
 }
 
 // ---------------------------------------------------------------------------
@@ -223,7 +287,7 @@ async function main(): Promise<void> {
   const cfgDir = configDir(process.env["PIMDO_CONFIG_DIR"]);
   logger.debug("config directory", { path: cfgDir });
 
-  const staticToken = process.env["PIMDO_ACCESS_TOKEN"];
+  const { token: staticToken } = resolveStaticToken(process.env);
   const clientId = process.env["PIMDO_CLIENT_ID"] ?? CLIENT_ID;
   const tenantId = process.env["PIMDO_TENANT_ID"] ?? DEFAULT_TENANT_ID;
   const authenticator: Authenticator = staticToken
@@ -237,12 +301,15 @@ async function main(): Promise<void> {
 
   // Defence-in-depth: every API base URL receives a Bearer access token
   // on every request. Refuse plaintext (`http://`) URLs unless they
-  // point at a loopback address (used by the test harness), so a
-  // misconfigured `PIMDO_*_URL` env var cannot silently exfiltrate
-  // user-delegated tokens to an arbitrary HTTP host.
-  validateApiBaseUrl("PIMDO_GRAPH_URL", graphBaseUrl);
-  validateApiBaseUrl("PIMDO_GRAPH_BETA_URL", graphBetaBaseUrl);
-  validateApiBaseUrl("PIMDO_ARM_URL", armBaseUrl);
+  // point at a loopback address (used by the test harness), and refuse
+  // `https://` URLs whose host is not a recognised Microsoft Graph or
+  // ARM endpoint, so a misconfigured `PIMDO_*_URL` env var cannot
+  // silently exfiltrate user-delegated tokens to an arbitrary HTTP
+  // host. `PIMDO_ALLOW_INSECURE_API_HOSTS=true` opts out for testing.
+  const allowInsecureHosts = process.env["PIMDO_ALLOW_INSECURE_API_HOSTS"] === "true";
+  validateApiBaseUrl("PIMDO_GRAPH_URL", graphBaseUrl, allowInsecureHosts);
+  validateApiBaseUrl("PIMDO_GRAPH_BETA_URL", graphBetaBaseUrl, allowInsecureHosts);
+  validateApiBaseUrl("PIMDO_ARM_URL", armBaseUrl, allowInsecureHosts);
 
   const server = await createMcpServer(
     {
