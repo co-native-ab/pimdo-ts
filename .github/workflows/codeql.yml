@@ -24,6 +24,7 @@ jobs:
       contents: read
       security-events: write
       packages: read
+      actions: read
     strategy:
       fail-fast: false
       matrix:
