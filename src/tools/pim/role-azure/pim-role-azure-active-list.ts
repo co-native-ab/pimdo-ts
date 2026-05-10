@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List Azure resource roles the signed-in user currently has activated via PIM, " +
     "with their active-until time.",
-  requiredScopes: [OAuthScope.ArmUserImpersonation],
+  requiredScopes: [[OAuthScope.ArmUserImpersonation]],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

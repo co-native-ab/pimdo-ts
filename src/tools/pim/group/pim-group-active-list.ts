@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List Entra groups the signed-in user currently has activated via PIM, " +
     "with their active-until time.",
-  requiredScopes: [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup],
+  requiredScopes: [[OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup]],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

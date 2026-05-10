@@ -15,7 +15,7 @@ export const pimGroupApprovalReviewTool = buildApprovalReviewTool<GroupAssignmen
       "Open a browser form for the signed-in user (acting as approver) to " +
       "Approve, Deny, or Skip pending PIM group activation approvals. Each " +
       "Approve/Deny PATCHes the live approval stage via Microsoft Graph.",
-    requiredScopes: [OAuthScope.PrivilegedAccessReadWriteAzureADGroup],
+    requiredScopes: [[OAuthScope.PrivilegedAccessReadWriteAzureADGroup]],
   },
   noun: "PIM group",
   approvalListToolName: "pim_group_approval_list",

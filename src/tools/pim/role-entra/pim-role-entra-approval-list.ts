@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List pending PIM Entra-role activation requests where the signed-in user " +
     "is an approver and has not yet recorded a decision.",
-  requiredScopes: [OAuthScope.RoleManagementReadWriteDirectory],
+  requiredScopes: [[OAuthScope.RoleManagementReadWriteDirectory]],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

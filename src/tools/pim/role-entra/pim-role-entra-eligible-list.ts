@@ -20,8 +20,8 @@ const def: ToolDef = {
     "List Entra (directory) roles the signed-in user is eligible to activate via PIM. " +
     "Returns the role display name, role definition id, eligibility id, directory scope, and any time bounds.",
   requiredScopes: [
-    OAuthScope.RoleEligibilityScheduleReadDirectory,
-    OAuthScope.RoleEligibilityScheduleReadWriteDirectory,
+    [OAuthScope.RoleEligibilityScheduleReadDirectory],
+    [OAuthScope.RoleEligibilityScheduleReadWriteDirectory],
   ],
 };
 

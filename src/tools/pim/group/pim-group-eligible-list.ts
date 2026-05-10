@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List Entra groups the signed-in user is eligible to activate via PIM. " +
     "Returns the group display name, id, eligibility id, and any time bounds.",
-  requiredScopes: [OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup],
+  requiredScopes: [[OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup]],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

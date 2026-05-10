@@ -28,10 +28,12 @@ export const pimRoleEntraRequestTool = buildRequestTool<RoleEntraEligibleAssignm
       "justification and duration per row, then submits. Each confirmed " +
       "row creates a selfActivate role-assignment-schedule request via Microsoft Graph.",
     requiredScopes: [
-      OAuthScope.RoleManagementReadWriteDirectory,
-      OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
-      OAuthScope.RoleEligibilityScheduleReadWriteDirectory,
-      OAuthScope.RoleManagementPolicyReadDirectory,
+      [
+        OAuthScope.RoleManagementReadWriteDirectory,
+        OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+        OAuthScope.RoleEligibilityScheduleReadWriteDirectory,
+        OAuthScope.RoleManagementPolicyReadDirectory,
+      ],
     ],
   },
   noun: "PIM Entra-role",
