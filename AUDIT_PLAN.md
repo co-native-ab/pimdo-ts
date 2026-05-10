@@ -123,7 +123,7 @@ host allow-list + `PIMDO_ACCESS_TOKEN` interlock), `.github/workflows/codeql.yml
 - **S-1** Add `SECURITY.md` with private disclosure channel and supported versions.
 - **S-2** Default `validateApiBaseUrl` to a Microsoft-host allow-list, opt out via `PIMDO_ALLOW_INSECURE_API_HOSTS`.
 - **S-3** Gate `PIMDO_ACCESS_TOKEN` behind `NODE_ENV !== "production"` or a `PIMDO_ALLOW_STATIC_TOKEN` interlock; document.
-- **S-4** Add CodeQL workflow (TypeScript, push + PR).
+- **S-4** Enable CodeQL scanning (the repository uses GitHub's CodeQL **default setup** rather than a checked-in `codeql.yml`, since default setup conflicts with advanced configurations).
 - **S-5** Add OSSF Scorecard workflow + README badge.
 - **S-9** Add `allow-licenses` / `deny-licenses` to `dependency-review-action`.
 
