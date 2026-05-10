@@ -10,7 +10,8 @@
 import { cpSync, mkdirSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -52,7 +53,17 @@ console.log(`Staged ${include.length} files in .mcpb-stage/`);
 // ---------------------------------------------------------------------------
 
 try {
-  execSync(`node_modules/.bin/mcpb pack "${stageDir}" "${join(root, output)}"`, {
+  // Resolve mcpb's CLI through Node's module resolver and invoke it with
+  // the current Node interpreter. This avoids shelling out to the bin
+  // shim (`node_modules/.bin/mcpb` vs `mcpb.cmd` on Windows) and keeps
+  // the script cross-platform. We resolve the package's main entry
+  // (which is in its `exports` map) and walk up to the package root,
+  // because `package.json` itself is not exported.
+  const require = createRequire(import.meta.url);
+  const mcpbMain = require.resolve("@anthropic-ai/mcpb");
+  const mcpbRoot = join(dirname(mcpbMain), "..");
+  const mcpbCli = join(mcpbRoot, "dist", "cli", "cli.js");
+  execFileSync(process.execPath, [mcpbCli, "pack", stageDir, join(root, output)], {
     cwd: root,
     stdio: "inherit",
   });

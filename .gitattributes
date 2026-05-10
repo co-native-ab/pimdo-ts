@@ -1,0 +1,13 @@
+# Normalise all text files to LF on checkout/checkin so that Prettier's
+# default `endOfLine: "lf"` and the Linux-developed source tree behave
+# identically on Windows runners (which otherwise apply CRLF via
+# core.autocrlf and cause `prettier --check` to fail in CI).
+* text=auto eol=lf
+
+# Binary assets must stay untouched.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mcpb binary
