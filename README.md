@@ -2,7 +2,7 @@
 
 Local MCP server (Model Context Protocol) written in TypeScript that gives an AI assistant scoped access to **Microsoft Entra Privileged Identity Management (PIM)** — for groups, Entra roles, and Azure resource roles — without granting it standing access.
 
-> **Status:** v0.1.0 candidate — full PIM surface end-to-end. Seven `pim_group_*`, seven `pim_role_entra_*`, and seven `pim_role_azure_*` tools (21 PIM tools + 3 auth tools = 24 total).
+> **Status:** pre-release, no version tagged yet. Full PIM surface end-to-end: seven `pim_group_*`, seven `pim_role_entra_*`, and seven `pim_role_azure_*` tools (21 PIM tools + 3 auth tools = 24 total).
 
 ## What pimdo does
 
