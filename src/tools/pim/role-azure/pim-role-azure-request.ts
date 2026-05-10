@@ -22,7 +22,7 @@ export const pimRoleAzureRequestTool = buildRequestTool<RoleAzureEligibleAssignm
       "one or more PIM-eligible Azure resource roles. The user edits " +
       "justification and duration per row, then submits. Each confirmed " +
       "row creates a SelfActivate role-assignment-schedule request via Azure Resource Manager.",
-    requiredScopes: [OAuthScope.ArmUserImpersonation],
+    requiredScopes: [[OAuthScope.ArmUserImpersonation]],
   },
   noun: "PIM Azure-role",
   eligibleListToolName: "pim_role_azure_eligible_list",

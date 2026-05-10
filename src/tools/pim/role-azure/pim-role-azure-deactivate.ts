@@ -20,7 +20,7 @@ export const pimRoleAzureDeactivateTool = buildDeactivateTool<RoleAzureActiveAss
       "Open a browser form for the signed-in user to confirm deactivation of " +
       "one or more currently-active PIM Azure-role assignments. Each confirmed " +
       "row submits a SelfDeactivate role-assignment-schedule request via Azure Resource Manager.",
-    requiredScopes: [OAuthScope.ArmUserImpersonation],
+    requiredScopes: [[OAuthScope.ArmUserImpersonation]],
   },
   noun: "PIM Azure-role",
   activeListToolName: "pim_role_azure_active_list",

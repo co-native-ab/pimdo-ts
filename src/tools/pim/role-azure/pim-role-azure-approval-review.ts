@@ -19,7 +19,7 @@ export const pimRoleAzureApprovalReviewTool = buildApprovalReviewTool<RoleAzureA
       "Open a browser form for the signed-in user (acting as approver) to " +
       "Approve, Deny, or Skip pending PIM Azure-role activation approvals. " +
       "Each Approve/Deny submits the decision via Azure Resource Manager `/batch`.",
-    requiredScopes: [OAuthScope.ArmUserImpersonation],
+    requiredScopes: [[OAuthScope.ArmUserImpersonation]],
   },
   noun: "PIM Azure-role",
   approvalListToolName: "pim_role_azure_approval_list",

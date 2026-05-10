@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List pending PIM group activation requests where the signed-in user " +
     "is an approver and has not yet recorded a decision.",
-  requiredScopes: [OAuthScope.PrivilegedAccessReadWriteAzureADGroup],
+  requiredScopes: [[OAuthScope.PrivilegedAccessReadWriteAzureADGroup]],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

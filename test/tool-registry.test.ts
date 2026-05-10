@@ -14,7 +14,7 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Create a fake ToolEntry with a mock RegisteredTool. */
-function fakeEntry(name: string, requiredScopes: OAuthScope[], enabled = true): ToolEntry {
+function fakeEntry(name: string, requiredScopes: OAuthScope[][], enabled = true): ToolEntry {
   return {
     name,
     title: `Title: ${name}`,
@@ -49,14 +49,40 @@ describe("syncToolState", () => {
     entries = [
       fakeEntry("login", [], true), // always enabled
       fakeEntry("auth_status", [], true), // always enabled
-      fakeEntry("logout", [OAuthScope.UserRead], false),
-      fakeEntry("pim_group_request", [OAuthScope.PrivilegedAccessReadWriteAzureADGroup], false),
+      fakeEntry("logout", [[OAuthScope.UserRead]], false),
+      fakeEntry("pim_group_request", [[OAuthScope.PrivilegedAccessReadWriteAzureADGroup]], false),
       fakeEntry(
         "pim_role_entra_eligible_list",
-        [OAuthScope.RoleManagementReadWriteDirectory],
+        [[OAuthScope.RoleManagementReadWriteDirectory]],
         false,
       ),
-      fakeEntry("pim_role_entra_active_list", [OAuthScope.RoleManagementReadWriteDirectory], false),
+      fakeEntry(
+        "pim_role_entra_active_list",
+        [[OAuthScope.RoleManagementReadWriteDirectory]],
+        false,
+      ),
+      // Read tool that accepts EITHER Read or ReadWrite (DNF: two
+      // single-scope alternatives). Mirrors pim_role_entra_eligible_list.
+      fakeEntry(
+        "pim_role_entra_eligible_list_disjunctive",
+        [
+          [OAuthScope.RoleEligibilityScheduleReadDirectory],
+          [OAuthScope.RoleEligibilityScheduleReadWriteDirectory],
+        ],
+        false,
+      ),
+      // Mutation tool that requires BOTH scopes (DNF: one alternative
+      // with two scopes). Mirrors pim_role_entra_deactivate.
+      fakeEntry(
+        "pim_role_entra_deactivate",
+        [
+          [
+            OAuthScope.RoleManagementReadWriteDirectory,
+            OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+          ],
+        ],
+        false,
+      ),
     ];
     server = fakeServer();
   });
@@ -66,6 +92,8 @@ describe("syncToolState", () => {
       OAuthScope.UserRead,
       OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
       OAuthScope.RoleManagementReadWriteDirectory,
+      OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+      OAuthScope.RoleEligibilityScheduleReadDirectory,
     ];
     syncToolState(entries, scopes, server);
 
@@ -82,24 +110,64 @@ describe("syncToolState", () => {
     expect(entries[0]!.registeredTool.enabled).toBe(true); // login
     expect(entries[1]!.registeredTool.enabled).toBe(true); // auth_status
     expect(entries[2]!.registeredTool.enabled).toBe(false); // logout
-    expect(entries[3]!.registeredTool.enabled).toBe(false); // mail_send
-    expect(entries[4]!.registeredTool.enabled).toBe(false); // todo_list
-    expect(entries[5]!.registeredTool.enabled).toBe(false); // todo_create
+    expect(entries[3]!.registeredTool.enabled).toBe(false); // pim_group_request
+    expect(entries[4]!.registeredTool.enabled).toBe(false); // pim_role_entra_eligible_list
+    expect(entries[5]!.registeredTool.enabled).toBe(false); // pim_role_entra_active_list
+    expect(entries[6]!.registeredTool.enabled).toBe(false); // disjunctive
+    expect(entries[7]!.registeredTool.enabled).toBe(false); // pim_role_entra_deactivate
   });
 
   it("enables PrivilegedAccess.ReadWrite.AzureADGroup tools only when group-PIM scope granted", () => {
     syncToolState(entries, [OAuthScope.PrivilegedAccessReadWriteAzureADGroup], server);
 
-    expect(entries[3]!.registeredTool.enabled).toBe(true); // mail_send
-    expect(entries[4]!.registeredTool.enabled).toBe(false); // todo_list
-    expect(entries[5]!.registeredTool.enabled).toBe(false); // todo_create
+    expect(entries[3]!.registeredTool.enabled).toBe(true); // pim_group_request
+    expect(entries[4]!.registeredTool.enabled).toBe(false);
+    expect(entries[5]!.registeredTool.enabled).toBe(false);
   });
 
   it("RoleManagement.ReadWrite.Directory enables both read and write tools", () => {
     syncToolState(entries, [OAuthScope.RoleManagementReadWriteDirectory], server);
 
-    expect(entries[4]!.registeredTool.enabled).toBe(true); // todo_list
-    expect(entries[5]!.registeredTool.enabled).toBe(true); // todo_create
+    expect(entries[4]!.registeredTool.enabled).toBe(true); // pim_role_entra_eligible_list
+    expect(entries[5]!.registeredTool.enabled).toBe(true); // pim_role_entra_active_list
+  });
+
+  it("disjunctive tool enables when EITHER alternative is granted (Read or ReadWrite)", () => {
+    // Read variant
+    syncToolState(entries, [OAuthScope.RoleEligibilityScheduleReadDirectory], server);
+    expect(entries[6]!.registeredTool.enabled).toBe(true);
+
+    // ReadWrite variant — must also enable on its own (mirrors a tenant
+    // downgrade keeping the read tool visible).
+    entries[6]!.registeredTool.enabled = false;
+    syncToolState(entries, [OAuthScope.RoleEligibilityScheduleReadWriteDirectory], server);
+    expect(entries[6]!.registeredTool.enabled).toBe(true);
+
+    // Neither — disabled.
+    entries[6]!.registeredTool.enabled = true;
+    syncToolState(entries, [OAuthScope.UserRead], server);
+    expect(entries[6]!.registeredTool.enabled).toBe(false);
+  });
+
+  it("conjunctive tool enables only when ALL scopes in the alternative are granted", () => {
+    // Only one of two scopes — must stay disabled.
+    syncToolState(entries, [OAuthScope.RoleManagementReadWriteDirectory], server);
+    expect(entries[7]!.registeredTool.enabled).toBe(false);
+
+    // Other scope alone — also disabled.
+    syncToolState(entries, [OAuthScope.RoleAssignmentScheduleReadWriteDirectory], server);
+    expect(entries[7]!.registeredTool.enabled).toBe(false);
+
+    // Both — enabled.
+    syncToolState(
+      entries,
+      [
+        OAuthScope.RoleManagementReadWriteDirectory,
+        OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+      ],
+      server,
+    );
+    expect(entries[7]!.registeredTool.enabled).toBe(true);
   });
 
   it("does not call enable/disable on tools already in correct state", () => {
@@ -154,19 +222,39 @@ describe("buildInstructions", () => {
       name: "pim_role_entra_request",
       title: "Send Email",
       description: "Send an email",
-      requiredScopes: [OAuthScope.PrivilegedAccessReadWriteAzureADGroup],
+      requiredScopes: [[OAuthScope.PrivilegedAccessReadWriteAzureADGroup]],
     },
     {
       name: "pim_role_entra_eligible_list",
       title: "List Tasks",
       description: "List todo items",
-      requiredScopes: [OAuthScope.RoleManagementReadWriteDirectory],
+      requiredScopes: [[OAuthScope.RoleManagementReadWriteDirectory]],
     },
     {
       name: "pim_role_entra_active_list",
       title: "Create Task",
       description: "Create a todo",
-      requiredScopes: [OAuthScope.RoleManagementReadWriteDirectory],
+      requiredScopes: [[OAuthScope.RoleManagementReadWriteDirectory]],
+    },
+    {
+      name: "pim_role_entra_eligible_list_disjunctive",
+      title: "Eligible (read or read-write)",
+      description: "Read eligibilities — accepts Read or ReadWrite",
+      requiredScopes: [
+        [OAuthScope.RoleEligibilityScheduleReadDirectory],
+        [OAuthScope.RoleEligibilityScheduleReadWriteDirectory],
+      ],
+    },
+    {
+      name: "pim_role_entra_deactivate",
+      title: "Deactivate",
+      description: "Deactivate a role assignment",
+      requiredScopes: [
+        [
+          OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+          OAuthScope.RoleManagementReadWriteDirectory,
+        ],
+      ],
     },
   ];
 
@@ -198,6 +286,16 @@ describe("buildInstructions", () => {
     expect(text).toContain("SCOPE-GATED TOOLS:");
     expect(text).toContain("PrivilegedAccess.ReadWrite.AzureADGroup");
     expect(text).toContain("RoleManagement.ReadWrite.Directory");
+  });
+
+  it("renders disjunctive alternatives with OR and conjunctive ones with AND", () => {
+    const text = buildInstructions(defs);
+    // Disjunctive tool ("Read OR ReadWrite")
+    expect(text).toContain("RoleEligibilitySchedule.Read.Directory");
+    expect(text).toContain("RoleEligibilitySchedule.ReadWrite.Directory");
+    expect(text).toMatch(/Read\.Directory.*OR.*ReadWrite\.Directory/);
+    // Conjunctive tool ("RoleAssignmentSchedule … AND RoleManagement …")
+    expect(text).toMatch(/RoleAssignmentSchedule\.ReadWrite\.Directory AND/);
   });
 
   it("includes behavior rules", () => {

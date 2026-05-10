@@ -20,7 +20,7 @@ const def: ToolDef = {
     "List PIM Azure-role activation requests where the signed-in user " +
     "is an approver. Does not filter by status — surface " +
     "the full approver-side queue.",
-  requiredScopes: [OAuthScope.ArmUserImpersonation],
+  requiredScopes: [[OAuthScope.ArmUserImpersonation]],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

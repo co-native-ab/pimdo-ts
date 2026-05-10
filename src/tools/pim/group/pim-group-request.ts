@@ -18,10 +18,12 @@ export const pimGroupRequestTool = buildRequestTool<GroupEligibleAssignment>({
       "and duration per row, then submits. Each confirmed row creates a " +
       "selfActivate assignment-schedule request via Microsoft Graph.",
     requiredScopes: [
-      OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
-      OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
-      OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup,
-      OAuthScope.RoleManagementPolicyReadAzureADGroup,
+      [
+        OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
+        OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
+        OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup,
+        OAuthScope.RoleManagementPolicyReadAzureADGroup,
+      ],
     ],
   },
   noun: "PIM group",

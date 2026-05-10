@@ -17,8 +17,10 @@ export const pimGroupDeactivateTool = buildDeactivateTool<GroupActiveAssignment>
       "one or more currently-active PIM group assignments. Each confirmed " +
       "row submits a selfDeactivate assignment-schedule request via Graph.",
     requiredScopes: [
-      OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
-      OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
+      [
+        OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
+        OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
+      ],
     ],
   },
   noun: "PIM group",

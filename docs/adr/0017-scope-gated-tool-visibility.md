@@ -61,19 +61,44 @@ interface ToolDef {
   title: string;
   description: string;
   /**
-   * Scopes that enable this tool. The tool is enabled when the
-   * granted scopes include ANY of these. An empty array means
-   * always-enabled.
+   * Scopes that enable this tool, expressed as a DNF (sum-of-products):
+   * a list of alternatives, where each alternative is a list of scopes
+   * that must ALL be granted. Empty outer list means always-enabled.
    */
-  requiredScopes: OAuthScope[];
+  requiredScopes: OAuthScope[][];
 }
 ```
 
-`requiredScopes` is **disjunctive** — any one match enables the
-tool. This is the right semantics for read tools where Microsoft
-accepts either `Read` or `ReadWrite` against the same path:
-listing `[ReadDirectory, ReadWriteDirectory]` lets the tool light
-up in either case.
+`requiredScopes` uses **DNF (disjunctive normal form)**: `[[A, B], [C]]`
+reads "(A AND B) OR C". This is the smallest shape that captures both
+patterns we have:
+
+- **OR between alternatives.** Read tools that Microsoft accepts under
+  either `Read` or `ReadWrite` against the same path are listed as two
+  single-scope alternatives — `[[Read.Directory], [ReadWrite.Directory]]`
+  — so the tool stays visible after a tenant downgrades the requested
+  `ReadWrite` consent to `Read`.
+- **AND within an alternative.** Privilege-changing tools whose handler
+  calls multiple endpoints with distinct scopes list every required
+  scope inside one alternative — `[[A, B, C, D]]` — so the tool is
+  hidden until the user has consented to _all_ of them. The previous
+  flat-list "ANY of granted" rule made these tools visible after
+  consenting to just one of the four scopes; the agent could call them
+  and would always 401.
+
+#### When to use one alternative vs. multiple
+
+- **One alternative with multiple scopes** — when the handler genuinely
+  needs every scope in the list to function. Example:
+  `pim_role_entra_request` calls `RoleAssignmentSchedule.ReadWrite`,
+  reads policy via `RoleManagementPolicy.Read`, and ranges over
+  eligibilities via `RoleEligibilitySchedule.ReadWrite`; missing any one
+  of those scopes guarantees a 401.
+- **Multiple single-scope alternatives** — when any single member is
+  sufficient. Example: `pim_role_entra_eligible_list` reads
+  eligibilities, which Microsoft serves equally to `Read.Directory`
+  _and_ `ReadWrite.Directory` callers. Listing both as alternatives
+  makes the substitutability explicit.
 
 ### Registry mechanics
 
@@ -81,7 +106,8 @@ up in either case.
 registered tool entry. For each:
 
 - If `requiredScopes` is empty → always enabled.
-- Else if any `requiredScope` ∈ `grantedScopes` → enable.
+- Else if any alternative is fully covered by `grantedScopes` →
+  enable.
 - Else → disable.
 
 The result is followed by `server.sendToolListChanged()` so the
@@ -113,7 +139,8 @@ able to log in even when no PIM scopes have been granted yet.
 
 `buildInstructions(defs)` (in `src/tool-registry.ts`) groups
 tools by their scope requirements and writes them into the
-MCP `instructions` block:
+MCP `instructions` block, rendering each `requiredScopes` DNF
+via `formatRequiredScopes`:
 
 ```
 ALWAYS AVAILABLE:
@@ -121,13 +148,15 @@ ALWAYS AVAILABLE:
   - auth_status: …
 
 SCOPE-GATED TOOLS:
-  Requires RoleManagement.Read.Directory:
+  Requires RoleEligibilitySchedule.Read.Directory OR RoleEligibilitySchedule.ReadWrite.Directory:
     - pim_role_entra_eligible_list: …
+  Requires (RoleAssignmentSchedule.ReadWrite.Directory AND RoleManagement.ReadWrite.Directory):
+    - pim_role_entra_deactivate: …
   …
 ```
 
 The agent therefore knows _why_ a tool is missing and which
-scope would make it appear.
+scope (or scope combination) would make it appear.
 
 ## Consequences
 
@@ -156,11 +185,12 @@ scope would make it appear.
   changes. The MCP `sendToolListChanged` notification is the
   protocol mechanism for this; not all hosts ack it
   identically.
-- **NEG-002:** Disjunctive scope matching can hide intent. A
-  read tool listing `[Read, ReadWrite]` enables in either case
-  — but a reader might assume it requires the read scope only.
-  We document the rule (`buildInstructions` lists every
-  required scope) and accept the trade-off.
+- **NEG-002:** DNF can hide intent if a reader scans only the first
+  alternative. We mitigate this in two ways: `formatRequiredScopes`
+  renders the full structure with explicit `AND`/`OR` operators in
+  `buildInstructions`, and the per-tool descriptor literal makes the
+  shape visible at the declaration site (`[[X], [Y]]` for OR vs.
+  `[[X, Y]]` for AND).
 - **NEG-003:** Granted-scope tracking lives on the
   authenticator. Tests must populate it (or use
   `StaticAuthenticator`) for tool tests to enable the path
@@ -191,6 +221,18 @@ scope would make it appear.
   client. The dynamic-update path is the one that delivers
   the user value.
 
+### Per-Tool Scope as a Flat List ("ANY of granted")
+
+- **ALT-007:** Earlier iteration: `requiredScopes: OAuthScope[]`
+  enabled whenever any element was granted.
+- **ALT-008:** **Rejection:** Could not express "needs all of
+  these" — multi-scope mutation tools (`pim_*_request`,
+  `pim_*_deactivate`) became visible after consenting to a single
+  scope and would always 401 at call time. Tightening to "ALL"
+  was equally wrong because it broke the `Read`/`ReadWrite`
+  substitutability for read tools after a tenant downgrade. DNF
+  is the smallest shape that handles both.
+
 ### Per-Tool Scope as a String, No Enum
 
 - **ALT-005:** Just put the OAuth scope literal on the
@@ -218,8 +260,13 @@ scope would make it appear.
 - **IMP-005:** When adding a new tool, declare the minimum
   `requiredScopes` that match the operation. For read paths
   that Microsoft accepts under either `Read` or `ReadWrite`,
-  list both — the agent should not lose access just because
-  the tenant downgraded.
+  list them as **two separate alternatives**
+  (`[[Read.Directory], [ReadWrite.Directory]]`) — the agent
+  should not lose access just because the tenant downgraded.
+  For mutation paths whose handler calls multiple endpoints
+  with distinct scopes, list every needed scope **inside one
+  alternative** (`[[A, B, C]]`) so the tool stays hidden until
+  all of them are granted.
 
 ## References
 
@@ -234,5 +281,6 @@ scope would make it appear.
   orthogonal control on privilege-changing tools).
 - **REF-005:** [MCP `tools/list_changed` notification](https://modelcontextprotocol.io).
 - **REF-006:** `src/tool-registry.ts` (`syncToolState`,
-  `buildInstructions`), `src/index.ts` (`createMcpServer`),
+  `buildInstructions`, `formatRequiredScopes`),
+  `src/index.ts` (`createMcpServer`),
   `src/scopes.ts` (`OAuthScope`).

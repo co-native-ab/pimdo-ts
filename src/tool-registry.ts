@@ -40,10 +40,19 @@ export interface ToolDef {
   title: string;
   description: string;
   /**
-   * Scopes that enable this tool. The tool is enabled when the granted scopes
-   * include ANY of these. An empty array means the tool is always enabled.
+   * Scopes that enable this tool, expressed as a DNF (disjunctive normal
+   * form): a list of alternatives, where each alternative is a list of
+   * scopes that must ALL be granted. The tool is enabled when at least
+   * one alternative is fully covered by the granted scope set.
+   *
+   * - `[]` — always enabled.
+   * - `[[A]]` — enabled iff A is granted.
+   * - `[[A], [B]]` — enabled iff A or B is granted (e.g. Read or ReadWrite
+   *   variants where Microsoft accepts either against the same path).
+   * - `[[A, B]]` — enabled iff both A and B are granted (e.g. a mutation
+   *   handler that calls multiple endpoints with distinct scopes).
    */
-  requiredScopes: OAuthScope[];
+  requiredScopes: OAuthScope[][];
 }
 
 /** ToolDef + the live RegisteredTool handle from the MCP SDK. */
@@ -136,8 +145,9 @@ export function registerTool<Args extends ZodRawShape>(
  * Enable/disable tools based on granted scopes, then notify the client.
  *
  * A tool is enabled when:
- * - Its requiredScopes array is empty (always-enabled), OR
- * - The grantedScopes contain at least one of its requiredScopes.
+ * - Its requiredScopes list is empty (always-enabled), OR
+ * - At least one alternative (inner array) is fully covered by the granted
+ *   scope set.
  */
 export function syncToolState(
   entries: readonly ToolEntry[],
@@ -148,7 +158,8 @@ export function syncToolState(
 
   for (const entry of entries) {
     const shouldEnable =
-      entry.requiredScopes.length === 0 || entry.requiredScopes.some((s) => granted.has(s));
+      entry.requiredScopes.length === 0 ||
+      entry.requiredScopes.some((group) => group.every((s) => granted.has(s)));
 
     if (shouldEnable && !entry.registeredTool.enabled) {
       entry.registeredTool.enable();
@@ -165,6 +176,32 @@ export function syncToolState(
 // ---------------------------------------------------------------------------
 // Instruction generation
 // ---------------------------------------------------------------------------
+
+/**
+ * Render a {@link ToolDef.requiredScopes} DNF as human-readable text.
+ *
+ * - `[[A]]` → `"A"`
+ * - `[[A], [B]]` → `"A OR B"`
+ * - `[[A, B]]` → `"A AND B"`
+ * - `[[A, B], [C]]` → `"(A AND B) OR C"`
+ *
+ * Within a single alternative the scopes are sorted so the output is
+ * stable and can double as a Map key for grouping in
+ * {@link buildInstructions}.
+ */
+export function formatRequiredScopes(requiredScopes: readonly OAuthScope[][]): string {
+  const groups = requiredScopes.map((group) => group.slice().sort());
+  const parts = groups.map((group) => {
+    const [first, ...rest] = group;
+    if (first === undefined) return "";
+    if (rest.length === 0) return first;
+    const joined = [first, ...rest].join(" AND ");
+    // Parenthesise multi-scope alternatives only when there is more than
+    // one alternative — otherwise the parens add noise.
+    return groups.length > 1 ? `(${joined})` : joined;
+  });
+  return parts.join(" OR ");
+}
 
 /**
  * Generate MCP instructions text from the full tool registry.
@@ -197,7 +234,7 @@ export function buildInstructions(defs: readonly ToolDef[]): string {
   const scopeGated = defs.filter((d) => d.requiredScopes.length > 0);
   const scopeGroups = new Map<string, ToolDef[]>();
   for (const d of scopeGated) {
-    const key = d.requiredScopes.slice().sort().join(", ");
+    const key = formatRequiredScopes(d.requiredScopes);
     const group = scopeGroups.get(key);
     if (group) {
       group.push(d);

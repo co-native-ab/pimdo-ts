@@ -20,7 +20,7 @@ const def: ToolDef = {
     "List PIM Azure-role activation/deactivation requests the signed-in user " +
     "has submitted. Does not filter by status — surface " +
     "all visible schedule requests.",
-  requiredScopes: [OAuthScope.ArmUserImpersonation],
+  requiredScopes: [[OAuthScope.ArmUserImpersonation]],
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

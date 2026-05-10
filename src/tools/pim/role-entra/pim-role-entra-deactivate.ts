@@ -26,8 +26,10 @@ export const pimRoleEntraDeactivateTool = buildDeactivateTool<RoleEntraActiveAss
       "one or more currently-active PIM Entra-role assignments. Each confirmed " +
       "row submits a selfDeactivate role-assignment-schedule request via Graph.",
     requiredScopes: [
-      OAuthScope.RoleManagementReadWriteDirectory,
-      OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+      [
+        OAuthScope.RoleManagementReadWriteDirectory,
+        OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+      ],
     ],
   },
   noun: "PIM Entra-role",
