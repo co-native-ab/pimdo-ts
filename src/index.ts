@@ -148,11 +148,15 @@ const ALLOWED_API_HOSTS: readonly string[] = [
   "graph.microsoft.us",
   "dod-graph.microsoft.us",
   "microsoftgraph.chinacloudapi.cn",
+  // Germany cloud is retired but kept here for completeness — old configs
+  // pointing at it should still parse, even though Microsoft no longer
+  // operates the endpoint.
   "graph.microsoft.de",
   // Azure Resource Manager (public + sovereign clouds)
   "management.azure.com",
   "management.usgovcloudapi.net",
   "management.chinacloudapi.cn",
+  // Germany cloud (retired) — see note above.
   "management.microsoftazure.de",
 ];
 

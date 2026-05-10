@@ -23,6 +23,9 @@ describe("validateApiBaseUrl", () => {
     ).not.toThrow();
     expect(() => validateApiBaseUrl("X", "https://management.usgovcloudapi.net")).not.toThrow();
     expect(() => validateApiBaseUrl("X", "https://management.chinacloudapi.cn")).not.toThrow();
+    // Retired Germany cloud — kept on the allow-list for completeness.
+    expect(() => validateApiBaseUrl("X", "https://graph.microsoft.de/v1.0")).not.toThrow();
+    expect(() => validateApiBaseUrl("X", "https://management.microsoftazure.de")).not.toThrow();
   });
 
   it("rejects https:// URLs to unrecognised hosts by default", () => {
