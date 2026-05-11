@@ -56,8 +56,10 @@ function escapeCell(s: string): string {
   // Markdown table cells split on unescaped `|`. Replace any literal pipes,
   // and collapse any internal whitespace so the cell renders on one logical
   // line (tool descriptions are short paragraphs assembled from string
-  // concatenation in the descriptor files).
-  return s.replace(/\s+/g, " ").replace(/\|/g, "\\|").trim();
+  // concatenation in the descriptor files). Escape backslashes first so a
+  // literal `\` in the input does not accidentally become the escape
+  // character for the following `|` after the pipe substitution.
+  return s.replace(/\s+/g, " ").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").trim();
 }
 
 function renderTable(tools: readonly AnyTool[]): string {
