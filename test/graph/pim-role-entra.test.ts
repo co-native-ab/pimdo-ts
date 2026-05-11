@@ -1,4 +1,4 @@
-// Tests for src/graph/pim-role-entra.ts driven by the PIM mock-graph.
+// Tests for src/features/role-entra/client.ts driven by the PIM mock-graph.
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type http from "node:http";
@@ -12,7 +12,7 @@ import {
   listRoleEntraApprovalRequests,
   requestRoleEntraActivation,
   requestRoleEntraDeactivation,
-} from "../../src/graph/pim-role-entra.js";
+} from "../../src/features/role-entra/client.js";
 import { createMockGraphServer, MockGraphState } from "../mock-graph.js";
 import { testSignal } from "../helpers.js";
 

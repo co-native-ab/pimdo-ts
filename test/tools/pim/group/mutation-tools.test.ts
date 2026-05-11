@@ -12,9 +12,9 @@ import type { ServerConfig } from "../../../../src/index.js";
 import { MockGraphState, createMockGraphServer } from "../../../mock-graph.js";
 import { fetchCsrfToken, testSignal } from "../../../helpers.js";
 
-import { pimGroupApprovalReviewTool } from "../../../../src/tools/pim/group/pim-group-approval-review.js";
-import { pimGroupDeactivateTool } from "../../../../src/tools/pim/group/pim-group-deactivate.js";
-import { pimGroupRequestTool } from "../../../../src/tools/pim/group/pim-group-request.js";
+import { pimGroupApprovalReviewTool } from "../../../../src/features/group/tools/pim-group-approval-review.js";
+import { pimGroupDeactivateTool } from "../../../../src/features/group/tools/pim-group-deactivate.js";
+import { pimGroupRequestTool } from "../../../../src/features/group/tools/pim-group-request.js";
 
 interface ToolResult {
   content: { type: string; text: string }[];

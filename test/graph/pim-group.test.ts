@@ -1,4 +1,4 @@
-// Tests for src/graph/pim-group.ts driven by the PIM mock-graph.
+// Tests for src/features/group/client.ts driven by the PIM mock-graph.
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type http from "node:http";
@@ -12,7 +12,7 @@ import {
   listMyGroupRequests,
   requestGroupActivation,
   requestGroupDeactivation,
-} from "../../src/graph/pim-group.js";
+} from "../../src/features/group/client.js";
 import { createMockGraphServer, MockGraphState } from "../mock-graph.js";
 import { testSignal } from "../helpers.js";
 

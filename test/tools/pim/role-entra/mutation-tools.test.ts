@@ -12,9 +12,9 @@ import type { ServerConfig } from "../../../../src/index.js";
 import { MockGraphState, createMockGraphServer } from "../../../mock-graph.js";
 import { fetchCsrfToken, testSignal } from "../../../helpers.js";
 
-import { pimRoleEntraApprovalReviewTool } from "../../../../src/tools/pim/role-entra/pim-role-entra-approval-review.js";
-import { pimRoleEntraDeactivateTool } from "../../../../src/tools/pim/role-entra/pim-role-entra-deactivate.js";
-import { pimRoleEntraRequestTool } from "../../../../src/tools/pim/role-entra/pim-role-entra-request.js";
+import { pimRoleEntraApprovalReviewTool } from "../../../../src/features/role-entra/tools/pim-role-entra-approval-review.js";
+import { pimRoleEntraDeactivateTool } from "../../../../src/features/role-entra/tools/pim-role-entra-deactivate.js";
+import { pimRoleEntraRequestTool } from "../../../../src/features/role-entra/tools/pim-role-entra-request.js";
 
 interface ToolResult {
   content: { type: string; text: string }[];

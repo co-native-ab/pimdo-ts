@@ -15,13 +15,13 @@ import type { ServerConfig } from "../../src/index.js";
 import { MockGraphState, createMockGraphServer } from "../mock-graph.js";
 import { fetchCsrfToken, testSignal } from "../helpers.js";
 
-import { pimGroupActiveListTool } from "../../src/tools/pim/group/pim-group-active-list.js";
-import { pimGroupApprovalListTool } from "../../src/tools/pim/group/pim-group-approval-list.js";
-import { pimGroupApprovalReviewTool } from "../../src/tools/pim/group/pim-group-approval-review.js";
-import { pimGroupDeactivateTool } from "../../src/tools/pim/group/pim-group-deactivate.js";
-import { pimGroupEligibleListTool } from "../../src/tools/pim/group/pim-group-eligible-list.js";
-import { pimGroupRequestListTool } from "../../src/tools/pim/group/pim-group-request-list.js";
-import { pimGroupRequestTool } from "../../src/tools/pim/group/pim-group-request.js";
+import { pimGroupActiveListTool } from "../../src/features/group/tools/pim-group-active-list.js";
+import { pimGroupApprovalListTool } from "../../src/features/group/tools/pim-group-approval-list.js";
+import { pimGroupApprovalReviewTool } from "../../src/features/group/tools/pim-group-approval-review.js";
+import { pimGroupDeactivateTool } from "../../src/features/group/tools/pim-group-deactivate.js";
+import { pimGroupEligibleListTool } from "../../src/features/group/tools/pim-group-eligible-list.js";
+import { pimGroupRequestListTool } from "../../src/features/group/tools/pim-group-request-list.js";
+import { pimGroupRequestTool } from "../../src/features/group/tools/pim-group-request.js";
 
 interface Harness {
   config: ServerConfig;

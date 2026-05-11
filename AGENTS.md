@@ -19,11 +19,15 @@ src/
   auth.ts                  MSAL + StaticAuthenticator; tokenForResource(Graph|Arm)
   config.ts                configDir + a no-op forward-compatible migration hook
   duration.ts              ISO-8601 PIM-subset duration parser/formatter
-  graph/                   Microsoft Graph client + PIM group / Entra-role / policies
-  arm/                     ARM client + PIM Azure-role + policies
+  graph/                   shared Microsoft Graph client (`client.ts`, `me.ts`, `policies.ts`, `types.ts`)
+  arm/                     shared ARM client (`client.ts`, `policies.ts`, `types.ts`)
+  features/                vertical slices, one per PIM surface
+    group/                   {client.ts, format.ts, tools/} for `pim_group_*`
+    role-entra/              {client.ts, format.ts, tools/} for `pim_role_entra_*`
+    role-azure/              {client.ts, format.ts, tools/} for `pim_role_azure_*` (uses ARM)
   browser/                 loopback HTTP server framework + login/logout/row-form flows
   templates/               static HTML templates rendered by browser flows
-  tools/                   MCP tool descriptors (auth/, pim/group/, pim/role-entra/, pim/role-azure/)
+  tools/                   shared tool infra: `auth/`, `pim/factories/`, `pim/format-shared.ts`, `shared.ts`
   tool-registry.ts         scope-gated tool enable/disable + instruction text
   errors.ts, logger.ts, fs-options.ts, shutdown-signals.ts
 

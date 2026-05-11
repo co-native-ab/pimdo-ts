@@ -9,12 +9,12 @@ import {
   formatActiveAssignmentsText as groupActive,
   formatEligibleAssignmentsText as groupEligible,
   formatRequestsText as groupRequests,
-} from "../../../src/tools/pim/group/format.js";
+} from "../../../src/features/group/format.js";
 import {
   formatActiveAssignmentsText as entraActive,
   formatEligibleAssignmentsText as entraEligible,
   formatRequestsText as entraRequests,
-} from "../../../src/tools/pim/role-entra/format.js";
+} from "../../../src/features/role-entra/format.js";
 import {
   formatActiveAssignmentsText as azureActive,
   formatEligibleAssignmentsText as azureEligible,
@@ -22,7 +22,7 @@ import {
   roleLabel as azureRoleLabel,
   scopeLabel as azureScopeLabel,
   scopeFromAssignment as azureScopeFromAssignment,
-} from "../../../src/tools/pim/role-azure/format.js";
+} from "../../../src/features/role-azure/format.js";
 
 describe("group format helpers", () => {
   it("eligible: empty / displayName / no displayName / with expiry", () => {
