@@ -1,5 +1,6 @@
 // HTML template for the `approverFlow` page.
 
+import { ApprovalDecision } from "../enums.js";
 import { escapeHtml } from "./escape.js";
 import { renderBulkToolbar, renderRowFormPage } from "./row-form.js";
 
@@ -16,7 +17,7 @@ export interface ApproverRowSpec {
   /** Justification supplied by the requestor. */
   requestorJustification: string;
   /** Optional pre-selected decision. */
-  prefilledDecision?: "Approve" | "Deny" | "Skip";
+  prefilledDecision?: ApprovalDecision;
   /** Optional prefilled reviewer justification. */
   prefilledJustification?: string;
 }
@@ -28,11 +29,11 @@ export interface ApproverPageConfig {
 }
 
 function renderRow(row: ApproverRowSpec, index: number): string {
-  const decision = row.prefilledDecision ?? "Skip";
+  const decision = row.prefilledDecision ?? ApprovalDecision.Skip;
   const justification = row.prefilledJustification ?? "";
   const id = `approver-${String(index)}`;
 
-  const radio = (value: "Approve" | "Deny" | "Skip"): string =>
+  const radio = (value: ApprovalDecision): string =>
     `<label><input type="radio" name="${id}" value="${value}"${
       decision === value ? " checked" : ""
     }>${value}</label>`;
@@ -48,9 +49,9 @@ function renderRow(row: ApproverRowSpec, index: number): string {
         </td>
         <td class="cell-decision">
           <div class="decision-group" role="radiogroup" aria-label="Decision">
-            ${radio("Approve")}
-            ${radio("Deny")}
-            ${radio("Skip")}
+            ${radio(ApprovalDecision.Approve)}
+            ${radio(ApprovalDecision.Deny)}
+            ${radio(ApprovalDecision.Skip)}
           </div>
         </td>
         <td class="cell-input">

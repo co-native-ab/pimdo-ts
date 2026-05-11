@@ -5,6 +5,8 @@
 // label / ID / column choices, but the list shape is identical and lives
 // here.
 
+import type { AssignmentKind } from "../../enums.js";
+
 /**
  * Render `items` as a bullet list with `heading` on top, or `emptyMessage`
  * when the list is empty.
@@ -42,9 +44,6 @@ export function approvalTag(approvalId: string | null | undefined): string {
 }
 
 /** Produce the trailing ` — <kind> until <when>` segment when bounded. */
-export function expiryTail(
-  kind: "eligible" | "active",
-  endDateTime: string | null | undefined,
-): string {
+export function expiryTail(kind: AssignmentKind, endDateTime: string | null | undefined): string {
   return endDateTime ? ` — ${kind} until ${endDateTime}` : "";
 }

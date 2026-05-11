@@ -1,5 +1,6 @@
 // Plain-text formatters for the pim_group_* read tools.
 
+import { AssignmentKind } from "../../enums.js";
 import type {
   GroupActiveAssignment,
   GroupAssignmentRequest,
@@ -20,7 +21,7 @@ export function formatEligibleAssignmentsText(items: readonly GroupEligibleAssig
     "No eligible PIM group assignments.",
     (it) =>
       `- ${namedLabel(it.groupId, it.group)} [eligibility=${it.id}]${expiryTail(
-        "eligible",
+        AssignmentKind.Eligible,
         it.scheduleInfo?.expiration?.endDateTime,
       )}`,
   );
@@ -32,7 +33,7 @@ export function formatActiveAssignmentsText(items: readonly GroupActiveAssignmen
     `Active PIM group assignments (${String(items.length)}):`,
     "No active PIM group assignments.",
     (it) =>
-      `- ${namedLabel(it.groupId, it.group)} [instance=${it.id}]${expiryTail("active", it.endDateTime)}`,
+      `- ${namedLabel(it.groupId, it.group)} [instance=${it.id}]${expiryTail(AssignmentKind.Active, it.endDateTime)}`,
   );
 }
 

@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type http from "node:http";
 
 import { ArmClient } from "../../src/arm/client.js";
+import { ApprovalDecision } from "../../src/enums.js";
 import {
   approveRoleAzureAssignment,
   listActiveRoleAzureAssignments,
@@ -139,7 +140,13 @@ describe("arm/pim-role-azure", () => {
   it("approveRoleAzureAssignment posts a single batch entry with the inner stages PUT", async () => {
     const approvalId =
       "/providers/Microsoft.Authorization/roleAssignmentApprovals/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-    await approveRoleAzureAssignment(client, approvalId, "Approve", "looks good", testSignal());
+    await approveRoleAzureAssignment(
+      client,
+      approvalId,
+      ApprovalDecision.Approve,
+      "looks good",
+      testSignal(),
+    );
     expect(state.batchRequests).toHaveLength(1);
     const requests = state.batchRequests[0]!.body["requests"] as Record<string, unknown>[];
     expect(requests).toHaveLength(1);
@@ -154,7 +161,7 @@ describe("arm/pim-role-azure", () => {
   });
 
   it("approveRoleAzureAssignment accepts a bare approval UUID", async () => {
-    await approveRoleAzureAssignment(client, "deadbeef", "Deny", "no", testSignal());
+    await approveRoleAzureAssignment(client, "deadbeef", ApprovalDecision.Deny, "no", testSignal());
     const requests = state.batchRequests[0]!.body["requests"] as Record<string, unknown>[];
     expect(String(requests[0]!["url"])).toContain(
       "/roleAssignmentApprovals/deadbeef/stages/deadbeef",
@@ -164,7 +171,7 @@ describe("arm/pim-role-azure", () => {
   it("approveRoleAzureAssignment throws when the inner response is >=400", async () => {
     state.failingApprovals.add("badbad");
     await expect(
-      approveRoleAzureAssignment(client, "badbad", "Approve", "x", testSignal()),
+      approveRoleAzureAssignment(client, "badbad", ApprovalDecision.Approve, "x", testSignal()),
     ).rejects.toThrow(/HTTP 400/);
   });
 });
