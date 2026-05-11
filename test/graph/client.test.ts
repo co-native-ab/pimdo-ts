@@ -275,6 +275,23 @@ describe("GraphClient retry logic", () => {
       await closeServer(server);
     }
   });
+
+  it("throws TypeError when called with a body but no AbortSignal", async () => {
+    const client = new GraphClient("https://example.invalid", "tok");
+    await expect(
+      // Force the bad shape: a non-AbortSignal third arg with no fourth arg.
+      // This is not reachable through the public overloads but guards the
+      // implementation signature.
+      (
+        client.request as unknown as (
+          method: HttpMethod,
+          path: string,
+          bodyOrSignal: unknown,
+          signal?: AbortSignal,
+        ) => Promise<Response>
+      )(HttpMethod.POST, "/x", { hi: 1 }),
+    ).rejects.toThrow(TypeError);
+  });
 });
 
 describe("parseResponse", () => {

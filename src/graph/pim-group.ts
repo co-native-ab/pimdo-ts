@@ -196,15 +196,14 @@ function pickLiveStage(approval: AssignmentApproval, approvalId: string): Assign
   const candidates = approval.stages.filter(
     (s) => s.status === "InProgress" && s.reviewResult === "NotReviewed" && s.assignedToMe === true,
   );
-  if (candidates.length === 0) {
+  const [stage, ...rest] = candidates;
+  if (!stage) {
     throw new Error(`approval ${approvalId} has no live stage assigned to the current user`);
   }
-  if (candidates.length > 1) {
+  if (rest.length > 0) {
     throw new Error(
       `approval ${approvalId} has ${String(candidates.length)} live stages assigned to the current user; expected 1`,
     );
   }
-  // `find` would also work but keeping the error wording consistent.
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return candidates[0]!;
+  return stage;
 }

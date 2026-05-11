@@ -25,11 +25,10 @@ export const pimRoleAzureApprovalReviewTool = buildApprovalReviewTool<RoleAzureA
   approvalListToolName: "pim_role_azure_approval_list",
   listApprovals: (config, signal) => listRoleAzureApprovalRequests(config.armClient, signal),
   approvalId: (r) => r.properties.approvalId,
-  toRow: (r, prefill) => {
+  toRow: (r, approvalId, prefill) => {
     const expanded = r.properties.expandedProperties;
     return {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      id: r.properties.approvalId!,
+      id: approvalId,
       label: roleLabel(r.properties.roleDefinitionId, expanded),
       subtitle: scopeLabel(r.properties.scope, expanded),
       requestor: expanded?.principal?.displayName ?? r.properties.principalId,

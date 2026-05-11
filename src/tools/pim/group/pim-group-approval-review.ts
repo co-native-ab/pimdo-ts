@@ -21,11 +21,10 @@ export const pimGroupApprovalReviewTool = buildApprovalReviewTool<GroupAssignmen
   approvalListToolName: "pim_group_approval_list",
   listApprovals: (config, signal) => listGroupApprovalRequests(config.graphClient, signal),
   approvalId: (r) => r.approvalId,
-  toRow: (r, prefill) => ({
+  toRow: (r, approvalId, prefill) => ({
     // The approval id is what the Graph PATCH uses; the request id is metadata.
-    // The factory's pre-filter guarantees `approvalId` is set.
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    id: r.approvalId!,
+    // The factory resolves the approval id and passes it explicitly.
+    id: approvalId,
     label: r.group?.displayName ?? r.groupId,
     subtitle: r.group?.description ?? r.groupId,
     requestor: r.principal?.displayName ?? r.principalId,
