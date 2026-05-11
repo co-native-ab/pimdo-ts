@@ -14,9 +14,9 @@ import { z } from "zod";
 import { testSignal } from "../helpers.js";
 import {
   GraphClient,
-  GraphRequestError,
   GraphResponseParseError,
   HttpMethod,
+  RequestError,
   parseResponse,
 } from "../../src/graph/client.js";
 
@@ -112,7 +112,7 @@ describe("GraphClient transport", () => {
     }
   });
 
-  it("throws GraphRequestError on 4xx with proper code/message/method/path", async () => {
+  it("throws RequestError on 4xx with proper code/message/method/path", async () => {
     const { server, url } = await makeServer([
       (_req, res) => {
         res.writeHead(404, { "Content-Type": "application/json" });
@@ -123,12 +123,13 @@ describe("GraphClient transport", () => {
       const client = new GraphClient(url, "tok");
       await expect(client.request(HttpMethod.GET, "/some/missing", testSignal())).rejects.toSatisfy(
         (err: unknown) => {
-          const gre = err as GraphRequestError;
+          const gre = err as RequestError;
           return (
-            gre instanceof GraphRequestError &&
+            gre instanceof RequestError &&
+            gre.resource === "graph" &&
             gre.statusCode === 404 &&
             gre.code === "NotFound" &&
-            gre.graphMessage === "not found" &&
+            gre.responseMessage === "not found" &&
             gre.method === "GET" &&
             gre.path === "/some/missing"
           );
@@ -150,11 +151,12 @@ describe("GraphClient transport", () => {
       const client = new GraphClient(url, "tok");
       await expect(client.request(HttpMethod.GET, "/anything", testSignal())).rejects.toSatisfy(
         (err: unknown) => {
-          const gre = err as GraphRequestError;
+          const gre = err as RequestError;
           return (
-            gre instanceof GraphRequestError &&
+            gre instanceof RequestError &&
+            gre.resource === "graph" &&
             gre.code === "UnknownError" &&
-            gre.graphMessage === "something went wrong" &&
+            gre.responseMessage === "something went wrong" &&
             gre.statusCode === 500
           );
         },
@@ -166,7 +168,7 @@ describe("GraphClient transport", () => {
 });
 
 describe("GraphClient timeouts", () => {
-  it("throws GraphRequestError on request timeout", async () => {
+  it("throws RequestError on request timeout", async () => {
     const { server, url } = await makeServer([
       () => {
         // Intentionally hang - never respond
@@ -176,11 +178,12 @@ describe("GraphClient timeouts", () => {
       const timeoutClient = new GraphClient(url, "tok", 100);
       await expect(timeoutClient.request(HttpMethod.GET, "/hang", testSignal())).rejects.toSatisfy(
         (err: unknown) => {
-          const gre = err as GraphRequestError;
+          const gre = err as RequestError;
           return (
-            gre instanceof GraphRequestError &&
+            gre instanceof RequestError &&
+            gre.resource === "graph" &&
             gre.code === "TimeoutError" &&
-            gre.graphMessage.includes("timed out")
+            gre.responseMessage.includes("timed out")
           );
         },
       );
@@ -248,7 +251,7 @@ describe("GraphClient retry logic", () => {
     try {
       const client = new GraphClient(url, "tok", 30000, 3, noDelay);
       await expect(client.request(HttpMethod.GET, "/foo", testSignal())).rejects.toThrow(
-        GraphRequestError,
+        RequestError,
       );
       expect(callCount).toBe(1);
     } finally {
@@ -268,7 +271,7 @@ describe("GraphClient retry logic", () => {
     try {
       const client = new GraphClient(url, "tok", 30000, 2, noDelay);
       await expect(client.request(HttpMethod.GET, "/foo", testSignal())).rejects.toThrow(
-        GraphRequestError,
+        RequestError,
       );
       expect(callCount).toBe(3); // 1 initial + 2 retries
     } finally {

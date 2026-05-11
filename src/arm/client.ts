@@ -1,8 +1,9 @@
 // Lightweight HTTP client for Azure Resource Manager (https://management.azure.com).
 //
-// Thin subclass of {@link BaseHttpClient} that plugs in the ARM error class
-// and the standard `{ error: { code, message } }` envelope. The shared
-// transport (auth, retry/backoff, timeout, logging) lives in the base class.
+// Thin subclass of {@link BaseHttpClient} that plugs in the standard
+// `{ error: { code, message } }` envelope and the `"arm"` resource label.
+// The shared transport (auth, retry/backoff, timeout, logging) lives in
+// the base class.
 
 import {
   BaseHttpClient,
@@ -15,24 +16,10 @@ import {
 } from "../http/base-client.js";
 import type { ZodType } from "zod";
 
-export { HttpMethod, type TokenCredential };
+export { HttpMethod, RequestError, type TokenCredential };
 
 /** ARM error response envelope (re-exported for backward compatibility). */
 export type { ArmErrorEnvelope } from "./types.js";
-
-/** Error thrown when an ARM API request fails. */
-export class ArmRequestError extends RequestError {
-  constructor(
-    method: string,
-    path: string,
-    statusCode: number,
-    code: string,
-    public readonly armMessage: string,
-  ) {
-    super("arm", method, path, statusCode, code, armMessage);
-    this.name = "ArmRequestError";
-  }
-}
 
 /** Error thrown when an ARM API response cannot be parsed/validated. */
 export class ArmResponseParseError extends ResponseParseError {
@@ -62,7 +49,7 @@ export async function parseResponse<T>(
 }
 
 /** HTTP client for Azure Resource Manager using native fetch. */
-export class ArmClient extends BaseHttpClient<ArmRequestError> {
+export class ArmClient extends BaseHttpClient {
   /**
    * @param baseUrl  ARM API base URL (default: https://management.azure.com)
    * @param credential  A TokenCredential whose getToken() is called on every
@@ -82,7 +69,7 @@ export class ArmClient extends BaseHttpClient<ArmRequestError> {
         resource: "arm",
         errorLabel: "ARM API",
         buildRequestError: (method, path, statusCode, code, message) =>
-          new ArmRequestError(method, path, statusCode, code, message),
+          new RequestError("arm", method, path, statusCode, code, message),
         isErrorEnvelope: isStandardErrorEnvelope,
       },
       timeoutMs,

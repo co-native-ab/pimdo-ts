@@ -7,7 +7,7 @@ import { logger } from "../logger.js";
  * Format a caught error into a standard MCP tool error result.
  *
  * Handles AuthenticationRequiredError (returns its message directly),
- * GraphRequestError (message already includes method/path/status), and
+ * RequestError (message already includes method/path/status), and
  * generic Error / unknown values.
  *
  * An optional `prefix` is prepended and `suffix` appended to the message

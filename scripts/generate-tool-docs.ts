@@ -8,7 +8,7 @@
 //   npm run readme:check     # verify both are up-to-date (exit 1 if drift)
 //
 // Wired into `npm run check` (CI gate) so a forgotten regeneration is caught
-// before review. See ADR-0007 (tool descriptor) and AUDIT_PLAN.md Phase 8.
+// before review. See ADR-0007 (tool descriptor).
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

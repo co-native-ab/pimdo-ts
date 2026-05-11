@@ -153,6 +153,60 @@ describe("loopback-security: validateLoopbackPostHeaders", () => {
     if (!result.ok) expect(result.message).toMatch(/Sec-Fetch-Site/);
   });
 
+  it("rejects a Sec-Fetch-Mode that is not navigate/cors/same-origin", () => {
+    const result = validateLoopbackPostHeaders(
+      fakeReq({
+        host: "127.0.0.1:1234",
+        "sec-fetch-mode": "no-cors",
+        "content-type": "application/json",
+      }),
+      { allowedHosts },
+    );
+    expect(result).toMatchObject({ ok: false, status: 403 });
+    if (!result.ok) expect(result.message).toMatch(/Sec-Fetch-Mode/);
+  });
+
+  it("accepts the Sec-Fetch-Mode values produced by fetch() and form submits", () => {
+    for (const mode of ["same-origin", "cors", "navigate"]) {
+      const result = validateLoopbackPostHeaders(
+        fakeReq({
+          host: "127.0.0.1:1234",
+          "sec-fetch-mode": mode,
+          "content-type": "application/json",
+        }),
+        { allowedHosts },
+      );
+      expect(result).toEqual({ ok: true });
+    }
+  });
+
+  it("rejects a Sec-Fetch-Dest that is not empty/document", () => {
+    const result = validateLoopbackPostHeaders(
+      fakeReq({
+        host: "127.0.0.1:1234",
+        "sec-fetch-dest": "image",
+        "content-type": "application/json",
+      }),
+      { allowedHosts },
+    );
+    expect(result).toMatchObject({ ok: false, status: 403 });
+    if (!result.ok) expect(result.message).toMatch(/Sec-Fetch-Dest/);
+  });
+
+  it("accepts the Sec-Fetch-Dest values produced by fetch() and form submits", () => {
+    for (const dest of ["empty", "document"]) {
+      const result = validateLoopbackPostHeaders(
+        fakeReq({
+          host: "127.0.0.1:1234",
+          "sec-fetch-dest": dest,
+          "content-type": "application/json",
+        }),
+        { allowedHosts },
+      );
+      expect(result).toEqual({ ok: true });
+    }
+  });
+
   it("rejects a non-json Content-Type with 415", () => {
     const result = validateLoopbackPostHeaders(
       fakeReq({ host: "127.0.0.1:1234", "content-type": "text/plain" }),
