@@ -16,6 +16,13 @@
 //
 // Returns the parsed Graph payloads — formatting/UI is the tool layer's job.
 
+import {
+  ApprovalStageReviewResult,
+  ApprovalStageStatus,
+  CurrentUserFilter,
+  GraphScheduleAction,
+  type SubmittedApprovalDecision,
+} from "../../enums.js";
 import { GraphClient, HttpMethod, parseResponse } from "../../graph/client.js";
 import {
   AssignmentApproval,
@@ -36,7 +43,7 @@ const ActiveListSchema = collectionSchema(GroupActiveAssignmentSchema);
 const RequestListSchema = collectionSchema(GroupAssignmentRequestSchema);
 
 /** Decision sent to a PIM approval stage. */
-export type ReviewResult = "Approve" | "Deny";
+export type ReviewResult = SubmittedApprovalDecision;
 
 const PRIVILEGED_BASE = "/identityGovernance/privilegedAccess/group";
 
@@ -71,7 +78,7 @@ export async function listMyGroupRequests(
   client: GraphClient,
   signal: AbortSignal,
 ): Promise<GroupAssignmentRequest[]> {
-  return listRequests(client, "principal", signal);
+  return listRequests(client, CurrentUserFilter.Principal, signal);
 }
 
 /** GET pending-approval assignment-schedule requests where I am an approver. */
@@ -79,12 +86,12 @@ export async function listGroupApprovalRequests(
   client: GraphClient,
   signal: AbortSignal,
 ): Promise<GroupAssignmentRequest[]> {
-  return listRequests(client, "approver", signal);
+  return listRequests(client, CurrentUserFilter.Approver, signal);
 }
 
 async function listRequests(
   client: GraphClient,
-  on: "principal" | "approver",
+  on: CurrentUserFilter,
   signal: AbortSignal,
 ): Promise<GroupAssignmentRequest[]> {
   const filter = encodeURIComponent("status eq 'PendingApproval'");
@@ -115,7 +122,7 @@ export async function requestGroupActivation(
 ): Promise<GroupAssignmentRequest> {
   const body = {
     accessId: "member",
-    action: "selfActivate",
+    action: GraphScheduleAction.SelfActivate,
     principalId: params.principalId,
     groupId: params.groupId,
     justification: params.justification,
@@ -138,7 +145,7 @@ export async function requestGroupDeactivation(
 ): Promise<GroupAssignmentRequest> {
   const body = {
     accessId: "member",
-    action: "selfDeactivate",
+    action: GraphScheduleAction.SelfDeactivate,
     principalId: params.principalId,
     groupId: params.groupId,
     justification: params.justification,
@@ -194,7 +201,10 @@ async function getGroupAssignmentApproval(
 
 function pickLiveStage(approval: AssignmentApproval, approvalId: string): AssignmentApprovalStage {
   const candidates = approval.stages.filter(
-    (s) => s.status === "InProgress" && s.reviewResult === "NotReviewed" && s.assignedToMe === true,
+    (s) =>
+      s.status === ApprovalStageStatus.InProgress &&
+      s.reviewResult === ApprovalStageReviewResult.NotReviewed &&
+      s.assignedToMe === true,
   );
   const [stage, ...rest] = candidates;
   if (!stage) {

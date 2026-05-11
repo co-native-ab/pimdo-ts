@@ -1,5 +1,6 @@
 // Plain-text formatters for the pim_role_entra_* read tools.
 
+import { AssignmentKind } from "../../enums.js";
 import type {
   RoleEntraActiveAssignment,
   RoleEntraAssignmentRequest,
@@ -28,7 +29,7 @@ export function formatEligibleAssignmentsText(
     (it) =>
       `- ${namedLabel(it.roleDefinitionId, it.roleDefinition)} @ ${scopeLabel(
         it.directoryScopeId,
-      )} [eligibility=${it.id}]${expiryTail("eligible", it.scheduleInfo?.expiration?.endDateTime)}`,
+      )} [eligibility=${it.id}]${expiryTail(AssignmentKind.Eligible, it.scheduleInfo?.expiration?.endDateTime)}`,
   );
 }
 
@@ -40,7 +41,7 @@ export function formatActiveAssignmentsText(items: readonly RoleEntraActiveAssig
     (it) =>
       `- ${namedLabel(it.roleDefinitionId, it.roleDefinition)} @ ${scopeLabel(
         it.directoryScopeId,
-      )} [instance=${it.id}]${expiryTail("active", it.endDateTime)}`,
+      )} [instance=${it.id}]${expiryTail(AssignmentKind.Active, it.endDateTime)}`,
   );
 }
 

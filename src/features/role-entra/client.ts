@@ -22,6 +22,13 @@
 // surface. Callers pass a separate `betaClient` so we don't conflate
 // beta/v1.0 base URLs.
 
+import {
+  ApprovalStageReviewResult,
+  ApprovalStageStatus,
+  CurrentUserFilter,
+  GraphScheduleAction,
+  type SubmittedApprovalDecision,
+} from "../../enums.js";
 import { GraphClient, HttpMethod, parseResponse } from "../../graph/client.js";
 import {
   AssignmentApprovalStage,
@@ -42,7 +49,7 @@ const ActiveListSchema = collectionSchema(RoleEntraActiveAssignmentSchema);
 const RequestListSchema = collectionSchema(RoleEntraAssignmentRequestSchema);
 
 /** Decision sent to a PIM approval step. */
-export type ReviewResult = "Approve" | "Deny";
+export type ReviewResult = SubmittedApprovalDecision;
 
 const ROLE_BASE = "/roleManagement/directory";
 
@@ -80,7 +87,7 @@ export async function listMyRoleEntraRequests(
   client: GraphClient,
   signal: AbortSignal,
 ): Promise<RoleEntraAssignmentRequest[]> {
-  return listRequests(client, "principal", signal);
+  return listRequests(client, CurrentUserFilter.Principal, signal);
 }
 
 /** GET pending-approval role-assignment-schedule requests where I am an approver. */
@@ -88,12 +95,12 @@ export async function listRoleEntraApprovalRequests(
   client: GraphClient,
   signal: AbortSignal,
 ): Promise<RoleEntraAssignmentRequest[]> {
-  return listRequests(client, "approver", signal);
+  return listRequests(client, CurrentUserFilter.Approver, signal);
 }
 
 async function listRequests(
   client: GraphClient,
-  on: "principal" | "approver",
+  on: CurrentUserFilter,
   signal: AbortSignal,
 ): Promise<RoleEntraAssignmentRequest[]> {
   const filter = encodeURIComponent("status eq 'PendingApproval'");
@@ -124,7 +131,7 @@ export async function requestRoleEntraActivation(
   signal: AbortSignal,
 ): Promise<RoleEntraAssignmentRequest> {
   const body = {
-    action: "selfActivate",
+    action: GraphScheduleAction.SelfActivate,
     principalId: params.principalId,
     roleDefinitionId: params.roleDefinitionId,
     directoryScopeId: params.directoryScopeId,
@@ -148,7 +155,7 @@ export async function requestRoleEntraDeactivation(
   signal: AbortSignal,
 ): Promise<RoleEntraAssignmentRequest> {
   const body = {
-    action: "selfDeactivate",
+    action: GraphScheduleAction.SelfDeactivate,
     principalId: params.principalId,
     roleDefinitionId: params.roleDefinitionId,
     directoryScopeId: params.directoryScopeId,
@@ -211,7 +218,10 @@ function pickLiveStep(
   approvalId: string,
 ): AssignmentApprovalStage {
   const candidates = approval.steps.filter(
-    (s) => s.status === "InProgress" && s.reviewResult === "NotReviewed" && s.assignedToMe === true,
+    (s) =>
+      s.status === ApprovalStageStatus.InProgress &&
+      s.reviewResult === ApprovalStageReviewResult.NotReviewed &&
+      s.assignedToMe === true,
   );
   const [step, ...rest] = candidates;
   if (!step) {

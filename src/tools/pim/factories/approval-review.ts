@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import type { ApproverRowSpec } from "../../../browser/flows/approver.js";
 import { runApproverFlow } from "../../../browser/flows/approver.js";
+import { ApprovalDecision, type SubmittedApprovalDecision } from "../../../enums.js";
 import { UserCancelledError } from "../../../errors.js";
 import type { ServerConfig } from "../../../server-config.js";
 import { logger } from "../../../logger.js";
@@ -35,7 +36,7 @@ export interface ApprovalReviewAdapter<Request> {
   readonly toRow: (
     r: Request,
     approvalId: string,
-    prefill: { decision?: "Approve" | "Deny" | "Skip"; justification?: string },
+    prefill: { decision?: ApprovalDecision; justification?: string },
   ) => ApproverRowSpec;
   readonly label: (r: Request) => string;
   /** Submit the chosen decision for the given approval id. */
@@ -43,7 +44,7 @@ export interface ApprovalReviewAdapter<Request> {
     config: ServerConfig,
     request: Request,
     approvalId: string,
-    decision: "Approve" | "Deny",
+    decision: SubmittedApprovalDecision,
     justification: string,
     signal: AbortSignal,
   ) => Promise<void>;
@@ -53,7 +54,7 @@ function buildInputSchema(approvalListToolName: string) {
   const ItemSchema = z.object({
     approvalId: z.string().min(1).describe(`The approval id from ${approvalListToolName}.`),
     decision: z
-      .enum(["Approve", "Deny", "Skip"])
+      .enum([ApprovalDecision.Approve, ApprovalDecision.Deny, ApprovalDecision.Skip])
       .optional()
       .describe("Optional pre-selected decision."),
     justification: z.string().optional().describe("Optional pre-filled reviewer justification."),
@@ -160,7 +161,7 @@ function pickApprovals<Request>(
   items:
     | {
         approvalId: string;
-        decision?: "Approve" | "Deny" | "Skip";
+        decision?: ApprovalDecision;
         justification?: string;
       }[]
     | undefined,
@@ -169,7 +170,7 @@ function pickApprovals<Request>(
   selected: {
     request: Request;
     approvalId: string;
-    decision?: "Approve" | "Deny" | "Skip";
+    decision?: ApprovalDecision;
     justification?: string;
   }[];
   missing: string[];
@@ -183,7 +184,7 @@ function pickApprovals<Request>(
     const selected: {
       request: Request;
       approvalId: string;
-      decision?: "Approve" | "Deny" | "Skip";
+      decision?: ApprovalDecision;
       justification?: string;
     }[] = [];
     for (const request of all) {
@@ -195,7 +196,7 @@ function pickApprovals<Request>(
   const selected: {
     request: Request;
     approvalId: string;
-    decision?: "Approve" | "Deny" | "Skip";
+    decision?: ApprovalDecision;
     justification?: string;
   }[] = [];
   const missing: string[] = [];

@@ -3,6 +3,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type http from "node:http";
 
+import { ApprovalDecision } from "../../src/enums.js";
 import { GraphClient } from "../../src/graph/client.js";
 import {
   approveGroupAssignment,
@@ -126,7 +127,13 @@ describe("graph/pim-group", () => {
 
   it("approveGroupAssignment patches the live stage with reviewResult+justification", async () => {
     const { request } = state.seedPendingApproval({ groupId: "g1" });
-    await approveGroupAssignment(client, request.approvalId ?? "", "Approve", "ok", testSignal());
+    await approveGroupAssignment(
+      client,
+      request.approvalId ?? "",
+      ApprovalDecision.Approve,
+      "ok",
+      testSignal(),
+    );
     expect(state.patchedStages).toHaveLength(1);
     expect(state.patchedStages[0]?.body).toEqual({ reviewResult: "Approve", justification: "ok" });
   });
@@ -146,7 +153,7 @@ describe("graph/pim-group", () => {
       ],
     });
     await expect(
-      approveGroupAssignment(client, approvalId, "Approve", "x", testSignal()),
+      approveGroupAssignment(client, approvalId, ApprovalDecision.Approve, "x", testSignal()),
     ).rejects.toThrow(/no live stage/);
   });
 });

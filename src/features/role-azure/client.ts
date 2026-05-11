@@ -41,13 +41,14 @@ import {
   RoleAzureEligibleAssignmentSchema,
   type ArmScheduleInfo,
 } from "../../arm/types.js";
+import { ArmScheduleRequestType, type SubmittedApprovalDecision } from "../../enums.js";
 
 const EligibleListSchema = armListSchema(RoleAzureEligibleAssignmentSchema);
 const ActiveListSchema = armListSchema(RoleAzureActiveAssignmentSchema);
 const RequestListSchema = armListSchema(RoleAzureAssignmentRequestSchema);
 
 /** Decision sent to a PIM approval stage. */
-export type ReviewResult = "Approve" | "Deny";
+export type ReviewResult = SubmittedApprovalDecision;
 
 /** API version for `Microsoft.Authorization/role*` resources. */
 export const ARM_ROLES_API_VERSION = "2020-10-01";
@@ -163,7 +164,7 @@ export async function requestRoleAzureActivation(
     properties: {
       principalId: params.principalId,
       roleDefinitionId: params.roleDefinitionId,
-      requestType: "SelfActivate",
+      requestType: ArmScheduleRequestType.SelfActivate,
       justification: params.justification,
       scheduleInfo: params.scheduleInfo,
     },
@@ -188,7 +189,7 @@ export async function requestRoleAzureDeactivation(
     properties: {
       principalId: params.principalId,
       roleDefinitionId: params.roleDefinitionId,
-      requestType: "SelfDeactivate",
+      requestType: ArmScheduleRequestType.SelfDeactivate,
       justification: params.justification,
     },
   };

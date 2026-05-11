@@ -5,6 +5,7 @@ import type {
   RoleAzureAssignmentRequest,
   RoleAzureEligibleAssignment,
 } from "../../arm/types.js";
+import { AssignmentKind } from "../../enums.js";
 import {
   approvalTag,
   expiryTail,
@@ -47,7 +48,7 @@ export function formatEligibleAssignmentsText(
       `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
         it.properties.scope,
         it.properties.expandedProperties,
-      )} [eligibility=${it.id}]${expiryTail("eligible", it.properties.endDateTime)}`,
+      )} [eligibility=${it.id}]${expiryTail(AssignmentKind.Eligible, it.properties.endDateTime)}`,
   );
 }
 
@@ -60,7 +61,7 @@ export function formatActiveAssignmentsText(items: readonly RoleAzureActiveAssig
       `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
         it.properties.scope,
         it.properties.expandedProperties,
-      )} [instance=${it.id}]${expiryTail("active", it.properties.endDateTime)}`,
+      )} [instance=${it.id}]${expiryTail(AssignmentKind.Active, it.properties.endDateTime)}`,
   );
 }
 

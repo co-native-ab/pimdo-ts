@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { RowFormHandle } from "./row-form.js";
 import { runRowForm } from "./row-form.js";
+import { ApprovalDecision, type SubmittedApprovalDecision } from "../../enums.js";
 import type { ApproverRowSpec } from "../../templates/approver.js";
 import { approverPageHtml } from "../../templates/approver.js";
 
@@ -13,7 +14,7 @@ export type { ApproverRowSpec };
 export interface SubmittedDecision {
   /** Echoes `ApproverRowSpec.id`. */
   id: string;
-  decision: "Approve" | "Deny";
+  decision: SubmittedApprovalDecision;
   justification: string;
 }
 
@@ -23,7 +24,7 @@ export interface ApproverResult {
 
 const SubmittedDecisionSchema = z.object({
   id: z.string().min(1),
-  decision: z.enum(["Approve", "Deny"]),
+  decision: z.enum([ApprovalDecision.Approve, ApprovalDecision.Deny]),
   justification: z.string().min(1),
 });
 

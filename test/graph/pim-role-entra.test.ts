@@ -3,6 +3,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type http from "node:http";
 
+import { ApprovalDecision } from "../../src/enums.js";
 import { GraphClient } from "../../src/graph/client.js";
 import {
   approveRoleEntraAssignment,
@@ -135,7 +136,7 @@ describe("graph/pim-role-entra", () => {
     await approveRoleEntraAssignment(
       client,
       request.approvalId ?? "",
-      "Approve",
+      ApprovalDecision.Approve,
       "ok",
       testSignal(),
     );
@@ -157,7 +158,7 @@ describe("graph/pim-role-entra", () => {
       ],
     });
     await expect(
-      approveRoleEntraAssignment(client, approvalId, "Approve", "x", testSignal()),
+      approveRoleEntraAssignment(client, approvalId, ApprovalDecision.Approve, "x", testSignal()),
     ).rejects.toThrow(/no live step/);
   });
 });
