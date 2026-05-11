@@ -17,9 +17,9 @@ import { logger } from "./logger.js";
 import { Resource, type OAuthScope } from "./scopes.js";
 import type { ServerConfig } from "./server-config.js";
 import { AUTH_TOOLS } from "./tools/auth/index.js";
-import { GROUP_TOOLS } from "./tools/pim/group/index.js";
-import { ROLE_AZURE_TOOLS } from "./tools/pim/role-azure/index.js";
-import { ROLE_ENTRA_TOOLS } from "./tools/pim/role-entra/index.js";
+import { GROUP_TOOLS } from "./features/group/tools/index.js";
+import { ROLE_AZURE_TOOLS } from "./features/role-azure/tools/index.js";
+import { ROLE_ENTRA_TOOLS } from "./features/role-entra/tools/index.js";
 import type { AnyTool, ToolEntry } from "./tool-registry.js";
 import { buildInstructions, registerTool, syncToolState } from "./tool-registry.js";
 

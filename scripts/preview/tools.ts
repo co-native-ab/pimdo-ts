@@ -9,17 +9,17 @@ import {
   formatActiveAssignmentsText as fmtAzureActive,
   formatEligibleAssignmentsText as fmtAzureEligible,
   formatRequestsText as fmtAzureRequests,
-} from "../../src/tools/pim/role-azure/format.js";
+} from "../../src/features/role-azure/format.js";
 import {
   formatActiveAssignmentsText as fmtEntraActive,
   formatEligibleAssignmentsText as fmtEntraEligible,
   formatRequestsText as fmtEntraRequests,
-} from "../../src/tools/pim/role-entra/format.js";
+} from "../../src/features/role-entra/format.js";
 import {
   formatActiveAssignmentsText as fmtGroupActive,
   formatEligibleAssignmentsText as fmtGroupEligible,
   formatRequestsText as fmtGroupRequests,
-} from "../../src/tools/pim/group/format.js";
+} from "../../src/features/group/format.js";
 
 import {
   activeFixtures as azureActive,

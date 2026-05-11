@@ -1,4 +1,4 @@
-// Tests for src/arm/pim-role-azure.ts driven by the ARM mock.
+// Tests for src/features/role-azure/client.ts driven by the ARM mock.
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type http from "node:http";
@@ -12,7 +12,7 @@ import {
   listRoleAzureApprovalRequests,
   requestRoleAzureActivation,
   requestRoleAzureDeactivation,
-} from "../../src/arm/pim-role-azure.js";
+} from "../../src/features/role-azure/client.js";
 import { createMockArmServer, MockArmState } from "../mock-arm.js";
 import { testSignal } from "../helpers.js";
 

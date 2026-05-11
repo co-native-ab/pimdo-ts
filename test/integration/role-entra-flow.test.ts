@@ -9,13 +9,13 @@ import type { ServerConfig } from "../../src/index.js";
 import { MockGraphState, createMockGraphServer } from "../mock-graph.js";
 import { fetchCsrfToken, testSignal } from "../helpers.js";
 
-import { pimRoleEntraActiveListTool } from "../../src/tools/pim/role-entra/pim-role-entra-active-list.js";
-import { pimRoleEntraApprovalListTool } from "../../src/tools/pim/role-entra/pim-role-entra-approval-list.js";
-import { pimRoleEntraApprovalReviewTool } from "../../src/tools/pim/role-entra/pim-role-entra-approval-review.js";
-import { pimRoleEntraDeactivateTool } from "../../src/tools/pim/role-entra/pim-role-entra-deactivate.js";
-import { pimRoleEntraEligibleListTool } from "../../src/tools/pim/role-entra/pim-role-entra-eligible-list.js";
-import { pimRoleEntraRequestListTool } from "../../src/tools/pim/role-entra/pim-role-entra-request-list.js";
-import { pimRoleEntraRequestTool } from "../../src/tools/pim/role-entra/pim-role-entra-request.js";
+import { pimRoleEntraActiveListTool } from "../../src/features/role-entra/tools/pim-role-entra-active-list.js";
+import { pimRoleEntraApprovalListTool } from "../../src/features/role-entra/tools/pim-role-entra-approval-list.js";
+import { pimRoleEntraApprovalReviewTool } from "../../src/features/role-entra/tools/pim-role-entra-approval-review.js";
+import { pimRoleEntraDeactivateTool } from "../../src/features/role-entra/tools/pim-role-entra-deactivate.js";
+import { pimRoleEntraEligibleListTool } from "../../src/features/role-entra/tools/pim-role-entra-eligible-list.js";
+import { pimRoleEntraRequestListTool } from "../../src/features/role-entra/tools/pim-role-entra-request-list.js";
+import { pimRoleEntraRequestTool } from "../../src/features/role-entra/tools/pim-role-entra-request.js";
 
 interface Harness {
   config: ServerConfig;

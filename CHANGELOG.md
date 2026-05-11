@@ -58,4 +58,13 @@ audit-driven follow-up work tracked in `AUDIT_PLAN.md` lands.
 
 ### Changed
 
+- Audit Phase 7 (vertical slice refactor — finding A-1): PIM
+  surface-specific code moved from horizontal layering
+  (`src/graph/pim-*.ts`, `src/arm/pim-*.ts`,
+  `src/tools/pim/{group,role-entra,role-azure}/`) into vertical slices
+  under `src/features/<surface>/{client.ts, format.ts, tools/}`. Shared
+  Graph/ARM transport, factories (`src/tools/pim/factories/`), shared
+  formatters (`src/tools/pim/format-shared.ts`), and auth tools
+  (`src/tools/auth/`) stayed put. Behaviour and public API unchanged;
+  ADR-0007 updated.
 - Project reframed from a generic Microsoft Graph MCP to one focused on **Microsoft Entra Privileged Identity Management**.

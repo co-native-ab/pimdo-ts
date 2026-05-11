@@ -26,9 +26,9 @@ process.env["VITEST"] ??= "1";
 const { z } = await import("zod");
 
 const { AUTH_TOOLS } = await import("../src/tools/auth/index.js");
-const { GROUP_TOOLS } = await import("../src/tools/pim/group/index.js");
-const { ROLE_AZURE_TOOLS } = await import("../src/tools/pim/role-azure/index.js");
-const { ROLE_ENTRA_TOOLS } = await import("../src/tools/pim/role-entra/index.js");
+const { GROUP_TOOLS } = await import("../src/features/group/tools/index.js");
+const { ROLE_AZURE_TOOLS } = await import("../src/features/role-azure/tools/index.js");
+const { ROLE_ENTRA_TOOLS } = await import("../src/features/role-entra/tools/index.js");
 type AnyTool = (typeof AUTH_TOOLS)[number];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

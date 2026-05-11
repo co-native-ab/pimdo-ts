@@ -27,6 +27,26 @@ superseded_by: ""
 > equivalents are `AUTH_TOOLS`, `GROUP_TOOLS`, `ROLE_ENTRA_TOOLS`,
 > `ROLE_AZURE_TOOLS`, registered in `src/index.ts`.
 
+> **Update (2026-05-11):** Phase 7 of the audit follow-up moved the
+> per-PIM-surface tool descriptors out of `src/tools/pim/<surface>/`
+> and into `src/features/<surface>/tools/`, co-located with their
+> surface-specific Graph/ARM client wrapper (`client.ts`) and plain-text
+> formatter (`format.ts`). The new layout is:
+>
+> ```
+> src/features/group/{client.ts,format.ts,tools/}
+> src/features/role-entra/{client.ts,format.ts,tools/}
+> src/features/role-azure/{client.ts,format.ts,tools/}
+> ```
+>
+> `src/tools/auth/`, `src/tools/pim/factories/` (shared across all three
+> PIM surfaces), `src/tools/pim/format-shared.ts`, and `src/tools/shared.ts`
+> remain shared and unchanged. The descriptor-per-file pattern,
+> `Tool<Args>` shape, `registerTool(...)` helper, and the
+> "one composition-root loop" structure in `src/index.ts` are all
+> unchanged — only the on-disk grouping moved from horizontal layers
+> (graph/arm/tools) to vertical slices (one folder per PIM surface).
+
 ## Context
 
 pimdo-ts currently exposes ~25 MCP tools spread across six domain modules

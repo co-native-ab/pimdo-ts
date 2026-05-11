@@ -192,6 +192,18 @@ Effort: **S**. Diff: ~100 lines, mostly file rename. Tests already cover
 
 ### Phase 7 — Vertical slice refactor: collapse per-PIM-surface code
 
+✅ **Landed.** PIM surface-specific code moved from horizontal layering
+(`src/graph/pim-*.ts`, `src/arm/pim-*.ts`, `src/tools/pim/<surface>/`) to
+vertical slices under `src/features/<surface>/{client.ts,format.ts,tools/}`.
+Shared transport (`src/graph/{client,me,policies,types}.ts`,
+`src/arm/{client,policies,types}.ts`), shared factories
+(`src/tools/pim/factories/`), shared format helpers
+(`src/tools/pim/format-shared.ts`), shared error helpers
+(`src/tools/shared.ts`), and auth tools (`src/tools/auth/`) stayed put.
+ADR-0007 carries the new on-disk grouping note. No behaviour change.
+
+Original notes (kept for context):
+
 **Touches:** large rename. Net result:
 
 ```

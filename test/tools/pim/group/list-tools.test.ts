@@ -10,10 +10,10 @@ import type { ServerConfig } from "../../../../src/index.js";
 import { MockGraphState, createMockGraphServer } from "../../../mock-graph.js";
 import { testSignal } from "../../../helpers.js";
 
-import { pimGroupActiveListTool } from "../../../../src/tools/pim/group/pim-group-active-list.js";
-import { pimGroupApprovalListTool } from "../../../../src/tools/pim/group/pim-group-approval-list.js";
-import { pimGroupEligibleListTool } from "../../../../src/tools/pim/group/pim-group-eligible-list.js";
-import { pimGroupRequestListTool } from "../../../../src/tools/pim/group/pim-group-request-list.js";
+import { pimGroupActiveListTool } from "../../../../src/features/group/tools/pim-group-active-list.js";
+import { pimGroupApprovalListTool } from "../../../../src/features/group/tools/pim-group-approval-list.js";
+import { pimGroupEligibleListTool } from "../../../../src/features/group/tools/pim-group-eligible-list.js";
+import { pimGroupRequestListTool } from "../../../../src/features/group/tools/pim-group-request-list.js";
 
 interface ToolResult {
   content: { type: string; text: string }[];

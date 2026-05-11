@@ -14,9 +14,9 @@ import { MockArmState, createMockArmServer } from "../../../mock-arm.js";
 import { MockGraphState, createMockGraphServer } from "../../../mock-graph.js";
 import { fetchCsrfToken, testSignal } from "../../../helpers.js";
 
-import { pimRoleAzureApprovalReviewTool } from "../../../../src/tools/pim/role-azure/pim-role-azure-approval-review.js";
-import { pimRoleAzureDeactivateTool } from "../../../../src/tools/pim/role-azure/pim-role-azure-deactivate.js";
-import { pimRoleAzureRequestTool } from "../../../../src/tools/pim/role-azure/pim-role-azure-request.js";
+import { pimRoleAzureApprovalReviewTool } from "../../../../src/features/role-azure/tools/pim-role-azure-approval-review.js";
+import { pimRoleAzureDeactivateTool } from "../../../../src/features/role-azure/tools/pim-role-azure-deactivate.js";
+import { pimRoleAzureRequestTool } from "../../../../src/features/role-azure/tools/pim-role-azure-request.js";
 
 interface ToolResult {
   content: { type: string; text: string }[];

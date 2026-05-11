@@ -9,10 +9,10 @@ import type { ServerConfig } from "../../../../src/index.js";
 import { MockArmState, createMockArmServer } from "../../../mock-arm.js";
 import { testSignal } from "../../../helpers.js";
 
-import { pimRoleAzureActiveListTool } from "../../../../src/tools/pim/role-azure/pim-role-azure-active-list.js";
-import { pimRoleAzureApprovalListTool } from "../../../../src/tools/pim/role-azure/pim-role-azure-approval-list.js";
-import { pimRoleAzureEligibleListTool } from "../../../../src/tools/pim/role-azure/pim-role-azure-eligible-list.js";
-import { pimRoleAzureRequestListTool } from "../../../../src/tools/pim/role-azure/pim-role-azure-request-list.js";
+import { pimRoleAzureActiveListTool } from "../../../../src/features/role-azure/tools/pim-role-azure-active-list.js";
+import { pimRoleAzureApprovalListTool } from "../../../../src/features/role-azure/tools/pim-role-azure-approval-list.js";
+import { pimRoleAzureEligibleListTool } from "../../../../src/features/role-azure/tools/pim-role-azure-eligible-list.js";
+import { pimRoleAzureRequestListTool } from "../../../../src/features/role-azure/tools/pim-role-azure-request-list.js";
 
 interface ToolResult {
   content: { type: string; text: string }[];
