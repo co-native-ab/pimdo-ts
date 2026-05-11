@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest a new capability or improvement
+title: "feat: <short summary>"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion! Please describe the problem first and
+        the proposed solution second — it helps us evaluate alternatives.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is the user-visible gap or pain point? Who hits it and when?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Sketch the change. New MCP tool? New scope? New ADR?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you weighed and why they did not fit.
+    validations:
+      required: false
+  - type: textarea
+    id: scope
+    attributes:
+      label: PIM surface
+      description: Group, Entra-role, Azure-role, auth, transport, build, docs, …?
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Links to Microsoft Graph / ARM docs, related ADRs, mockups.
+    validations:
+      required: false
