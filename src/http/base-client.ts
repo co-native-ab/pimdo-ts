@@ -35,12 +35,13 @@ export interface ErrorEnvelope {
 }
 
 /**
- * Common base for `GraphRequestError` / `ArmRequestError`.
+ * HTTP-level error thrown when a Graph or ARM request fails.
  *
- * Subclasses set `resource` (e.g. `"graph"`, `"arm"`) and may override the
- * formatted `message` shape. Kept as a small named class so callers can do
- * `err instanceof RequestError` for cross-cutting handling without giving
- * up per-resource subtype refinement.
+ * `resource` (`"graph"` / `"arm"`) is the discriminator — callers that
+ * need per-resource handling switch on it rather than `instanceof`-ing
+ * a subclass. Kept as a single named class so cross-cutting handlers
+ * can match `err instanceof RequestError` regardless of the underlying
+ * API.
  */
 export class RequestError extends Error {
   constructor(
@@ -129,19 +130,19 @@ export async function parseResponseGeneric<T>(
 /**
  * Configuration plug-points for `BaseHttpClient` subclasses.
  */
-export interface HttpClientPlugins<RErr extends RequestError> {
+export interface HttpClientPlugins {
   /** Short, lowercase resource label (e.g. `"graph"`, `"arm"`). */
   readonly resource: string;
   /** Friendly resource name for error messages (e.g. `"Graph API"`). */
   readonly errorLabel: string;
-  /** Construct a per-resource RequestError from a parsed envelope. */
+  /** Construct a `RequestError` from a parsed envelope. */
   readonly buildRequestError: (
     method: string,
     path: string,
     statusCode: number,
     code: string,
     message: string,
-  ) => RErr;
+  ) => RequestError;
   /**
    * Detect whether a parsed JSON value matches the per-resource error
    * envelope shape. Both graph and arm currently use `{error:{code,message}}`
@@ -170,20 +171,20 @@ export function isStandardErrorEnvelope(value: unknown): value is ErrorEnvelope 
  * Subclasses contribute their resource label, error class, and (optionally)
  * their own override of `request()` to customise the public type signature.
  */
-export class BaseHttpClient<RErr extends RequestError> {
+export class BaseHttpClient {
   protected readonly baseUrl: string;
   protected readonly timeoutMs: number;
   protected readonly credential: TokenCredential;
   protected readonly maxRetries: number;
   private readonly _delayFn: (ms: number) => Promise<void>;
-  private readonly plugins: HttpClientPlugins<RErr>;
+  private readonly plugins: HttpClientPlugins;
   private static readonly retryableStatusCodes = new Set([429, 503, 504]);
   private static readonly BASE_RETRY_DELAY_MS = 1000;
 
   constructor(
     baseUrl: string,
     credential: TokenCredential | string,
-    plugins: HttpClientPlugins<RErr>,
+    plugins: HttpClientPlugins,
     timeoutMs = 30000,
     maxRetries = 3,
     delayFn?: (ms: number) => Promise<void>,

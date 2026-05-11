@@ -12,7 +12,7 @@ unpatched vulnerabilities — see SECURITY.md for the private channel.
 
 ## Linked issues
 
-<!-- e.g. Closes #123, Refs #456. AUDIT_PLAN.md phase / finding ID is welcome. -->
+<!-- e.g. Closes #123, Refs #456. -->
 
 ## Type of change
 

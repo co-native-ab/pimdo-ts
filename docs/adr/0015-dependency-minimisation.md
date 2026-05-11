@@ -75,9 +75,11 @@ Both clients:
 4. Pin `Accept-Language: en` on every request (Node undici
    defaults it to `*`, which Graph PIM endpoints reject with
    `CultureNotFoundException`).
-5. Surface domain-specific error classes (`GraphRequestError`,
-   `GraphResponseParseError`, `ArmRequestError`, …) so tool
-   handlers can format meaningful failures for the agent.
+5. Surface a single shared `RequestError` (with a `resource`
+   discriminator of `"graph"` / `"arm"`) and per-resource
+   parse-error classes (`GraphResponseParseError`,
+   `ArmResponseParseError`) so tool handlers can format
+   meaningful failures for the agent.
 6. Forward the caller's `AbortSignal` and combine it with a
    per-request timeout via `AbortSignal.any([signal,
 AbortSignal.timeout(timeoutMs)])`. Cancellation propagates
@@ -171,9 +173,9 @@ Adding a new HTTP dependency requires a deliberate Yes — see the
   in this way.
 - **IMP-003:** When adding a new endpoint to either client, mirror
   the existing patterns — typed `parseResponse(...)` with a Zod
-  schema for the response, `GraphRequestError` /
-  `ArmRequestError` for HTTP errors, abort-signal forwarding for
-  cancellation.
+  schema for the response, the shared `RequestError` (with
+  `resource: "graph"` or `"arm"`) for HTTP errors, abort-signal
+  forwarding for cancellation.
 - **IMP-004:** `gh-advisory-database` checks run against
   `package.json` on PRs. New deps must be CVE-clean at the
   proposed version.

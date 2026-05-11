@@ -86,6 +86,11 @@ export interface ValidateOptions {
  *   Missing `Origin` is allowed to keep server-to-server style and
  *   same-origin top-level navigations working in older user agents.
  * - **Sec-Fetch-Site pin** (when present) — best-effort defense in depth.
+ * - **Sec-Fetch-Mode / Sec-Fetch-Dest pins** (when present) — defense in
+ *   depth on top of Sec-Fetch-Site. Modern browsers always send these on
+ *   form submits and `fetch()` calls, with `mode=cors`/`same-origin`/
+ *   `navigate` and `dest=empty`/`document`. Reject values that indicate a
+ *   request initiated from a non-form, non-navigation context.
  * - **Content-Type pin** — must be `application/json` (allowing optional
  *   `; charset=...` parameter). Rejects `text/plain` and HTML form posts
  *   that are normally exempt from CORS preflight.
@@ -114,6 +119,24 @@ export function validateLoopbackPostHeaders(
     return { ok: false, status: 403, message: "Forbidden: invalid Sec-Fetch-Site header" };
   }
 
+  const fetchMode = req.headers["sec-fetch-mode"];
+  if (
+    typeof fetchMode === "string" &&
+    fetchMode.length > 0 &&
+    !ALLOWED_FETCH_MODES.has(fetchMode)
+  ) {
+    return { ok: false, status: 403, message: "Forbidden: invalid Sec-Fetch-Mode header" };
+  }
+
+  const fetchDest = req.headers["sec-fetch-dest"];
+  if (
+    typeof fetchDest === "string" &&
+    fetchDest.length > 0 &&
+    !ALLOWED_FETCH_DESTS.has(fetchDest)
+  ) {
+    return { ok: false, status: 403, message: "Forbidden: invalid Sec-Fetch-Dest header" };
+  }
+
   const contentType = req.headers["content-type"];
   if (typeof contentType !== "string" || !isJsonContentType(contentType)) {
     return { ok: false, status: 415, message: "Unsupported Media Type: expected application/json" };
@@ -121,6 +144,17 @@ export function validateLoopbackPostHeaders(
 
   return { ok: true };
 }
+
+// `<form method="POST">` submits arrive as Sec-Fetch-Mode: navigate;
+// `fetch()` calls from the same origin arrive as same-origin (or cors
+// when explicitly opted in). Reject everything else — no-cors POSTs are
+// the brute-force port-discovery vector we want to keep blocked.
+const ALLOWED_FETCH_MODES = new Set(["same-origin", "cors", "navigate"]);
+
+// Form submits set dest=document; fetch() sets dest=empty. Reject other
+// destinations (image, script, style, …) that would indicate the POST
+// was initiated by a tag the loopback flow never produces.
+const ALLOWED_FETCH_DESTS = new Set(["empty", "document"]);
 
 function isJsonContentType(value: string): boolean {
   // Accept "application/json" with optional parameters like "; charset=utf-8".

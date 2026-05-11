@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 No version has been tagged yet. The first release will be cut once the
-audit-driven follow-up work tracked in `AUDIT_PLAN.md` lands.
+remaining pre-release polish lands.
 
 ### Added
 

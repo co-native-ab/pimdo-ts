@@ -1,9 +1,9 @@
 // Lightweight HTTP client for Microsoft Graph API.
 //
-// Thin subclass of {@link BaseHttpClient} that plugs in the Graph error
-// class and the standard `{ error: { code, message } }` envelope. The
-// shared transport (auth, retry/backoff, timeout, logging) lives in the
-// base class.
+// Thin subclass of {@link BaseHttpClient} that plugs in the standard
+// `{ error: { code, message } }` envelope and the `"graph"` resource
+// label. The shared transport (auth, retry/backoff, timeout, logging)
+// lives in the base class.
 
 import {
   BaseHttpClient,
@@ -16,21 +16,7 @@ import {
 } from "../http/base-client.js";
 import type { ZodType } from "zod";
 
-export { HttpMethod, type TokenCredential };
-
-/** Error thrown when a Graph API request fails. */
-export class GraphRequestError extends RequestError {
-  constructor(
-    method: string,
-    path: string,
-    statusCode: number,
-    code: string,
-    public readonly graphMessage: string,
-  ) {
-    super("graph", method, path, statusCode, code, graphMessage);
-    this.name = "GraphRequestError";
-  }
-}
+export { HttpMethod, RequestError, type TokenCredential };
 
 /** Error thrown when a Graph API response cannot be parsed/validated. */
 export class GraphResponseParseError extends ResponseParseError {
@@ -60,7 +46,7 @@ export async function parseResponse<T>(
 }
 
 /** HTTP client for Microsoft Graph API using native fetch. */
-export class GraphClient extends BaseHttpClient<GraphRequestError> {
+export class GraphClient extends BaseHttpClient {
   /**
    * @param baseUrl  Graph API base URL (default: https://graph.microsoft.com/v1.0)
    * @param credential  A TokenCredential whose getToken() is called on every request,
@@ -80,7 +66,7 @@ export class GraphClient extends BaseHttpClient<GraphRequestError> {
         resource: "graph",
         errorLabel: "Graph API",
         buildRequestError: (method, path, statusCode, code, message) =>
-          new GraphRequestError(method, path, statusCode, code, message),
+          new RequestError("graph", method, path, statusCode, code, message),
         isErrorEnvelope: isStandardErrorEnvelope,
       },
       timeoutMs,

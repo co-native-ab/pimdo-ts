@@ -11,9 +11,9 @@ import { z } from "zod";
 import { testSignal } from "../helpers.js";
 import {
   ArmClient,
-  ArmRequestError,
   ArmResponseParseError,
   HttpMethod,
+  RequestError,
   parseResponse,
 } from "../../src/arm/client.js";
 
@@ -136,7 +136,7 @@ describe("ArmClient transport", () => {
     }
   });
 
-  it("throws ArmRequestError on 4xx with parsed code/message", async () => {
+  it("throws RequestError on 4xx with parsed code/message", async () => {
     const { server, url } = await makeServer([
       (_req, res) => {
         res.writeHead(403, { "Content-Type": "application/json" });
@@ -148,12 +148,13 @@ describe("ArmClient transport", () => {
       await expect(
         client.request(HttpMethod.GET, "/subscriptions/x?api-version=2022-12-01", testSignal()),
       ).rejects.toSatisfy((err: unknown) => {
-        const are = err as ArmRequestError;
+        const are = err as RequestError;
         return (
-          are instanceof ArmRequestError &&
+          are instanceof RequestError &&
+          are.resource === "arm" &&
           are.statusCode === 403 &&
           are.code === "AuthorizationFailed" &&
-          are.armMessage === "no rights" &&
+          are.responseMessage === "no rights" &&
           are.method === "GET"
         );
       });
@@ -173,11 +174,12 @@ describe("ArmClient transport", () => {
       const client = new ArmClient(url, "arm-token");
       await expect(client.request(HttpMethod.GET, "/foo", testSignal())).rejects.toSatisfy(
         (err: unknown) => {
-          const are = err as ArmRequestError;
+          const are = err as RequestError;
           return (
-            are instanceof ArmRequestError &&
+            are instanceof RequestError &&
+            are.resource === "arm" &&
             are.code === "UnknownError" &&
-            are.armMessage === "boom" &&
+            are.responseMessage === "boom" &&
             are.statusCode === 500
           );
         },
@@ -189,7 +191,7 @@ describe("ArmClient transport", () => {
 });
 
 describe("ArmClient timeouts", () => {
-  it("throws ArmRequestError with TimeoutError code", async () => {
+  it("throws RequestError with TimeoutError code", async () => {
     const { server, url } = await makeServer([
       () => {
         // Hang
@@ -199,11 +201,12 @@ describe("ArmClient timeouts", () => {
       const client = new ArmClient(url, "arm-token", 100);
       await expect(client.request(HttpMethod.GET, "/hang", testSignal())).rejects.toSatisfy(
         (err: unknown) => {
-          const are = err as ArmRequestError;
+          const are = err as RequestError;
           return (
-            are instanceof ArmRequestError &&
+            are instanceof RequestError &&
+            are.resource === "arm" &&
             are.code === "TimeoutError" &&
-            are.armMessage.includes("timed out")
+            are.responseMessage.includes("timed out")
           );
         },
       );
@@ -291,7 +294,7 @@ describe("ArmClient retry logic", () => {
     try {
       const client = new ArmClient(url, "arm-token", 30000, 3, noDelay);
       await expect(client.request(HttpMethod.GET, "/foo", testSignal())).rejects.toThrow(
-        ArmRequestError,
+        RequestError,
       );
       expect(callCount).toBe(1);
     } finally {
@@ -311,7 +314,7 @@ describe("ArmClient retry logic", () => {
     try {
       const client = new ArmClient(url, "arm-token", 30000, 2, noDelay);
       await expect(client.request(HttpMethod.GET, "/foo", testSignal())).rejects.toThrow(
-        ArmRequestError,
+        RequestError,
       );
       expect(callCount).toBe(3);
     } finally {
