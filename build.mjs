@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
 
 await esbuild.build({
-  entryPoints: ["src/index.ts"],
+  entryPoints: ["src/main.ts"],
   bundle: true,
   platform: "node",
   target: "node22",
