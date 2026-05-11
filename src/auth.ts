@@ -25,8 +25,14 @@ import { Resource, type OAuthScope, toOAuthScopes, defaultScopes } from "./scope
  * `user_impersonation` for ARM. The token response surfaces the full
  * set of consented scopes for that resource, which we merge into
  * {@link MsalAuthenticator.cachedScopes}.
+ *
+ * Hoisted to module-load constants (typed `string[]` to satisfy MSAL's
+ * `SilentFlowRequest.scopes`) so `tokenForResource` does not re-clone
+ * the array with `[...]` on every call. Treated as read-only by
+ * convention — no code path inside this module mutates them, and MSAL
+ * does not mutate the array it is handed.
  */
-const RESOURCE_PROBE_SCOPES: Readonly<Record<Resource, readonly string[]>> = {
+const RESOURCE_PROBE_SCOPES: Readonly<Record<Resource, string[]>> = {
   [Resource.Graph]: ["User.Read"],
   [Resource.Arm]: ["https://management.azure.com/user_impersonation"],
 };
@@ -209,12 +215,49 @@ async function saveAccount(
   logger.debug("saved account", { path: accountPath });
 }
 
+/**
+ * Schema for the persisted account file. Tightened to the fields MSAL
+ * actually consumes when looking an account up out of the token cache
+ * (`acquireTokenSilent({ account })`) — `homeAccountId`, `environment`,
+ * `tenantId`, `localAccountId` are all keys MSAL hashes into its cache
+ * lookup; `username` is surfaced to the user. Any of them missing means
+ * the file is unusable, so validation should fail fast rather than
+ * limp on with a partially-typed account.
+ *
+ * `.loose()` preserves unknown fields from disk (e.g. future MSAL
+ * additions like `idTokenClaims`, `name`, `nativeAccountId`) so we
+ * don't silently strip them — they pass straight through to MSAL via
+ * the explicit builder below.
+ */
 const AccountInfoSchema = z
   .object({
+    homeAccountId: z.string(),
+    environment: z.string(),
+    tenantId: z.string(),
     username: z.string(),
-    // msal.AccountInfo has more fields, but we only care about username for now.
+    localAccountId: z.string(),
   })
   .loose();
+
+/**
+ * Build a typed `msal.AccountInfo` from a parsed account file. Round-
+ * trips the values through an explicit object literal so the call site
+ * does not need an `as msal.AccountInfo` cast: TypeScript verifies the
+ * shape matches `msal.AccountInfo`'s required fields, and the loose
+ * passthrough is forwarded via the `extras` rest so MSAL still sees
+ * any optional fields persisted on disk.
+ */
+function buildAccountInfo(parsed: z.infer<typeof AccountInfoSchema>): msal.AccountInfo {
+  const { homeAccountId, environment, tenantId, username, localAccountId, ...extras } = parsed;
+  const account: msal.AccountInfo = {
+    homeAccountId,
+    environment,
+    tenantId,
+    username,
+    localAccountId,
+  };
+  return Object.assign(account, extras);
+}
 
 async function loadAccount(
   configDir: string,
@@ -243,7 +286,7 @@ async function loadAccount(
       path: accountPath,
       username: parsed.data.username,
     });
-    return parsed.data as msal.AccountInfo;
+    return buildAccountInfo(parsed.data);
   } catch (err: unknown) {
     if (isNodeError(err) && err.code === "ENOENT") {
       logger.debug("account file not found", { path: accountPath });
@@ -266,6 +309,31 @@ export class MsalAuthenticator implements Authenticator {
   private readonly configDir: string;
   private readonly openBrowser: (url: string) => Promise<void>;
   private cachedScopes: OAuthScope[] = [];
+
+  /**
+   * Lazily-constructed MSAL `PublicClientApplication`. Held for the
+   * lifetime of the authenticator so silent token acquisition does not
+   * pay the cost of building a fresh PCA — and reloading the file
+   * cache plugin — on every Graph or ARM request. Invalidated in
+   * {@link login} (so `prompt: "select_account"` can switch accounts
+   * cleanly) and {@link logout} (so the in-memory token cache is
+   * dropped alongside the on-disk cache files).
+   */
+  private client: msal.PublicClientApplication | null = null;
+
+  /**
+   * Cached `AccountInfo` used to look the signed-in account up in the
+   * MSAL token cache. Populated by {@link login} (from the interactive
+   * result) or lazily by the first {@link tokenForResource} call
+   * (read from disk). Invalidated in {@link login} and {@link logout}
+   * for the same reasons as {@link client}.
+   *
+   * Holding it on the instance avoids the per-request `account.json`
+   * read and closes a small race window where two concurrent silent
+   * acquisitions could both observe a half-written cache during an
+   * atomic rename.
+   */
+  private cachedAccount: msal.AccountInfo | null = null;
 
   constructor(
     clientId: string,
@@ -291,8 +359,15 @@ export class MsalAuthenticator implements Authenticator {
     this.openBrowser = openBrowser;
   }
 
-  private createClient(): msal.PublicClientApplication {
-    return new msal.PublicClientApplication({
+  /**
+   * Return the cached `PublicClientApplication`, constructing one on
+   * first use. Subsequent calls reuse the same instance and its
+   * in-memory copy of the file token cache, avoiding repeated disk
+   * reads on the hot path.
+   */
+  private getClient(): msal.PublicClientApplication {
+    if (this.client !== null) return this.client;
+    this.client = new msal.PublicClientApplication({
       auth: {
         clientId: this.clientId,
         authority: `${AUTHORITY_BASE}/${this.tenantId}`,
@@ -307,13 +382,35 @@ export class MsalAuthenticator implements Authenticator {
         },
       },
     });
+    return this.client;
+  }
+
+  /**
+   * Return the cached `AccountInfo`, loading it from disk on first use
+   * if the authenticator has not yet observed a login during this
+   * process. Returns `null` (rather than throwing) when no account
+   * file exists, so callers can map that to
+   * {@link AuthenticationRequiredError} at the appropriate boundary.
+   */
+  private async loadAccountCached(signal: AbortSignal): Promise<msal.AccountInfo | null> {
+    if (this.cachedAccount !== null) return this.cachedAccount;
+    const account = await loadAccount(this.configDir, signal);
+    if (!account) return null;
+    this.cachedAccount = account;
+    return account;
   }
 
   async login(signal: AbortSignal): Promise<LoginResult> {
     if (signal.aborted) throw signal.reason;
     logger.info("starting browser login");
 
-    const client = this.createClient();
+    // `prompt: "select_account"` invites the user to switch accounts,
+    // so any prior cached PCA / account from this process are now
+    // stale. Drop them and rebuild lazily after the interactive flow.
+    this.client = null;
+    this.cachedAccount = null;
+
+    const client = this.getClient();
     const loopback = createMsalLoopback(this.openBrowser, signal);
 
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -355,6 +452,7 @@ export class MsalAuthenticator implements Authenticator {
       }
 
       await saveAccount(result.account, this.configDir, signal);
+      this.cachedAccount = result.account;
       this.cachedScopes = toOAuthScopes(result.scopes);
       logger.info("browser login successful", {
         resource: Resource.Graph,
@@ -414,8 +512,8 @@ export class MsalAuthenticator implements Authenticator {
 
   async tokenForResource(resource: Resource, signal: AbortSignal): Promise<string> {
     if (signal.aborted) throw signal.reason;
-    const client = this.createClient();
-    const account = await loadAccount(this.configDir, signal);
+    const client = this.getClient();
+    const account = await this.loadAccountCached(signal);
 
     if (!account) {
       throw new AuthenticationRequiredError();
@@ -435,7 +533,11 @@ export class MsalAuthenticator implements Authenticator {
           // gives us a separate cached token per resource. The full set of
           // consented scopes for that resource is returned on `result.scopes`
           // and merged into cachedScopes for the dynamic-tools UI.
-          scopes: [...RESOURCE_PROBE_SCOPES[resource]],
+          //
+          // The scope array is shared per-resource and built once at
+          // module load (`RESOURCE_PROBE_SCOPES`), so no allocation
+          // happens on the hot path here.
+          scopes: RESOURCE_PROBE_SCOPES[resource],
         }),
         signal,
       );
@@ -475,7 +577,12 @@ export class MsalAuthenticator implements Authenticator {
       });
       await this.clearCacheFiles(signal);
     }
+    // Drop the in-memory state alongside the on-disk cache files so a
+    // subsequent `tokenForResource` cannot serve a stale token out of
+    // the previous PCA's in-memory cache.
     this.cachedScopes = [];
+    this.cachedAccount = null;
+    this.client = null;
   }
 
   private async clearCacheFiles(signal: AbortSignal): Promise<void> {
@@ -510,7 +617,7 @@ export class MsalAuthenticator implements Authenticator {
   }
 
   async accountInfo(signal: AbortSignal): Promise<AccountInfo | null> {
-    const account = await loadAccount(this.configDir, signal);
+    const account = await this.loadAccountCached(signal);
     if (!account) return null;
     return { username: account.username };
   }
