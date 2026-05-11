@@ -5,14 +5,8 @@
   "version": "0.0.0",
   "description": "Give your AI assistant scoped access to Microsoft Entra Privileged Identity Management (PIM) for groups, Entra roles, and Azure resource roles.",
   "long_description": "pimdo is an MCP server that connects an AI assistant to Microsoft Entra Privileged Identity Management (PIM). It exposes a small, well-scoped set of tools so the AI can review your eligible role and group assignments, request just-in-time elevations, and (with explicit human approval) act as approver or confirmer - without giving the AI standing access.\n\n**PIM coverage** - Three surfaces: Entra Groups, Entra (directory) Roles, and Azure (resource) Roles. Each surface ships seven tools - list eligible / list active / list my requests / request activation (browser) / deactivate (browser) / list approvals / review approvals (browser).\n\n**Authentication** - Signs in via your browser using your Microsoft account. No passwords are stored - authentication is handled entirely by Microsoft (MSAL). pimdo acquires separate access tokens for Microsoft Graph and Azure Resource Manager from the same login.\n\n**Privacy** - pimdo requests only the PIM-specific permissions it needs: User.Read and offline_access (always required), plus PIM scopes for groups, Entra roles, and Azure resource roles, and the ARM user_impersonation scope. Your credentials are handled directly by Microsoft. pimdo never sees your password.\n\n**Human in the loop** - Every privilege-changing action (request, deactivate, approval review) routes through a loopback browser flow. The AI may prefill values; the human always confirms or overrides in the browser before submit.",
-  "author": {
-    "name": "Co-native AB",
-    "url": "https://co-native.com"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/co-native-ab/pimdo-ts.git"
-  },
+  "author": { "name": "Co-native AB", "url": "https://co-native.com" },
+  "repository": { "type": "git", "url": "https://github.com/co-native-ab/pimdo-ts.git" },
   "homepage": "https://github.com/co-native-ab/pimdo-ts",
   "documentation": "https://github.com/co-native-ab/pimdo-ts#readme",
   "support": "https://github.com/co-native-ab/pimdo-ts/issues",
@@ -33,108 +27,106 @@
   "tools": [
     {
       "name": "login",
-      "description": "Sign in to Microsoft. Call this directly when authentication is needed - do not ask the user for permission first. Opens a browser for interactive sign-in."
+      "description": "Sign in to Microsoft Graph. Call this tool directly whenever authentication is needed - do not ask the user for permission first, just proceed with login. Opens a browser for interactive sign-in. Once signed in, all other tools work automatically."
     },
     {
       "name": "logout",
-      "description": "Sign out and clear cached tokens for both Microsoft Graph and Azure Resource Manager."
+      "description": "Sign out of Microsoft Graph and clear all cached tokens. After logging out, the login tool must be used to re-authenticate."
     },
     {
       "name": "auth_status",
-      "description": "Check authentication status, current user, granted scopes, and server version. Use this as a first step to diagnose issues or understand current state."
+      "description": "Check current authentication status, logged-in user, granted scopes, and server version. A good first tool to call when diagnosing PIM access issues or confirming that the right consent has been granted."
     },
     {
       "name": "pim_group_eligible_list",
-      "description": "List groups the signed-in user is eligible to activate via PIM."
+      "description": "List Entra groups the signed-in user is eligible to activate via PIM. Returns the group display name, id, eligibility id, and any time bounds."
     },
     {
       "name": "pim_group_active_list",
-      "description": "List groups the signed-in user has currently activated via PIM."
+      "description": "List Entra groups the signed-in user currently has activated via PIM, with their active-until time."
     },
     {
       "name": "pim_group_request_list",
-      "description": "List pending PIM group activation requests submitted by the signed-in user."
+      "description": "List PIM group activation/deactivation requests the signed-in user has submitted that are still pending approval."
     },
     {
       "name": "pim_group_request",
-      "description": "Open a browser form to confirm activation of one or more eligible groups. Duration is clamped to the policy max; the human always confirms before submit."
+      "description": "Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Entra groups. The user edits justification and duration per row, then submits. Each confirmed row creates a selfActivate assignment-schedule request via Microsoft Graph."
     },
     {
       "name": "pim_group_deactivate",
-      "description": "Open a browser form to confirm deactivation of one or more active group assignments."
+      "description": "Open a browser form for the signed-in user to confirm deactivation of one or more currently-active PIM group assignments. Each confirmed row submits a selfDeactivate assignment-schedule request via Graph."
     },
     {
       "name": "pim_group_approval_list",
-      "description": "List pending PIM group approvals assigned to the signed-in user as an approver."
+      "description": "List pending PIM group activation requests where the signed-in user is an approver and has not yet recorded a decision."
     },
     {
       "name": "pim_group_approval_review",
-      "description": "Open a browser form to Approve / Deny / Skip pending PIM group approvals. The AI may prefill decisions; the human confirms before submit."
+      "description": "Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM group activation approvals. Each Approve/Deny PATCHes the live approval stage via Microsoft Graph."
     },
     {
       "name": "pim_role_entra_eligible_list",
-      "description": "List Entra (directory) roles the signed-in user is eligible to activate via PIM."
+      "description": "List Entra (directory) roles the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, directory scope, and any time bounds."
     },
     {
       "name": "pim_role_entra_active_list",
-      "description": "List Entra (directory) roles the signed-in user has currently activated via PIM."
+      "description": "List Entra (directory) roles the signed-in user currently has activated via PIM, with their active-until time."
     },
     {
       "name": "pim_role_entra_request_list",
-      "description": "List pending PIM Entra-role activation requests submitted by the signed-in user."
+      "description": "List PIM Entra-role activation/deactivation requests the signed-in user has submitted that are still pending approval."
     },
     {
       "name": "pim_role_entra_request",
-      "description": "Open a browser form to confirm activation of one or more eligible Entra roles. Duration is clamped to the policy max."
+      "description": "Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Entra (directory) roles. The user edits justification and duration per row, then submits. Each confirmed row creates a selfActivate role-assignment-schedule request via Microsoft Graph."
     },
     {
       "name": "pim_role_entra_deactivate",
-      "description": "Open a browser form to confirm deactivation of one or more active Entra-role assignments."
+      "description": "Open a browser form for the signed-in user to confirm deactivation of one or more currently-active PIM Entra-role assignments. Each confirmed row submits a selfDeactivate role-assignment-schedule request via Graph."
     },
     {
       "name": "pim_role_entra_approval_list",
-      "description": "List pending PIM Entra-role approvals assigned to the signed-in user as an approver."
+      "description": "List pending PIM Entra-role activation requests where the signed-in user is an approver and has not yet recorded a decision."
     },
     {
       "name": "pim_role_entra_approval_review",
-      "description": "Open a browser form to Approve / Deny / Skip pending PIM Entra-role approvals."
+      "description": "Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM Entra-role activation approvals. Each Approve/Deny PATCHes the live approval stage via the Microsoft Graph beta endpoint."
     },
     {
       "name": "pim_role_azure_eligible_list",
-      "description": "List Azure resource roles the signed-in user is eligible to activate via PIM."
+      "description": "List Azure resource roles (subscriptions, resource groups, resources) the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, ARM scope, and any time bounds."
     },
     {
       "name": "pim_role_azure_active_list",
-      "description": "List Azure resource roles the signed-in user has currently activated via PIM."
+      "description": "List Azure resource roles the signed-in user currently has activated via PIM, with their active-until time."
     },
     {
       "name": "pim_role_azure_request_list",
-      "description": "List pending PIM Azure-role activation requests submitted by the signed-in user."
+      "description": "List PIM Azure-role activation/deactivation requests the signed-in user has submitted. Does not filter by status — surface all visible schedule requests."
     },
     {
       "name": "pim_role_azure_request",
-      "description": "Open a browser form to confirm activation of one or more eligible Azure resource roles. Duration is clamped to the policy max."
+      "description": "Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Azure resource roles. The user edits justification and duration per row, then submits. Each confirmed row creates a SelfActivate role-assignment-schedule request via Azure Resource Manager."
     },
     {
       "name": "pim_role_azure_deactivate",
-      "description": "Open a browser form to confirm deactivation of one or more active Azure-role assignments."
+      "description": "Open a browser form for the signed-in user to confirm deactivation of one or more currently-active PIM Azure-role assignments. Each confirmed row submits a SelfDeactivate role-assignment-schedule request via Azure Resource Manager."
     },
     {
       "name": "pim_role_azure_approval_list",
-      "description": "List pending PIM Azure-role approvals assigned to the signed-in user as an approver."
+      "description": "List PIM Azure-role activation requests where the signed-in user is an approver. Does not filter by status — surface the full approver-side queue."
     },
     {
       "name": "pim_role_azure_approval_review",
-      "description": "Open a browser form to Approve / Deny / Skip pending PIM Azure-role approvals."
+      "description": "Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM Azure-role activation approvals. Each Approve/Deny submits the decision via Azure Resource Manager `/batch`."
     }
   ],
   "keywords": ["microsoft", "entra", "pim", "privileged-identity-management", "ai-agents", "mcp"],
   "license": "MIT",
   "compatibility": {
     "platforms": ["darwin", "win32", "linux"],
-    "runtimes": {
-      "node": ">=22.0.0"
-    }
+    "runtimes": { "node": ">=22.0.0" }
   },
   "user_config": {
     "debug": {

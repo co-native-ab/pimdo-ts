@@ -58,55 +58,73 @@ node pimdo-ts-vX.Y.Z.js
 
 ## Tools
 
+The tables below are generated from each tool's descriptor (`def.name` + `def.description`) by `npm run readme`. The matching `npm run readme:check` runs in CI to detect drift.
+
 ### Authentication
 
-| Tool          | Purpose                                          |
-| ------------- | ------------------------------------------------ |
-| `login`       | Interactive browser sign-in to Microsoft Entra   |
-| `logout`      | Browser-confirmed sign-out and token cache clear |
-| `auth_status` | Report current sign-in state and granted scopes  |
+<!-- tool-table:auth:start -->
+
+| Tool          | Description                                                                                                                                                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `login`       | Sign in to Microsoft Graph. Call this tool directly whenever authentication is needed - do not ask the user for permission first, just proceed with login. Opens a browser for interactive sign-in. Once signed in, all other tools work automatically. |
+| `logout`      | Sign out of Microsoft Graph and clear all cached tokens. After logging out, the login tool must be used to re-authenticate.                                                                                                                             |
+| `auth_status` | Check current authentication status, logged-in user, granted scopes, and server version. A good first tool to call when diagnosing PIM access issues or confirming that the right consent has been granted.                                             |
+
+<!-- tool-table:auth:end -->
 
 ### PIM for Entra Groups
 
-| Tool                        | Purpose                                                                                 |
-| --------------------------- | --------------------------------------------------------------------------------------- |
-| `pim_group_eligible_list`   | List groups the signed-in user is eligible to activate                                  |
-| `pim_group_active_list`     | List groups the signed-in user has currently activated                                  |
-| `pim_group_request_list`    | List pending PIM group requests submitted by the signed-in user                         |
-| `pim_group_request`         | Open a browser form to confirm activation of one or more groups (clamped to policy max) |
-| `pim_group_deactivate`      | Open a browser form to confirm deactivation of one or more active group assignments     |
-| `pim_group_approval_list`   | List pending PIM group approvals assigned to the signed-in user as approver             |
-| `pim_group_approval_review` | Open a browser form to Approve / Deny / Skip pending PIM group approvals                |
+<!-- tool-table:group:start -->
+
+| Tool                        | Description                                                                                                                                                                                                                                                            |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pim_group_eligible_list`   | List Entra groups the signed-in user is eligible to activate via PIM. Returns the group display name, id, eligibility id, and any time bounds.                                                                                                                         |
+| `pim_group_active_list`     | List Entra groups the signed-in user currently has activated via PIM, with their active-until time.                                                                                                                                                                    |
+| `pim_group_request_list`    | List PIM group activation/deactivation requests the signed-in user has submitted that are still pending approval.                                                                                                                                                      |
+| `pim_group_request`         | Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Entra groups. The user edits justification and duration per row, then submits. Each confirmed row creates a selfActivate assignment-schedule request via Microsoft Graph. |
+| `pim_group_deactivate`      | Open a browser form for the signed-in user to confirm deactivation of one or more currently-active PIM group assignments. Each confirmed row submits a selfDeactivate assignment-schedule request via Graph.                                                           |
+| `pim_group_approval_list`   | List pending PIM group activation requests where the signed-in user is an approver and has not yet recorded a decision.                                                                                                                                                |
+| `pim_group_approval_review` | Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM group activation approvals. Each Approve/Deny PATCHes the live approval stage via Microsoft Graph.                                                               |
+
+<!-- tool-table:group:end -->
 
 The four read tools return plain text the AI can summarise. The three write tools open a loopback browser form ("requester", "approver", "confirmer") so the human always confirms a privilege change before pimdo posts it to Graph.
 
 ### PIM for Entra roles
 
-| Tool                             | Purpose                                                                                          |
-| -------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `pim_role_entra_eligible_list`   | List directory roles the signed-in user is eligible to activate                                  |
-| `pim_role_entra_active_list`     | List directory roles the signed-in user has currently activated                                  |
-| `pim_role_entra_request_list`    | List pending PIM Entra-role requests submitted by the signed-in user                             |
-| `pim_role_entra_request`         | Open a browser form to confirm activation of one or more directory roles (clamped to policy max) |
-| `pim_role_entra_deactivate`      | Open a browser form to confirm deactivation of one or more active Entra-role assignments         |
-| `pim_role_entra_approval_list`   | List pending PIM Entra-role approvals assigned to the signed-in user as approver                 |
-| `pim_role_entra_approval_review` | Open a browser form to Approve / Deny / Skip pending PIM Entra-role approvals                    |
+<!-- tool-table:role-entra:start -->
+
+| Tool                             | Description                                                                                                                                                                                                                                                                            |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pim_role_entra_eligible_list`   | List Entra (directory) roles the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, directory scope, and any time bounds.                                                                                              |
+| `pim_role_entra_active_list`     | List Entra (directory) roles the signed-in user currently has activated via PIM, with their active-until time.                                                                                                                                                                         |
+| `pim_role_entra_request_list`    | List PIM Entra-role activation/deactivation requests the signed-in user has submitted that are still pending approval.                                                                                                                                                                 |
+| `pim_role_entra_request`         | Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Entra (directory) roles. The user edits justification and duration per row, then submits. Each confirmed row creates a selfActivate role-assignment-schedule request via Microsoft Graph. |
+| `pim_role_entra_deactivate`      | Open a browser form for the signed-in user to confirm deactivation of one or more currently-active PIM Entra-role assignments. Each confirmed row submits a selfDeactivate role-assignment-schedule request via Graph.                                                                 |
+| `pim_role_entra_approval_list`   | List pending PIM Entra-role activation requests where the signed-in user is an approver and has not yet recorded a decision.                                                                                                                                                           |
+| `pim_role_entra_approval_review` | Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM Entra-role activation approvals. Each Approve/Deny PATCHes the live approval stage via the Microsoft Graph beta endpoint.                                                        |
+
+<!-- tool-table:role-entra:end -->
 
 The Entra-role approval read/PATCH operations target the Microsoft Graph **`beta`** endpoint, since that is currently the only channel exposing the assignment-approvals surface; the rest of the surface uses `v1.0`.
 
 ### PIM for Azure roles
 
-| Tool                             | Purpose                                                                                               |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `pim_role_azure_eligible_list`   | List Azure resource roles the signed-in user is eligible to activate                                  |
-| `pim_role_azure_active_list`     | List Azure resource roles the signed-in user has currently activated                                  |
-| `pim_role_azure_request_list`    | List pending PIM Azure-role requests submitted by the signed-in user                                  |
-| `pim_role_azure_request`         | Open a browser form to confirm activation of one or more Azure resource roles (clamped to policy max) |
-| `pim_role_azure_deactivate`      | Open a browser form to confirm deactivation of one or more active Azure-role assignments              |
-| `pim_role_azure_approval_list`   | List pending PIM Azure-role approvals assigned to the signed-in user as approver                      |
-| `pim_role_azure_approval_review` | Open a browser form to Approve / Deny / Skip pending PIM Azure-role approvals                         |
+<!-- tool-table:role-azure:start -->
 
-The Azure-role surface talks to the Azure Resource Manager (ARM) API instead of Microsoft Graph. It uses API version `2020-10-01` for the `Microsoft.Authorization/role*` resources, `2021-01-01-preview` for the `roleAssignmentApprovals/.../stages` PUT, and posts approvals via the `2020-06-01` `/batch` endpoint.
+| Tool                             | Description                                                                                                                                                                                                                                                                                |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pim_role_azure_eligible_list`   | List Azure resource roles (subscriptions, resource groups, resources) the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, ARM scope, and any time bounds.                                                               |
+| `pim_role_azure_active_list`     | List Azure resource roles the signed-in user currently has activated via PIM, with their active-until time.                                                                                                                                                                                |
+| `pim_role_azure_request_list`    | List PIM Azure-role activation/deactivation requests the signed-in user has submitted. Does not filter by status — surface all visible schedule requests.                                                                                                                                  |
+| `pim_role_azure_request`         | Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Azure resource roles. The user edits justification and duration per row, then submits. Each confirmed row creates a SelfActivate role-assignment-schedule request via Azure Resource Manager. |
+| `pim_role_azure_deactivate`      | Open a browser form for the signed-in user to confirm deactivation of one or more currently-active PIM Azure-role assignments. Each confirmed row submits a SelfDeactivate role-assignment-schedule request via Azure Resource Manager.                                                    |
+| `pim_role_azure_approval_list`   | List PIM Azure-role activation requests where the signed-in user is an approver. Does not filter by status — surface the full approver-side queue.                                                                                                                                         |
+| `pim_role_azure_approval_review` | Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM Azure-role activation approvals. Each Approve/Deny submits the decision via Azure Resource Manager `/batch`.                                                                         |
+
+<!-- tool-table:role-azure:end -->
+
+The Azure-role surface talks to the Azure Resource Manager (ARM) API instead of Microsoft Graph. It uses API version `2020-10-01` for the `Microsoft.Authorization/role*` resources, `2021-01-01-preview` for the `roleAssignmentApprovals/.../stages` PUT, and posts approvals via the `2020-06-01` `/batch` endpoint. It uses API version `2020-10-01` for the `Microsoft.Authorization/role*` resources, `2021-01-01-preview` for the `roleAssignmentApprovals/.../stages` PUT, and posts approvals via the `2020-06-01` `/batch` endpoint.
 
 JSON Schemas for every tool's input are generated under [`schemas/tools/`](./schemas/tools) from the Zod definitions in `src/tools/` (see `npm run schemas:generate` and the `schemas:check` CI gate).
 
