@@ -31,9 +31,10 @@ export interface ApprovalReviewAdapter<Request> {
   ) => Promise<readonly Request[]>;
   /** Extract the approval id from a request, or `undefined`/`null` if missing. */
   readonly approvalId: (r: Request) => string | null | undefined;
-  /** Render an approval as an approver row. `id` is the approval id. */
+  /** Render an approval as an approver row. `approvalId` is the resolved id. */
   readonly toRow: (
     r: Request,
+    approvalId: string,
     prefill: { decision?: "Approve" | "Deny" | "Skip"; justification?: string },
   ) => ApproverRowSpec;
   readonly label: (r: Request) => string;
@@ -90,7 +91,10 @@ export function buildApprovalReviewTool<Request>(
         }
 
         const rows: ApproverRowSpec[] = selected.map((s) =>
-          adapter.toRow(s.request, { decision: s.decision, justification: s.justification }),
+          adapter.toRow(s.request, s.approvalId, {
+            decision: s.decision,
+            justification: s.justification,
+          }),
         );
 
         const handle = await runApproverFlow({ rows }, signal);
@@ -104,9 +108,7 @@ export function buildApprovalReviewTool<Request>(
 
         const result = await handle.result;
 
-        const requestByApprovalId = new Map(
-          selected.map((s) => [adapter.approvalId(s.request) ?? "", s.request]),
-        );
+        const requestByApprovalId = new Map(selected.map((s) => [s.approvalId, s.request]));
         const summaries: string[] = [];
         const errors: string[] = [];
         const missingTail =
@@ -166,6 +168,7 @@ function pickApprovals<Request>(
 ): {
   selected: {
     request: Request;
+    approvalId: string;
     decision?: "Approve" | "Deny" | "Skip";
     justification?: string;
   }[];
@@ -177,13 +180,21 @@ function pickApprovals<Request>(
     if (id) byApprovalId.set(id, r);
   }
   if (!items || items.length === 0) {
-    return {
-      selected: all.filter((r) => Boolean(getApprovalId(r))).map((request) => ({ request })),
-      missing: [],
-    };
+    const selected: {
+      request: Request;
+      approvalId: string;
+      decision?: "Approve" | "Deny" | "Skip";
+      justification?: string;
+    }[] = [];
+    for (const request of all) {
+      const id = getApprovalId(request);
+      if (id) selected.push({ request, approvalId: id });
+    }
+    return { selected, missing: [] };
   }
   const selected: {
     request: Request;
+    approvalId: string;
     decision?: "Approve" | "Deny" | "Skip";
     justification?: string;
   }[] = [];
@@ -194,7 +205,12 @@ function pickApprovals<Request>(
       missing.push(item.approvalId);
       continue;
     }
-    selected.push({ request, decision: item.decision, justification: item.justification });
+    selected.push({
+      request,
+      approvalId: item.approvalId,
+      decision: item.decision,
+      justification: item.justification,
+    });
   }
   return { selected, missing };
 }

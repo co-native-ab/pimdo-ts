@@ -29,9 +29,8 @@ export const pimRoleEntraApprovalReviewTool = buildApprovalReviewTool<RoleEntraA
   approvalListToolName: "pim_role_entra_approval_list",
   listApprovals: (config, signal) => listRoleEntraApprovalRequests(config.graphClient, signal),
   approvalId: (r) => r.approvalId,
-  toRow: (r, prefill) => ({
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    id: r.approvalId!,
+  toRow: (r, approvalId, prefill) => ({
+    id: approvalId,
     label: r.roleDefinition?.displayName ?? r.roleDefinitionId,
     subtitle: `${scopeLabel(r.directoryScopeId)} — ${
       r.roleDefinition?.description ?? r.roleDefinitionId

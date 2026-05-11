@@ -170,9 +170,9 @@ multi-resource probe + concurrent `tokenForResource` calls.
 `src/tools/pim/factories/approval-review.ts`, `src/graph/pim-group.ts`,
 `src/graph/pim-role-entra.ts`.
 
-- **A-5** Introduce a narrow `WithApprovalId<T>` helper applied immediately after the list endpoint returns, so the approval-review tool descriptors no longer need the assertion.
-- **A-6** Replace the `request()` overload-signature non-null assertion in `src/http/base-client.ts:204` with a union argument shape or split into `request` / `requestWithBody`.
-- Remove the index-lookup non-null assertions in `src/graph/pim-group.ts:208` and `src/graph/pim-role-entra.ts:224` once the upstream schema branding is in place.
+- **A-5** ✅ The approval-review factory now resolves the approval id once in `pickApprovals` and threads it through to the per-surface `toRow` adapter as an explicit parameter, so the three `r.approvalId!` assertions are gone (no structural brand needed — the resolved id was already present, it just wasn't carried through).
+- **A-6** ✅ `BaseHttpClient.request()` reorders the overload narrowing (`signalArg !== undefined` first) and throws a `TypeError` for the invalid shape; no non-null assertion. The retry-loop tail in `performRequest()` now decides retryable + last-attempt inside the loop, so each iteration either returns or throws — the post-loop `lastError!` is replaced with an unreachable guard.
+- ✅ The index-lookup non-null assertions in `pickLiveStage` (`src/graph/pim-group.ts`) and `pickLiveStep` (`src/graph/pim-role-entra.ts`) are removed via `const [first, ...rest] = candidates;` destructuring.
 
 Effort: **M**. Diff: ~100 lines, no behavior change. ESLint disables
 removed.

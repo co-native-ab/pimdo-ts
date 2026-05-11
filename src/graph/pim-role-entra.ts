@@ -213,14 +213,14 @@ function pickLiveStep(
   const candidates = approval.steps.filter(
     (s) => s.status === "InProgress" && s.reviewResult === "NotReviewed" && s.assignedToMe === true,
   );
-  if (candidates.length === 0) {
+  const [step, ...rest] = candidates;
+  if (!step) {
     throw new Error(`approval ${approvalId} has no live step assigned to the current user`);
   }
-  if (candidates.length > 1) {
+  if (rest.length > 0) {
     throw new Error(
       `approval ${approvalId} has ${String(candidates.length)} live steps assigned to the current user; expected 1`,
     );
   }
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return candidates[0]!;
+  return step;
 }

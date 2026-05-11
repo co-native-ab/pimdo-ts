@@ -212,13 +212,17 @@ export class BaseHttpClient<RErr extends RequestError> {
   ): Promise<Response> {
     let body: unknown;
     let signal: AbortSignal;
-    if (bodyOrSignal instanceof AbortSignal) {
+    if (signalArg !== undefined) {
+      // 4-arg overload: (method, path, body, signal).
+      body = bodyOrSignal;
+      signal = signalArg;
+    } else if (bodyOrSignal instanceof AbortSignal) {
+      // 3-arg overload: (method, path, signal).
       body = undefined;
       signal = bodyOrSignal;
     } else {
-      body = bodyOrSignal;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      signal = signalArg!;
+      // Neither overload matched — caller passed a body without a signal.
+      throw new TypeError("BaseHttpClient.request: missing AbortSignal");
     }
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -277,7 +281,6 @@ export class BaseHttpClient<RErr extends RequestError> {
       baseInit.body = body;
     }
 
-    let lastError: RErr | undefined;
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       if (signal.aborted) throw signal.reason;
 
@@ -327,27 +330,27 @@ export class BaseHttpClient<RErr extends RequestError> {
 
       const error = this.plugins.buildRequestError(method, path, response.status, code, message);
 
-      if (attempt < this.maxRetries && BaseHttpClient.retryableStatusCodes.has(response.status)) {
-        const delayMs = parseRetryAfter(response.headers.get("Retry-After"), attempt);
-        logger.info(`${this.plugins.resource} retry`, {
-          method,
-          path,
-          status: response.status,
-          attempt: attempt + 1,
-          delayMs,
-          code,
-          message,
-        });
-        await this._delayFn(delayMs);
-        lastError = error;
-        continue;
+      const isRetryable = BaseHttpClient.retryableStatusCodes.has(response.status);
+      const isLastAttempt = attempt >= this.maxRetries;
+      if (!isRetryable || isLastAttempt) {
+        throw error;
       }
-      throw error;
+
+      const delayMs = parseRetryAfter(response.headers.get("Retry-After"), attempt);
+      logger.info(`${this.plugins.resource} retry`, {
+        method,
+        path,
+        status: response.status,
+        attempt: attempt + 1,
+        delayMs,
+        code,
+        message,
+      });
+      await this._delayFn(delayMs);
     }
-    // lastError is always set when the loop exits without throwing (all
-    // attempts were retryable and exhausted), so the non-null assertion is safe.
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    throw lastError!;
+    // Unreachable: each iteration either returns or throws.
+    /* v8 ignore next */
+    throw new Error("BaseHttpClient.performRequest: retry loop completed without returning");
   }
 }
 
