@@ -738,9 +738,10 @@ describe("MsalAuthenticator caching", () => {
     // First call: must read from disk.
     await auth.tokenForResource(Resource.Graph, testSignal());
 
-    // Replace the on-disk file with junk so any second read would fail
-    // validation. If the implementation re-reads, the next call throws.
-    await fs.writeFile(accountPath, "not-json{{{");
+    // Delete the on-disk file so any second read would fail with ENOENT
+    // (which loadAccount maps to `undefined` → AuthenticationRequiredError).
+    // If the implementation re-reads, the next call rejects.
+    await fs.unlink(accountPath);
 
     await expect(auth.tokenForResource(Resource.Graph, testSignal())).resolves.toBeDefined();
   });
@@ -809,13 +810,18 @@ describe("MsalAuthenticator caching", () => {
     );
     await fs.writeFile(path.join(dir, "msal_cache.json"), "{}");
 
-    const openBrowser = makeBrowserSpy("/confirm");
+    // Use the silent-clear path (openBrowser rejects) so this test does
+    // not depend on a real loopback server — keeps the assertion focused
+    // on the in-memory cache invalidation rather than the browser flow.
+    const openBrowser = vi
+      .fn<(url: string) => Promise<void>>()
+      .mockRejectedValue(new Error("no browser available"));
     const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
 
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenSilent.mockResolvedValue(authResult({ accessToken: "t" }));
 
-    // Prime the cache.
+    // Prime the in-memory cache (account + PCA).
     await auth.tokenForResource(Resource.Graph, testSignal());
 
     const ctor = vi.mocked(msal.PublicClientApplication);
@@ -823,11 +829,12 @@ describe("MsalAuthenticator caching", () => {
 
     await auth.logout(testSignal());
 
-    // accountInfo must read from disk; with the file deleted, returns null.
+    // Files were deleted by clearCacheFiles, and the in-memory account
+    // cache was cleared — accountInfo must hit disk (ENOENT → null).
     expect(await auth.accountInfo(testSignal())).toBeNull();
 
     // Subsequent tokenForResource after logout has no account file and
-    // must rebuild the PCA (next time it is needed).
+    // must rebuild the PCA on next use.
     await expect(auth.tokenForResource(Resource.Graph, testSignal())).rejects.toThrow(
       AuthenticationRequiredError,
     );
@@ -864,5 +871,56 @@ describe("MsalAuthenticator caching", () => {
     const passedAccount = firstCallArg?.account;
     expect(passedAccount?.["name"]).toBe("User Example");
     expect(passedAccount?.["nativeAccountId"]).toBe("native-1");
+  });
+});
+
+// =========================================================================
+// MsalAuthenticator — abort signal handling
+// =========================================================================
+
+describe("MsalAuthenticator abort handling", () => {
+  function abortedSignal(): AbortSignal {
+    const controller = new AbortController();
+    controller.abort(new Error("pre-aborted"));
+    return controller.signal;
+  }
+
+  it("tokenForResource rejects immediately when the signal is already aborted", async () => {
+    const dir = getTempDir();
+    const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
+
+    // No fake PCA installed — if we got past the abort check we'd
+    // throw on `new msal.PublicClientApplication(...)`, which is also
+    // a failure mode but would mask the early-return path under test.
+    installFakePCA();
+
+    await expect(auth.tokenForResource(Resource.Graph, abortedSignal())).rejects.toThrow(
+      /pre-aborted/,
+    );
+  });
+
+  it("login rejects immediately when the signal is already aborted", async () => {
+    const dir = getTempDir();
+    const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
+
+    installFakePCA();
+
+    await expect(auth.login(abortedSignal())).rejects.toThrow(/pre-aborted/);
+  });
+
+  it("re-throws non-ENOENT errors when reading the account file", async () => {
+    const dir = getTempDir();
+    await fs.mkdir(dir, { recursive: true });
+    // Create account.json as a *directory* so fs.readFile fails with
+    // EISDIR (or similar) — not ENOENT and not a JSON parse error,
+    // exercising the `throw err` branch in loadAccount.
+    await fs.mkdir(path.join(dir, "account.json"));
+
+    const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
+    const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
+
+    await expect(auth.accountInfo(testSignal())).rejects.toThrow();
   });
 });
