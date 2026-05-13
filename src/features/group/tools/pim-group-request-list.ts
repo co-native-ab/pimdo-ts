@@ -4,9 +4,9 @@
 import type { ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { listMyGroupRequests } from "../client.js";
+import { GROUP_PIM_RW_SCOPES, listMyGroupRequests } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
-import { OAuthScope } from "../../../scopes.js";
+import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { formatRequestsText } from "../format.js";
@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List PIM group activation/deactivation requests the signed-in user " +
     "has submitted that are still pending approval.",
-  requiredScopes: [[OAuthScope.PrivilegedAccessReadWriteAzureADGroup]],
+  requiredScopes: deriveRequiredScopes([GROUP_PIM_RW_SCOPES]),
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

@@ -4,7 +4,8 @@
 
 import { approveRoleAzureAssignment, listRoleAzureApprovalRequests } from "../client.js";
 import type { RoleAzureAssignmentRequest } from "../../../arm/types.js";
-import { OAuthScope } from "../../../scopes.js";
+import { deriveRequiredScopes } from "../../../scopes-runtime.js";
+import { ROLE_AZURE_SCOPES } from "../client.js";
 import { buildApprovalReviewTool } from "../../../tools/pim/factories/approval-review.js";
 import { roleLabel, scopeLabel } from "../format.js";
 
@@ -16,7 +17,7 @@ export const pimRoleAzureApprovalReviewTool = buildApprovalReviewTool<RoleAzureA
       "Open a browser form for the signed-in user (acting as approver) to " +
       "Approve, Deny, or Skip pending PIM Azure-role activation approvals. " +
       "Each Approve/Deny submits the decision via Azure Resource Manager `/batch`.",
-    requiredScopes: [[OAuthScope.ArmUserImpersonation]],
+    requiredScopes: deriveRequiredScopes([ROLE_AZURE_SCOPES]),
   },
   noun: "PIM Azure-role",
   approvalListToolName: "pim_role_azure_approval_list",

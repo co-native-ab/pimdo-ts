@@ -23,10 +23,21 @@ export enum HttpMethod {
  * Analogous to Azure.Identity's TokenCredential. Implemented by
  * `Authenticator` — handles caching, silent refresh, and throws
  * `AuthenticationRequiredError` when interaction is needed.
+ *
+ * Optional `grantedScopes` exposes the OAuth scopes the credential
+ * believes are currently granted (i.e. the consented set on the
+ * signed-in account). When present, `BaseHttpClient.assertScopes`
+ * uses it to fail fast with a `MissingScopeError` before attempting
+ * an HTTP call that the server would reject. Test credentials that
+ * are constructed from a plain string token do not implement it,
+ * which makes scope checking opt-in by credential rather than by
+ * call site.
  */
 export interface TokenCredential {
   /** Acquire a (possibly cached / silently-refreshed) access token. */
   getToken(signal: AbortSignal): Promise<string>;
+  /** Return the OAuth scopes currently granted, if known. */
+  grantedScopes?(signal: AbortSignal): Promise<readonly string[]>;
 }
 
 /** Common-shape error envelope. Both Graph and ARM use `{ error: { code, message } }`. */
@@ -174,7 +185,15 @@ export function isStandardErrorEnvelope(value: unknown): value is ErrorEnvelope 
 export class BaseHttpClient {
   protected readonly baseUrl: string;
   protected readonly timeoutMs: number;
-  protected readonly credential: TokenCredential;
+  /**
+   * Public so feature client functions can pass it to
+   * {@link assertScopes} without taking a separate Authenticator
+   * parameter. The {@link TokenCredential.grantedScopes} hook makes
+   * scope enforcement opt-in per credential — production credentials
+   * (the real `Authenticator`) implement it; tests that pass a plain
+   * string token do not, and the scope check is skipped.
+   */
+  readonly credential: TokenCredential;
   protected readonly maxRetries: number;
   private readonly _delayFn: (ms: number) => Promise<void>;
   private readonly plugins: HttpClientPlugins;

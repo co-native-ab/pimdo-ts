@@ -4,9 +4,9 @@
 import type { ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { listRoleEntraApprovalRequests } from "../client.js";
+import { LIST_ROLE_ENTRA_REQUESTS_SCOPES, listRoleEntraApprovalRequests } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
-import { OAuthScope } from "../../../scopes.js";
+import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { formatRequestsText } from "../format.js";
@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List pending PIM Entra-role activation requests where the signed-in user " +
     "is an approver and has not yet recorded a decision.",
-  requiredScopes: [[OAuthScope.RoleManagementReadWriteDirectory]],
+  requiredScopes: deriveRequiredScopes([LIST_ROLE_ENTRA_REQUESTS_SCOPES]),
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
