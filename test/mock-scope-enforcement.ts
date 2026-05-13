@@ -46,9 +46,19 @@ export function mockTokenForScopes(scopes: readonly OAuthScope[]): string {
  */
 export function parseBearerScopes(authHeader: string | undefined): OAuthScope[] | null {
   if (!authHeader) return null;
-  const m = /^Bearer\s+(.+)$/i.exec(authHeader);
-  if (!m) return null;
-  const token = (m[1] ?? "").trim();
+  // Avoid a regex with overlapping `\s+` and `.+` quantifiers (CodeQL
+  // js/polynomial-redos). Parse the scheme manually instead.
+  const SCHEME = "bearer";
+  if (
+    authHeader.length < SCHEME.length ||
+    authHeader.slice(0, SCHEME.length).toLowerCase() !== SCHEME
+  ) {
+    return null;
+  }
+  const rest = authHeader.slice(SCHEME.length);
+  // Require at least one whitespace separator between scheme and token.
+  if (rest.length === 0 || !/^\s/.test(rest)) return null;
+  const token = rest.trim();
   if (!token.startsWith(PREFIX)) return null;
   const csv = token.slice(PREFIX.length);
   if (csv === "") return [];
