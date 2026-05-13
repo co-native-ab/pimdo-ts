@@ -215,6 +215,7 @@ npm run check          # format + icons + schemas + lint + typecheck + tests
 npm run build          # produces dist/index.js
 npm run mcpb           # produces pimdo.mcpb (uses dist/)
 node dist/index.js     # starts the MCP server on stdio
+npm run docs:check     # network-only: verify @see learn.microsoft.com URLs resolve
 ```
 
 `npm run schemas:generate` regenerates `schemas/tools/*.json` from the Zod input schemas in `src/tools/`. The matching `schemas:check` runs in CI to detect drift.

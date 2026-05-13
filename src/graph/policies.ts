@@ -44,7 +44,7 @@ const END_USER_ASSIGNMENT_RULE_ID = "Expiration_EndUser_Assignment";
  * with `scopeType eq 'Group'`. Reads the activation policy attached
  * to a PIM-managed Entra group.
  *
- * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-rolemanagementpolicyassignments?view=graph-rest-1.0&tabs=http#permissions
+ * @see https://learn.microsoft.com/en-us/graph/api/policyroot-list-rolemanagementpolicyassignments?view=graph-rest-1.0&tabs=http#permissions
  */
 export const GET_GROUP_MAX_DURATION_SCOPES: OAuthScope[][] = [
   [OAuthScope.RoleManagementPolicyReadAzureADGroup],
@@ -102,7 +102,7 @@ export async function getGroupMaxDuration(
  * with `scopeType eq 'Directory'`. Reads the activation policy attached
  * to a PIM-managed Entra (directory) role.
  *
- * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-rolemanagementpolicyassignments?view=graph-rest-1.0&tabs=http#permissions
+ * @see https://learn.microsoft.com/en-us/graph/api/policyroot-list-rolemanagementpolicyassignments?view=graph-rest-1.0&tabs=http#permissions
  */
 export const GET_DIRECTORY_ROLE_MAX_DURATION_SCOPES: OAuthScope[][] = [
   [OAuthScope.RoleManagementPolicyReadDirectory],

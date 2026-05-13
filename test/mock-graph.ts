@@ -22,6 +22,24 @@
 import http from "node:http";
 
 import { jsonResponse, readJson, startMockServer } from "./mock-server-base.js";
+import { enforceScopes } from "./mock-scope-enforcement.js";
+import {
+  GROUP_PIM_RW_SCOPES,
+  LIST_ACTIVE_GROUP_SCOPES,
+  LIST_ELIGIBLE_GROUP_SCOPES,
+} from "../src/features/group/client.js";
+import {
+  APPROVE_ROLE_ENTRA_SCOPES,
+  LIST_ACTIVE_ROLE_ENTRA_SCOPES,
+  LIST_ELIGIBLE_ROLE_ENTRA_SCOPES,
+  LIST_ROLE_ENTRA_REQUESTS_SCOPES,
+  ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES,
+} from "../src/features/role-entra/client.js";
+import { GET_MY_OBJECT_ID_SCOPES } from "../src/graph/me.js";
+import {
+  GET_DIRECTORY_ROLE_MAX_DURATION_SCOPES,
+  GET_GROUP_MAX_DURATION_SCOPES,
+} from "../src/graph/policies.js";
 import type {
   AssignmentApproval,
   AssignmentApprovalStage,
@@ -288,6 +306,7 @@ async function handleRequest(
 
   // GET /me
   if (method === "GET" && pathname === "/me") {
+    if (!enforceScopes(req, res, GET_MY_OBJECT_ID_SCOPES, errorResponse)) return;
     return jsonResponse(res, 200, state.me);
   }
 
@@ -298,6 +317,7 @@ async function handleRequest(
     method === "GET" &&
     pathname === `${PIM}/eligibilitySchedules/filterByCurrentUser(on='principal')`
   ) {
+    if (!enforceScopes(req, res, LIST_ELIGIBLE_GROUP_SCOPES, errorResponse)) return;
     return jsonResponse(res, 200, { value: state.eligibilitySchedules });
   }
 
@@ -305,6 +325,7 @@ async function handleRequest(
     method === "GET" &&
     pathname === `${PIM}/assignmentScheduleInstances/filterByCurrentUser(on='principal')`
   ) {
+    if (!enforceScopes(req, res, LIST_ACTIVE_GROUP_SCOPES, errorResponse)) return;
     return jsonResponse(res, 200, { value: state.assignmentScheduleInstances });
   }
 
@@ -314,6 +335,7 @@ async function handleRequest(
       pathname,
     );
   if (method === "GET" && reqListMatch) {
+    if (!enforceScopes(req, res, GROUP_PIM_RW_SCOPES, errorResponse)) return;
     const on = reqListMatch[1] as "principal" | "approver";
     const all = on === "principal" ? state.myRequests : state.approverRequests;
     const filter = parsed.searchParams.get("$filter");
@@ -323,6 +345,7 @@ async function handleRequest(
 
   // POST assignmentScheduleRequests
   if (method === "POST" && pathname === `${PIM}/assignmentScheduleRequests`) {
+    if (!enforceScopes(req, res, GROUP_PIM_RW_SCOPES, errorResponse)) return;
     const body = await readJson(req);
     state.submittedRequests.push({ body, method, path: pathname });
     const created: GroupAssignmentRequest = {
@@ -342,6 +365,7 @@ async function handleRequest(
   const approvalGet =
     /^\/identityGovernance\/privilegedAccess\/group\/assignmentApprovals\/([^/]+)$/.exec(pathname);
   if (method === "GET" && approvalGet) {
+    if (!enforceScopes(req, res, GROUP_PIM_RW_SCOPES, errorResponse)) return;
     const approvalId = approvalGet[1] ?? "";
     const approval = state.approvals.get(approvalId);
     if (!approval) return errorResponse(res, 404, "NotFound", `approval ${approvalId} not found`);
@@ -353,6 +377,7 @@ async function handleRequest(
       pathname,
     );
   if (method === "PATCH" && stagePatch) {
+    if (!enforceScopes(req, res, GROUP_PIM_RW_SCOPES, errorResponse)) return;
     const approvalId = stagePatch[1] ?? "";
     const stageId = stagePatch[2] ?? "";
     const approval = state.approvals.get(approvalId);
@@ -373,6 +398,11 @@ async function handleRequest(
   if (method === "GET" && pathname === "/policies/roleManagementPolicyAssignments") {
     const filter = parsed.searchParams.get("$filter") ?? "";
     const scopeType = extractScopeTypeFromPolicyFilter(filter);
+    const policyScopes =
+      scopeType === "Directory"
+        ? GET_DIRECTORY_ROLE_MAX_DURATION_SCOPES
+        : GET_GROUP_MAX_DURATION_SCOPES;
+    if (!enforceScopes(req, res, policyScopes, errorResponse)) return;
     if (scopeType === "Directory") {
       const scopeId = extractScopeIdFromPolicyFilter(filter);
       const roleDefinitionId = extractRoleDefinitionIdFromPolicyFilter(filter);
@@ -426,6 +456,7 @@ async function handleRequest(
     method === "GET" &&
     pathname === `${ROLE}/roleEligibilitySchedules/filterByCurrentUser(on='principal')`
   ) {
+    if (!enforceScopes(req, res, LIST_ELIGIBLE_ROLE_ENTRA_SCOPES, errorResponse)) return;
     return jsonResponse(res, 200, { value: state.roleEntraEligibilitySchedules });
   }
 
@@ -433,6 +464,7 @@ async function handleRequest(
     method === "GET" &&
     pathname === `${ROLE}/roleAssignmentScheduleInstances/filterByCurrentUser(on='principal')`
   ) {
+    if (!enforceScopes(req, res, LIST_ACTIVE_ROLE_ENTRA_SCOPES, errorResponse)) return;
     return jsonResponse(res, 200, { value: state.roleEntraAssignmentScheduleInstances });
   }
 
@@ -441,6 +473,7 @@ async function handleRequest(
       pathname,
     );
   if (method === "GET" && roleReqListMatch) {
+    if (!enforceScopes(req, res, LIST_ROLE_ENTRA_REQUESTS_SCOPES, errorResponse)) return;
     const on = roleReqListMatch[1] as "principal" | "approver";
     const all = on === "principal" ? state.roleEntraMyRequests : state.roleEntraApproverRequests;
     const filter = parsed.searchParams.get("$filter");
@@ -449,6 +482,7 @@ async function handleRequest(
   }
 
   if (method === "POST" && pathname === `${ROLE}/roleAssignmentScheduleRequests`) {
+    if (!enforceScopes(req, res, ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES, errorResponse)) return;
     const body = await readJson(req);
     state.submittedRequests.push({ body, method, path: pathname });
     const created: RoleEntraAssignmentRequest = {
@@ -469,6 +503,7 @@ async function handleRequest(
     pathname,
   );
   if (method === "GET" && roleApprovalGet) {
+    if (!enforceScopes(req, res, APPROVE_ROLE_ENTRA_SCOPES, errorResponse)) return;
     const approvalId = roleApprovalGet[1] ?? "";
     const approval = state.roleEntraApprovals.get(approvalId);
     if (!approval)
@@ -481,6 +516,7 @@ async function handleRequest(
       pathname,
     );
   if (method === "PATCH" && roleStepPatch) {
+    if (!enforceScopes(req, res, APPROVE_ROLE_ENTRA_SCOPES, errorResponse)) return;
     const approvalId = roleStepPatch[1] ?? "";
     const stepId = roleStepPatch[2] ?? "";
     const approval = state.roleEntraApprovals.get(approvalId);

@@ -73,7 +73,7 @@ const PROVIDER = "Microsoft.Authorization";
  * authorises the call; the server-side RBAC then determines whether
  * the caller may read or write the target resource.
  *
- * @see https://learn.microsoft.com/en-us/azure/role-based-access-control/pim-resource-roles-rest-api#prerequisites
+ * @see https://learn.microsoft.com/en-us/rest/api/authorization/role-assignment-schedule-requests
  */
 export const ROLE_AZURE_SCOPES: OAuthScope[][] = [[OAuthScope.ArmUserImpersonation]];
 
