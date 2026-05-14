@@ -227,6 +227,17 @@ npm run docs:check     # network-only: verify @see learn.microsoft.com URLs reso
 
 `npm run schemas:generate` regenerates `schemas/tools/*.json` from the Zod input schemas in `src/tools/`. The matching `schemas:check` runs in CI to detect drift.
 
+### Fuzzing
+
+Property-based fuzz tests live in `fuzz/` and run via [jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js):
+
+```sh
+npm run fuzz:duration     # ISO-8601 PIM duration parser/formatter round-trip
+npm run fuzz:escape-html  # HTML-entity escaping invariants
+```
+
+Both run forever by default; pass `-- -- -max_total_time=30` (or a `-runs=N` limit) for a bounded run. CI runs each target for 30s on PRs and 10min on the nightly schedule (see `.github/workflows/fuzz.yml`).
+
 ## FAQ
 
 **Do I need to register my own Entra app?** No — pimdo-ts ships with a shared multi-tenant Entra application (client ID `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff`, published by Co-native AB). Most users can sign in directly. Some tenants require an administrator to grant tenant-wide consent first; an admin can pre-consent the scopes listed above for the shared app, or you can register your own and override `PIMDO_CLIENT_ID` (see "Manual Entra app registration").

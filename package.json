@@ -37,6 +37,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "fuzz:duration": "jazzer fuzz/duration.fuzz.cjs fuzz/corpus/duration --sync -- -max_len=64",
+    "fuzz:escape-html": "jazzer fuzz/escape-html.fuzz.cjs fuzz/corpus/escape-html --sync",
     "format": "prettier --write .",
     "format:manifest": "prettier --write manifest.json",
     "format:check": "prettier --check .",
@@ -63,6 +65,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "2.1.2",
+    "@jazzer.js/core": "^4.0.0",
     "@types/node": "^25.6.2",
     "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@typescript-eslint/parser": "^8.59.2",

@@ -4,6 +4,7 @@ coverage/
 .preview/
 *.mcpb
 package-lock.json
+fuzz/corpus/
 
 # Generated JSON Schema artefacts. Owned by `scripts/generate-schemas.ts`
 # (run via `npm run schemas:generate`); reformatting them with prettier
