@@ -29,6 +29,8 @@ import { randomUUID } from "node:crypto";
 import type { ZodType } from "zod";
 
 import { ArmClient, HttpMethod, parseResponse } from "../../arm/client.js";
+import { OAuthScope } from "../../scopes.js";
+import { assertScopes } from "../../scopes-runtime.js";
 import {
   armListSchema,
   ArmBatchResponsesSchema,
@@ -65,11 +67,22 @@ const PROVIDER = "Microsoft.Authorization";
 // List operations
 // ---------------------------------------------------------------------------
 
+/**
+ * Azure Resource Manager permissions for every PIM Azure-role
+ * operation. ARM uses a single `user_impersonation` scope that
+ * authorises the call; the server-side RBAC then determines whether
+ * the caller may read or write the target resource.
+ *
+ * @see https://learn.microsoft.com/en-us/rest/api/authorization/role-assignment-schedule-requests
+ */
+export const ROLE_AZURE_SCOPES: OAuthScope[][] = [[OAuthScope.ArmUserImpersonation]];
+
 /** GET role-eligibility-schedule instances where the signed-in user is the principal. */
 export async function listEligibleRoleAzureAssignments(
   client: ArmClient,
   signal: AbortSignal,
 ): Promise<RoleAzureEligibleAssignment[]> {
+  await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
   const filter = encodeURIComponent("asTarget()");
   const path =
     `/providers/${PROVIDER}/roleEligibilityScheduleInstances` +
@@ -86,6 +99,7 @@ export async function listActiveRoleAzureAssignments(
   client: ArmClient,
   signal: AbortSignal,
 ): Promise<RoleAzureActiveAssignment[]> {
+  await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
   const eligibilities = await listEligibleRoleAzureAssignments(client, signal);
   const scopes = new Set<string>();
   for (const e of eligibilities) {
@@ -116,6 +130,7 @@ export async function listMyRoleAzureRequests(
   client: ArmClient,
   signal: AbortSignal,
 ): Promise<RoleAzureAssignmentRequest[]> {
+  await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
   return listRequests(client, "asTarget()", signal);
 }
 
@@ -124,6 +139,7 @@ export async function listRoleAzureApprovalRequests(
   client: ArmClient,
   signal: AbortSignal,
 ): Promise<RoleAzureAssignmentRequest[]> {
+  await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
   return listRequests(client, "asApprover()", signal);
 }
 
@@ -158,6 +174,7 @@ export async function requestRoleAzureActivation(
   params: RequestRoleAzureActivationParams,
   signal: AbortSignal,
 ): Promise<RoleAzureAssignmentRequest> {
+  await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
   // Sanity check the schedule shape before we PUT.
   ArmScheduleInfoSchema.parse(params.scheduleInfo);
   const body = {
@@ -185,6 +202,7 @@ export async function requestRoleAzureDeactivation(
   params: RequestRoleAzureDeactivationParams,
   signal: AbortSignal,
 ): Promise<RoleAzureAssignmentRequest> {
+  await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
   const body = {
     properties: {
       principalId: params.principalId,
@@ -231,6 +249,7 @@ export async function approveRoleAzureAssignment(
   justification: string,
   signal: AbortSignal,
 ): Promise<void> {
+  await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
   const approvalUuid = extractApprovalUuid(approvalId);
   const innerName = randomUUID();
   const innerUrl =

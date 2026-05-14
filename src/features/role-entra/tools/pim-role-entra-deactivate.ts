@@ -2,14 +2,16 @@
 // PIM Entra-role assignments via the confirmer browser flow. Built from
 // {@link buildDeactivateTool}.
 
-import { getMyObjectId } from "../../../graph/me.js";
+import { GET_MY_OBJECT_ID_SCOPES, getMyObjectId } from "../../../graph/me.js";
 import {
   DIRECTORY_SCOPE_ROOT,
+  LIST_ACTIVE_ROLE_ENTRA_SCOPES,
+  ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES,
   listActiveRoleEntraAssignments,
   requestRoleEntraDeactivation,
 } from "../client.js";
 import type { RoleEntraActiveAssignment } from "../../../graph/types.js";
-import { OAuthScope } from "../../../scopes.js";
+import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import { buildDeactivateTool } from "../../../tools/pim/factories/deactivate.js";
 
 function scopeLabel(directoryScopeId: string | undefined): string {
@@ -25,12 +27,11 @@ export const pimRoleEntraDeactivateTool = buildDeactivateTool<RoleEntraActiveAss
       "Open a browser form for the signed-in user to confirm deactivation of " +
       "one or more currently-active PIM Entra-role assignments. Each confirmed " +
       "row submits a selfDeactivate role-assignment-schedule request via Graph.",
-    requiredScopes: [
-      [
-        OAuthScope.RoleManagementReadWriteDirectory,
-        OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
-      ],
-    ],
+    requiredScopes: deriveRequiredScopes([
+      LIST_ACTIVE_ROLE_ENTRA_SCOPES,
+      GET_MY_OBJECT_ID_SCOPES,
+      ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES,
+    ]),
   },
   noun: "PIM Entra-role",
   activeListToolName: "pim_role_entra_active_list",

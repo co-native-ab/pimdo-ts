@@ -6,7 +6,8 @@ import { z } from "zod";
 
 import { listRoleAzureApprovalRequests } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
-import { OAuthScope } from "../../../scopes.js";
+import { deriveRequiredScopes } from "../../../scopes-runtime.js";
+import { ROLE_AZURE_SCOPES } from "../client.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { formatRequestsText } from "../format.js";
@@ -20,7 +21,7 @@ const def: ToolDef = {
     "List PIM Azure-role activation requests where the signed-in user " +
     "is an approver. Does not filter by status — surface " +
     "the full approver-side queue.",
-  requiredScopes: [[OAuthScope.ArmUserImpersonation]],
+  requiredScopes: deriveRequiredScopes([ROLE_AZURE_SCOPES]),
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

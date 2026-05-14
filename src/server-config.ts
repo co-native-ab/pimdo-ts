@@ -8,6 +8,7 @@ import type { Authenticator } from "./auth.js";
 import type { ArmClient } from "./arm/client.js";
 import type { GraphClient } from "./graph/client.js";
 import type { OAuthScope } from "./scopes.js";
+import type { ToolDef } from "./tool-registry.js";
 
 /** Configuration for the MCP server - all dependencies injected here. */
 export interface ServerConfig {
@@ -40,4 +41,11 @@ export interface ServerConfig {
   openBrowser: (url: string) => Promise<void>;
   /** Set by createMcpServer() — login/logout tools call this to sync tool visibility. */
   onScopesChanged?: (grantedScopes: OAuthScope[]) => void;
+  /**
+   * Set by createMcpServer() — the static metadata for every tool the
+   * server knows about. Used by `auth_status` to surface tools that are
+   * currently hidden because their `requiredScopes` are not satisfied
+   * by the granted scope set, including which scopes are missing.
+   */
+  toolDefs?: readonly ToolDef[];
 }

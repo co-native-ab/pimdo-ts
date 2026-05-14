@@ -1,19 +1,21 @@
 // Shared helpers for MCP tool handlers.
 
-import { AuthenticationRequiredError } from "../errors.js";
+import { AuthenticationRequiredError, MissingScopeError } from "../errors.js";
 import { logger } from "../logger.js";
 
 /**
  * Format a caught error into a standard MCP tool error result.
  *
  * Handles AuthenticationRequiredError (returns its message directly),
- * RequestError (message already includes method/path/status), and
- * generic Error / unknown values.
+ * MissingScopeError (also returned as-is, with explicit guidance not to
+ * silently retry login), RequestError (message already includes
+ * method/path/status), and generic Error / unknown values.
  *
  * An optional `prefix` is prepended and `suffix` appended to the message
- * for tool-specific context (e.g. "Login failed: …").  Neither is applied
- * when the error is an AuthenticationRequiredError — that message is
- * returned as-is.
+ * for tool-specific context (e.g. "Login failed: …"). Neither is applied
+ * when the error is an AuthenticationRequiredError or MissingScopeError —
+ * those messages are returned as-is so the agent does not paper over the
+ * actionable guidance with surface text.
  */
 export function formatError(
   toolName: string,
@@ -21,6 +23,17 @@ export function formatError(
   options?: { prefix?: string; suffix?: string },
 ): { content: { type: "text"; text: string }[]; isError: true } {
   if (err instanceof AuthenticationRequiredError) {
+    return { content: [{ type: "text", text: err.message }], isError: true };
+  }
+  if (err instanceof MissingScopeError) {
+    // The MissingScopeError message already names the requirement and the
+    // cheapest scope to add. Re-running login with the same scope
+    // selection will not help, so we deliberately do NOT format this
+    // through the auto-relogin-on-error path the MCP instructions
+    // promise for AuthenticationRequiredError.
+    logger.warn(`${toolName} blocked by missing scope`, {
+      missingExample: [...err.missingExample],
+    });
     return { content: [{ type: "text", text: err.message }], isError: true };
   }
   const message = err instanceof Error ? err.message : String(err);

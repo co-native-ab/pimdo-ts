@@ -1,11 +1,16 @@
 // MCP tool: pim_group_request — request activation for one or more
 // groups via the requester browser flow. Built from {@link buildRequestTool}.
 
-import { getMyObjectId } from "../../../graph/me.js";
-import { listEligibleGroupAssignments, requestGroupActivation } from "../client.js";
-import { getGroupMaxDuration } from "../../../graph/policies.js";
+import { GET_MY_OBJECT_ID_SCOPES, getMyObjectId } from "../../../graph/me.js";
+import {
+  GROUP_PIM_RW_SCOPES,
+  LIST_ELIGIBLE_GROUP_SCOPES,
+  listEligibleGroupAssignments,
+  requestGroupActivation,
+} from "../client.js";
+import { GET_GROUP_MAX_DURATION_SCOPES, getGroupMaxDuration } from "../../../graph/policies.js";
 import type { GroupEligibleAssignment } from "../../../graph/types.js";
-import { OAuthScope } from "../../../scopes.js";
+import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import { buildRequestTool } from "../../../tools/pim/factories/request.js";
 
 export const pimGroupRequestTool = buildRequestTool<GroupEligibleAssignment>({
@@ -17,14 +22,12 @@ export const pimGroupRequestTool = buildRequestTool<GroupEligibleAssignment>({
       "one or more PIM-eligible Entra groups. The user edits justification " +
       "and duration per row, then submits. Each confirmed row creates a " +
       "selfActivate assignment-schedule request via Microsoft Graph.",
-    requiredScopes: [
-      [
-        OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
-        OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
-        OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup,
-        OAuthScope.RoleManagementPolicyReadAzureADGroup,
-      ],
-    ],
+    requiredScopes: deriveRequiredScopes([
+      LIST_ELIGIBLE_GROUP_SCOPES,
+      GET_GROUP_MAX_DURATION_SCOPES,
+      GET_MY_OBJECT_ID_SCOPES,
+      GROUP_PIM_RW_SCOPES,
+    ]),
   },
   noun: "PIM group",
   eligibleListToolName: "pim_group_eligible_list",

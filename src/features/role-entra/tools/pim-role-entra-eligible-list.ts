@@ -4,9 +4,9 @@
 import type { ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { listEligibleRoleEntraAssignments } from "../client.js";
+import { LIST_ELIGIBLE_ROLE_ENTRA_SCOPES, listEligibleRoleEntraAssignments } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
-import { OAuthScope } from "../../../scopes.js";
+import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { formatEligibleAssignmentsText } from "../format.js";
@@ -19,10 +19,7 @@ const def: ToolDef = {
   description:
     "List Entra (directory) roles the signed-in user is eligible to activate via PIM. " +
     "Returns the role display name, role definition id, eligibility id, directory scope, and any time bounds.",
-  requiredScopes: [
-    [OAuthScope.RoleEligibilityScheduleReadDirectory],
-    [OAuthScope.RoleEligibilityScheduleReadWriteDirectory],
-  ],
+  requiredScopes: deriveRequiredScopes([LIST_ELIGIBLE_ROLE_ENTRA_SCOPES]),
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

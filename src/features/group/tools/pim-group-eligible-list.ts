@@ -4,9 +4,9 @@
 import type { ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { listEligibleGroupAssignments } from "../client.js";
+import { LIST_ELIGIBLE_GROUP_SCOPES, listEligibleGroupAssignments } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
-import { OAuthScope } from "../../../scopes.js";
+import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { formatEligibleAssignmentsText } from "../format.js";
@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List Entra groups the signed-in user is eligible to activate via PIM. " +
     "Returns the group display name, id, eligibility id, and any time bounds.",
-  requiredScopes: [[OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup]],
+  requiredScopes: deriveRequiredScopes([LIST_ELIGIBLE_GROUP_SCOPES]),
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

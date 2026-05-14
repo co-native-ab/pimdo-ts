@@ -2,10 +2,15 @@
 // group assignments via the confirmer browser flow. Built from
 // {@link buildDeactivateTool}.
 
-import { getMyObjectId } from "../../../graph/me.js";
-import { listActiveGroupAssignments, requestGroupDeactivation } from "../client.js";
+import { GET_MY_OBJECT_ID_SCOPES, getMyObjectId } from "../../../graph/me.js";
+import {
+  GROUP_PIM_RW_SCOPES,
+  LIST_ACTIVE_GROUP_SCOPES,
+  listActiveGroupAssignments,
+  requestGroupDeactivation,
+} from "../client.js";
 import type { GroupActiveAssignment } from "../../../graph/types.js";
-import { OAuthScope } from "../../../scopes.js";
+import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import { buildDeactivateTool } from "../../../tools/pim/factories/deactivate.js";
 
 export const pimGroupDeactivateTool = buildDeactivateTool<GroupActiveAssignment>({
@@ -16,12 +21,11 @@ export const pimGroupDeactivateTool = buildDeactivateTool<GroupActiveAssignment>
       "Open a browser form for the signed-in user to confirm deactivation of " +
       "one or more currently-active PIM group assignments. Each confirmed " +
       "row submits a selfDeactivate assignment-schedule request via Graph.",
-    requiredScopes: [
-      [
-        OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
-        OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
-      ],
-    ],
+    requiredScopes: deriveRequiredScopes([
+      LIST_ACTIVE_GROUP_SCOPES,
+      GET_MY_OBJECT_ID_SCOPES,
+      GROUP_PIM_RW_SCOPES,
+    ]),
   },
   noun: "PIM group",
   activeListToolName: "pim_group_active_list",

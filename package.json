@@ -28,6 +28,7 @@
     "preview:check": "tsx scripts/preview/check.ts",
     "readme": "tsx scripts/generate-tool-docs.ts",
     "readme:check": "tsx scripts/generate-tool-docs.ts --check",
+    "docs:check": "node scripts/check-doc-links.mjs",
     "build": "npm run icons && npm run schemas:generate && node build.mjs",
     "mcpb": "node scripts/bundle-mcpb.mjs",
     "test": "vitest run",

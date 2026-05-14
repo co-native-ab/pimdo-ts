@@ -30,6 +30,8 @@ import {
   type SubmittedApprovalDecision,
 } from "../../enums.js";
 import { GraphClient, HttpMethod, parseResponse } from "../../graph/client.js";
+import { OAuthScope } from "../../scopes.js";
+import { assertScopes } from "../../scopes-runtime.js";
 import {
   AssignmentApprovalStage,
   collectionSchema,
@@ -60,33 +62,72 @@ export const DIRECTORY_SCOPE_ROOT = "/";
 // List operations
 // ---------------------------------------------------------------------------
 
+/**
+ * Microsoft Graph permissions for
+ * `GET /roleManagement/directory/roleEligibilitySchedules/filterByCurrentUser(on='principal')`.
+ *
+ * The Read variant is sufficient — listing your own eligibility
+ * schedules does not require the ReadWrite permission. Tenants that
+ * consent-downgrade `ReadWrite → Read` therefore still satisfy this
+ * call site via the first alternative.
+ *
+ * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleeligibilityschedules?view=graph-rest-1.0&tabs=http#permissions
+ */
+export const LIST_ELIGIBLE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
+  [OAuthScope.RoleEligibilityScheduleReadDirectory],
+  [OAuthScope.RoleEligibilityScheduleReadWriteDirectory],
+];
+
 /** GET eligibility schedules where the signed-in user is the principal. */
 export async function listEligibleRoleEntraAssignments(
   client: GraphClient,
   signal: AbortSignal,
 ): Promise<RoleEntraEligibleAssignment[]> {
+  await assertScopes(client.credential, LIST_ELIGIBLE_ROLE_ENTRA_SCOPES, signal);
   const path = `${ROLE_BASE}/roleEligibilitySchedules/filterByCurrentUser(on='principal')?$expand=roleDefinition,principal`;
   const res = await client.request(HttpMethod.GET, path, signal);
   const parsed = await parseResponse(res, EligibleListSchema, "GET", path);
   return parsed.value;
 }
 
+/**
+ * Microsoft Graph permissions for
+ * `GET /roleManagement/directory/roleAssignmentScheduleInstances/filterByCurrentUser(on='principal')`.
+ *
+ * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleassignmentscheduleinstances?view=graph-rest-1.0&tabs=http#permissions
+ */
+export const LIST_ACTIVE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
+  [OAuthScope.RoleAssignmentScheduleReadWriteDirectory],
+];
+
 /** GET role-assignment-schedule instances where the signed-in user is the principal. */
 export async function listActiveRoleEntraAssignments(
   client: GraphClient,
   signal: AbortSignal,
 ): Promise<RoleEntraActiveAssignment[]> {
+  await assertScopes(client.credential, LIST_ACTIVE_ROLE_ENTRA_SCOPES, signal);
   const path = `${ROLE_BASE}/roleAssignmentScheduleInstances/filterByCurrentUser(on='principal')?$expand=roleDefinition,principal`;
   const res = await client.request(HttpMethod.GET, path, signal);
   const parsed = await parseResponse(res, ActiveListSchema, "GET", path);
   return parsed.value;
 }
 
+/**
+ * Microsoft Graph permissions for
+ * `GET /roleManagement/directory/roleAssignmentScheduleRequests/filterByCurrentUser(on='principal'|'approver')`.
+ *
+ * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleassignmentschedulerequests?view=graph-rest-1.0&tabs=http#permissions
+ */
+export const LIST_ROLE_ENTRA_REQUESTS_SCOPES: OAuthScope[][] = [
+  [OAuthScope.RoleManagementReadWriteDirectory],
+];
+
 /** GET pending-approval role-assignment-schedule requests submitted by me. */
 export async function listMyRoleEntraRequests(
   client: GraphClient,
   signal: AbortSignal,
 ): Promise<RoleEntraAssignmentRequest[]> {
+  await assertScopes(client.credential, LIST_ROLE_ENTRA_REQUESTS_SCOPES, signal);
   return listRequests(client, CurrentUserFilter.Principal, signal);
 }
 
@@ -95,6 +136,7 @@ export async function listRoleEntraApprovalRequests(
   client: GraphClient,
   signal: AbortSignal,
 ): Promise<RoleEntraAssignmentRequest[]> {
+  await assertScopes(client.credential, LIST_ROLE_ENTRA_REQUESTS_SCOPES, signal);
   return listRequests(client, CurrentUserFilter.Approver, signal);
 }
 
@@ -124,12 +166,32 @@ export interface RequestRoleEntraActivationParams {
   scheduleInfo: ScheduleInfo;
 }
 
+/**
+ * Microsoft Graph permissions for
+ * `POST /roleManagement/directory/roleAssignmentScheduleRequests`
+ * with `action=selfActivate` or `action=selfDeactivate`.
+ *
+ * Both `RoleAssignmentSchedule.ReadWrite.Directory` and
+ * `RoleManagement.ReadWrite.Directory` are required — the assignment
+ * schedule scope authorises writing the request, the role-management
+ * scope authorises mutating the active assignment.
+ *
+ * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-post-roleassignmentschedulerequests?view=graph-rest-1.0&tabs=http#permissions
+ */
+export const ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES: OAuthScope[][] = [
+  [
+    OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+    OAuthScope.RoleManagementReadWriteDirectory,
+  ],
+];
+
 /** POST a `selfActivate` role-assignment-schedule request. */
 export async function requestRoleEntraActivation(
   client: GraphClient,
   params: RequestRoleEntraActivationParams,
   signal: AbortSignal,
 ): Promise<RoleEntraAssignmentRequest> {
+  await assertScopes(client.credential, ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES, signal);
   const body = {
     action: GraphScheduleAction.SelfActivate,
     principalId: params.principalId,
@@ -154,6 +216,7 @@ export async function requestRoleEntraDeactivation(
   params: RequestRoleEntraDeactivationParams,
   signal: AbortSignal,
 ): Promise<RoleEntraAssignmentRequest> {
+  await assertScopes(client.credential, ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES, signal);
   const body = {
     action: GraphScheduleAction.SelfDeactivate,
     principalId: params.principalId,
@@ -179,6 +242,19 @@ async function postScheduleRequest(
 // ---------------------------------------------------------------------------
 
 /**
+ * Microsoft Graph permissions for the BETA approval surface — `GET`
+ * the approval and `PATCH` a step. Both are exposed under
+ * `/roleManagement/directory/roleAssignmentApprovals/...` only on the
+ * BETA endpoint.
+ *
+ * @see https://learn.microsoft.com/en-us/graph/api/approval-get?view=graph-rest-beta&tabs=http#permissions
+ * @see https://learn.microsoft.com/en-us/graph/api/approvalstep-update?view=graph-rest-beta&tabs=http#permissions
+ */
+export const APPROVE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
+  [OAuthScope.RoleManagementReadWriteDirectory],
+];
+
+/**
  * Approve or deny a PIM Entra-role assignment. Looks up the approval on
  * the BETA endpoint (which exposes its decision points as `steps`),
  * picks the single live step assigned to the caller, and PATCHes that
@@ -193,6 +269,7 @@ export async function approveRoleEntraAssignment(
   justification: string,
   signal: AbortSignal,
 ): Promise<void> {
+  await assertScopes(betaClient.credential, APPROVE_ROLE_ENTRA_SCOPES, signal);
   const approval = await getRoleEntraApproval(betaClient, approvalId, signal);
   const step = pickLiveStep(approval, approvalId);
   const path = `${ROLE_BASE}/roleAssignmentApprovals/${encodeURIComponent(

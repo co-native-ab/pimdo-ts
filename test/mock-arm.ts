@@ -22,6 +22,8 @@
 import http from "node:http";
 
 import { jsonResponse, readJson, startMockServer } from "./mock-server-base.js";
+import { enforceScopes } from "./mock-scope-enforcement.js";
+import { ROLE_AZURE_SCOPES } from "../src/features/role-azure/client.js";
 import type {
   ArmErrorEnvelope,
   RoleAzureActiveAssignment,
@@ -252,6 +254,11 @@ async function handleRequest(
   const parsed = new URL(rawUrl, "http://127.0.0.1");
   const pathname = decodeURIComponent(parsed.pathname);
   const method = req.method ?? "GET";
+
+  // ARM uses a single delegated scope (`user_impersonation`) for every
+  // route — per-resource RBAC handles authorisation server-side. Enforce
+  // it once at the entry of the handler.
+  if (!enforceScopes(req, res, ROLE_AZURE_SCOPES, errorResponse)) return;
 
   // POST /batch
   if (method === "POST" && pathname === "/batch") {

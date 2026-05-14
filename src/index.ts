@@ -68,18 +68,28 @@ export async function createMcpServer(
   );
 
   // Single client per resource for the lifetime of this server. Each
-  // client treats the authenticator as a per-resource TokenCredential.
-  const graphClient = new GraphClient(opts.graphBaseUrl, {
+  // client treats the authenticator as a per-resource TokenCredential
+  // and forwards `grantedScopes` so feature client functions can guard
+  // their HTTP calls with `assertScopes` before they fire.
+  const graphCredential = {
     getToken: (s: AbortSignal) => opts.authenticator.tokenForResource(Resource.Graph, s),
-  });
-  const graphBetaClient = new GraphClient(opts.graphBetaBaseUrl, {
-    getToken: (s: AbortSignal) => opts.authenticator.tokenForResource(Resource.Graph, s),
-  });
-  const armClient = new ArmClient(opts.armBaseUrl, {
+    grantedScopes: (s: AbortSignal) => opts.authenticator.grantedScopes(s),
+  };
+  const armCredential = {
     getToken: (s: AbortSignal) => opts.authenticator.tokenForResource(Resource.Arm, s),
-  });
+    grantedScopes: (s: AbortSignal) => opts.authenticator.grantedScopes(s),
+  };
+  const graphClient = new GraphClient(opts.graphBaseUrl, graphCredential);
+  const graphBetaClient = new GraphClient(opts.graphBetaBaseUrl, graphCredential);
+  const armClient = new ArmClient(opts.armBaseUrl, armCredential);
 
-  const config: ServerConfig = { ...opts, graphClient, graphBetaClient, armClient };
+  const config: ServerConfig = {
+    ...opts,
+    graphClient,
+    graphBetaClient,
+    armClient,
+    toolDefs: allTools.map((t) => t.def),
+  };
 
   // Register every tool descriptor in a single loop. The descriptor is the
   // single source of truth for metadata, schemas, annotations, and handler.

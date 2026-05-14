@@ -9,6 +9,8 @@
 import { z } from "zod";
 
 import { GraphClient, HttpMethod, parseResponse } from "./client.js";
+import { OAuthScope } from "../scopes.js";
+import { assertScopes } from "../scopes-runtime.js";
 import { collectionSchema, UnifiedRoleManagementPolicyExpirationRuleSchema } from "./types.js";
 
 const RuleSchema = z
@@ -38,6 +40,17 @@ const PolicyAssignmentsResponseSchema = collectionSchema(PolicyAssignmentSchema)
 const END_USER_ASSIGNMENT_RULE_ID = "Expiration_EndUser_Assignment";
 
 /**
+ * Microsoft Graph permissions for `GET /policies/roleManagementPolicyAssignments`
+ * with `scopeType eq 'Group'`. Reads the activation policy attached
+ * to a PIM-managed Entra group.
+ *
+ * @see https://learn.microsoft.com/en-us/graph/api/policyroot-list-rolemanagementpolicyassignments?view=graph-rest-1.0&tabs=http#permissions
+ */
+export const GET_GROUP_MAX_DURATION_SCOPES: OAuthScope[][] = [
+  [OAuthScope.RoleManagementPolicyReadAzureADGroup],
+];
+
+/**
  * Look up the `maximumDuration` (ISO-8601) the policy attached to
  * `groupId/member` allows for end-user activation requests.
  *
@@ -50,6 +63,7 @@ export async function getGroupMaxDuration(
   groupId: string,
   signal: AbortSignal,
 ): Promise<string> {
+  await assertScopes(client.credential, GET_GROUP_MAX_DURATION_SCOPES, signal);
   const filter = encodeURIComponent(
     `scopeId eq '${groupId}' and scopeType eq 'Group' and roleDefinitionId eq 'member'`,
   );
@@ -84,6 +98,17 @@ export async function getGroupMaxDuration(
 }
 
 /**
+ * Microsoft Graph permissions for `GET /policies/roleManagementPolicyAssignments`
+ * with `scopeType eq 'Directory'`. Reads the activation policy attached
+ * to a PIM-managed Entra (directory) role.
+ *
+ * @see https://learn.microsoft.com/en-us/graph/api/policyroot-list-rolemanagementpolicyassignments?view=graph-rest-1.0&tabs=http#permissions
+ */
+export const GET_DIRECTORY_ROLE_MAX_DURATION_SCOPES: OAuthScope[][] = [
+  [OAuthScope.RoleManagementPolicyReadDirectory],
+];
+
+/**
  * Look up the `maximumDuration` (ISO-8601) the policy attached to
  * the directory-scoped Entra role `roleDefinitionId` allows for end-user
  * activation requests.
@@ -96,6 +121,7 @@ export async function getDirectoryRoleMaxDuration(
   signal: AbortSignal,
   directoryScopeId = "/",
 ): Promise<string> {
+  await assertScopes(client.credential, GET_DIRECTORY_ROLE_MAX_DURATION_SCOPES, signal);
   const filter = encodeURIComponent(
     `scopeId eq '${directoryScopeId}' and scopeType eq 'Directory' and roleDefinitionId eq '${roleDefinitionId}'`,
   );

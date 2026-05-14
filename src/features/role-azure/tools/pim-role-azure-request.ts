@@ -6,7 +6,8 @@ import { listEligibleRoleAzureAssignments, requestRoleAzureActivation } from "..
 import { getAzureRoleMaxDuration } from "../../../arm/policies.js";
 import type { RoleAzureEligibleAssignment } from "../../../arm/types.js";
 import { getMyObjectId } from "../../../graph/me.js";
-import { OAuthScope } from "../../../scopes.js";
+import { deriveRequiredScopes } from "../../../scopes-runtime.js";
+import { ROLE_AZURE_SCOPES } from "../client.js";
 import { buildRequestTool } from "../../../tools/pim/factories/request.js";
 import { roleLabel, scopeFromAssignment, scopeLabel } from "../format.js";
 
@@ -19,7 +20,7 @@ export const pimRoleAzureRequestTool = buildRequestTool<RoleAzureEligibleAssignm
       "one or more PIM-eligible Azure resource roles. The user edits " +
       "justification and duration per row, then submits. Each confirmed " +
       "row creates a SelfActivate role-assignment-schedule request via Azure Resource Manager.",
-    requiredScopes: [[OAuthScope.ArmUserImpersonation]],
+    requiredScopes: deriveRequiredScopes([ROLE_AZURE_SCOPES]),
   },
   noun: "PIM Azure-role",
   eligibleListToolName: "pim_role_azure_eligible_list",

@@ -2,15 +2,20 @@
 // more Entra (directory) roles via the requester browser flow. Built
 // from {@link buildRequestTool}.
 
-import { getMyObjectId } from "../../../graph/me.js";
+import { GET_MY_OBJECT_ID_SCOPES, getMyObjectId } from "../../../graph/me.js";
 import {
   DIRECTORY_SCOPE_ROOT,
+  LIST_ELIGIBLE_ROLE_ENTRA_SCOPES,
+  ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES,
   listEligibleRoleEntraAssignments,
   requestRoleEntraActivation,
 } from "../client.js";
-import { getDirectoryRoleMaxDuration } from "../../../graph/policies.js";
+import {
+  GET_DIRECTORY_ROLE_MAX_DURATION_SCOPES,
+  getDirectoryRoleMaxDuration,
+} from "../../../graph/policies.js";
 import type { RoleEntraEligibleAssignment } from "../../../graph/types.js";
-import { OAuthScope } from "../../../scopes.js";
+import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import { buildRequestTool } from "../../../tools/pim/factories/request.js";
 
 function scopeLabel(directoryScopeId: string | undefined): string {
@@ -27,14 +32,18 @@ export const pimRoleEntraRequestTool = buildRequestTool<RoleEntraEligibleAssignm
       "one or more PIM-eligible Entra (directory) roles. The user edits " +
       "justification and duration per row, then submits. Each confirmed " +
       "row creates a selfActivate role-assignment-schedule request via Microsoft Graph.",
-    requiredScopes: [
-      [
-        OAuthScope.RoleManagementReadWriteDirectory,
-        OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
-        OAuthScope.RoleEligibilityScheduleReadWriteDirectory,
-        OAuthScope.RoleManagementPolicyReadDirectory,
-      ],
-    ],
+    // Auto-derived from the four call sites this tool exercises:
+    // listEligibleRoleEntraAssignments, getDirectoryRoleMaxDuration,
+    // getMyObjectId, requestRoleEntraActivation. Crucially the
+    // eligibility list accepts the `Read.Directory` variant — tenants
+    // that consent-downgrade `ReadWrite → Read` therefore satisfy the
+    // first alternative and the tool stays enabled.
+    requiredScopes: deriveRequiredScopes([
+      LIST_ELIGIBLE_ROLE_ENTRA_SCOPES,
+      GET_DIRECTORY_ROLE_MAX_DURATION_SCOPES,
+      GET_MY_OBJECT_ID_SCOPES,
+      ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES,
+    ]),
   },
   noun: "PIM Entra-role",
   eligibleListToolName: "pim_role_entra_eligible_list",

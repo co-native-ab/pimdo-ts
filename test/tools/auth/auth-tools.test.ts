@@ -114,6 +114,39 @@ describe("auth_status tool", () => {
     expect(res.isError).toBe(true);
     expect(res.content[0]?.text).toContain("Status check failed: boom");
   });
+
+  it("lists hidden tools and their missing scopes when toolDefs is provided", async () => {
+    const auth = stubAuth({
+      isAuthenticated: () => Promise.resolve(true),
+      accountInfo: () => Promise.resolve({ username: "alice@example.com" }),
+      grantedScopes: () => Promise.resolve([OAuthScope.UserRead]),
+    });
+    const config = buildConfig(auth);
+    config.toolDefs = [
+      // Visible: no required scopes
+      { name: "auth_status", title: "x", description: "x", requiredScopes: [] },
+      // Visible: User.Read is granted
+      {
+        name: "visible_tool",
+        title: "x",
+        description: "x",
+        requiredScopes: [[OAuthScope.UserRead]],
+      },
+      // Hidden: needs PrivilegedAccess.ReadWrite.AzureADGroup which is not granted
+      {
+        name: "pim_group_eligible_list",
+        title: "x",
+        description: "x",
+        requiredScopes: [[OAuthScope.PrivilegedAccessReadWriteAzureADGroup]],
+      },
+    ];
+    const res = await call(authStatusTool, config);
+    const text = res.content[0]?.text ?? "";
+    expect(text).toContain("Hidden tools (1):");
+    expect(text).toContain("pim_group_eligible_list");
+    expect(text).toContain(OAuthScope.PrivilegedAccessReadWriteAzureADGroup);
+    expect(text).not.toContain("visible_tool");
+  });
 });
 
 describe("login tool", () => {
