@@ -1,5 +1,10 @@
 import type { OAuthScope } from "./scopes.js";
 
+// Re-export StepUpRequiredError from the HTTP layer where it lives next
+// to RequestError (its base class). Surfaced here so callers have a
+// single import for "domain errors the AI/tool layer cares about".
+export { StepUpRequiredError } from "./http/base-client.js";
+
 export function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return err instanceof Error && "code" in err;
 }

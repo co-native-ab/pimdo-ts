@@ -10,6 +10,8 @@
 import { logger } from "../logger.js";
 import { ZodType, ZodError } from "zod";
 
+import { extractClaimsChallenge } from "./claims-challenge.js";
+
 /** HTTP methods used by API requests. */
 export enum HttpMethod {
   GET = "GET",
@@ -65,6 +67,51 @@ export class RequestError extends Error {
   ) {
     super(`${resource} ${method} ${path}: ${code}: ${responseMessage} (HTTP ${statusCode})`);
     this.name = "RequestError";
+  }
+}
+
+/**
+ * Thrown when a Graph or ARM response carries a Conditional Access
+ * "claims challenge" — the user's current access token does not
+ * satisfy a required authentication context (e.g. MFA `c1`, compliant
+ * device, session-risk policy) and Microsoft Entra wants the user to
+ * step up.
+ *
+ * Subclass of {@link RequestError} so existing `instanceof RequestError`
+ * handlers still match. The recovery flow is **not** automated by the
+ * HTTP transport; the AI assistant is expected to:
+ *
+ *   1. Read the embedded {@link claims} JSON from the error.
+ *   2. Call the `login` tool with `{ claims }` to trigger an
+ *      interactive re-auth that satisfies the policy.
+ *   3. Re-invoke the original tool.
+ *
+ * The error message is written for the AI assistant and includes the
+ * literal claims JSON so it can be passed verbatim to the next
+ * `login` call.
+ */
+export class StepUpRequiredError extends RequestError {
+  constructor(
+    resource: string,
+    method: string,
+    path: string,
+    statusCode: number,
+    code: string,
+    responseMessage: string,
+    public readonly claims: string,
+  ) {
+    super(resource, method, path, statusCode, code, responseMessage);
+    this.name = "StepUpRequiredError";
+    // Replace the inherited message with one that tells the AI exactly
+    // how to recover. Keep the original transport detail (status, code,
+    // resource/method/path) for traceability.
+    this.message =
+      `Conditional Access step-up authentication required for ${resource} ${method} ${path} ` +
+      `(${code}, HTTP ${String(statusCode)}). The user's current access token does not satisfy ` +
+      `the required authentication context. ` +
+      `Recover by calling the \`login\` tool with claims=${claims} and then re-invoking the ` +
+      `original tool. The browser will prompt the user to satisfy the policy (MFA, compliant ` +
+      `device, etc.) for the currently signed-in account.`;
   }
 }
 
@@ -346,6 +393,38 @@ export class BaseHttpClient {
         }
       } catch {
         // Use raw body text as message.
+      }
+
+      // Detect a Conditional Access claims challenge before building
+      // the generic RequestError. Both the WWW-Authenticate header
+      // (CAE / OAuth standard) and the response body (PIM
+      // RoleAssignmentRequestAcrsValidationFailed) are inspected. When
+      // present, throw a typed StepUpRequiredError so the AI can
+      // recover via the login tool with the embedded claims. The HTTP
+      // transport deliberately performs no retry and has no knowledge
+      // of the authenticator — orchestration lives in the tool layer.
+      const claims = extractClaimsChallenge({
+        headers: response.headers,
+        body: rawBody,
+        message,
+      });
+      if (claims !== null) {
+        const stepUpError = new StepUpRequiredError(
+          this.plugins.resource,
+          method,
+          path,
+          response.status,
+          code,
+          message,
+          claims,
+        );
+        logger.info(`${this.plugins.resource} step-up challenge`, {
+          method,
+          path,
+          status: response.status,
+          code,
+        });
+        throw stepUpError;
       }
 
       const error = this.plugins.buildRequestError(method, path, response.status, code, message);

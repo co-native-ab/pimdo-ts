@@ -117,6 +117,15 @@ describe("StaticAuthenticator", () => {
     expect(result.message).toMatch(/static token/i);
   });
 
+  it("login ignores claims/loginHint options (static token cannot satisfy step-up)", async () => {
+    const auth = new StaticAuthenticator("my-token");
+    const result = await auth.login(testSignal(), {
+      claims: '{"access_token":{"acrs":{"essential":true,"value":"c1"}}}',
+      loginHint: "user@example.com",
+    });
+    expect(result.message).toMatch(/static token/i);
+  });
+
   it("token returns the fixed access token", async () => {
     const auth = new StaticAuthenticator("fixed-token");
     const token = await auth.tokenForResource(Resource.Graph, testSignal());
@@ -266,6 +275,90 @@ describe("MsalAuthenticator.login", () => {
     const stat = await fs.stat(accountPath);
     const mode = stat.mode & 0o777;
     expect(mode).toBe(0o600);
+  });
+
+  describe("step-up via { claims }", () => {
+    const claimsJson = '{"access_token":{"acrs":{"essential":true,"value":"c1"}}}';
+
+    it("passes claims through to acquireTokenInteractive", async () => {
+      const dir = getTempDir();
+      const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
+      const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
+
+      const fakePCA = installFakePCA();
+      fakePCA.acquireTokenInteractive.mockResolvedValue(authResult());
+
+      await auth.login(testSignal(), { claims: claimsJson });
+
+      expect(fakePCA.acquireTokenInteractive).toHaveBeenCalledTimes(1);
+      const call = fakePCA.acquireTokenInteractive.mock.calls[0]?.[0] as {
+        claims?: string;
+        prompt?: string;
+      };
+      expect(call.claims).toBe(claimsJson);
+      // Step-up reuses the same account: prompt switches to "login".
+      expect(call.prompt).toBe("login");
+    });
+
+    it("defaults loginHint to the cached username on step-up", async () => {
+      const dir = getTempDir();
+      const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
+      const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
+
+      const fakePCA = installFakePCA();
+      fakePCA.acquireTokenInteractive.mockResolvedValue(authResult());
+
+      // First login establishes the cached account.
+      await auth.login(testSignal());
+      fakePCA.acquireTokenInteractive.mockClear();
+      fakePCA.acquireTokenInteractive.mockResolvedValue(authResult());
+
+      // Step-up should pre-fill the username for the cached account.
+      await auth.login(testSignal(), { claims: claimsJson });
+      const call = fakePCA.acquireTokenInteractive.mock.calls[0]?.[0] as {
+        loginHint?: string;
+        prompt?: string;
+      };
+      expect(call.loginHint).toBe("user@example.com");
+      expect(call.prompt).toBe("login");
+    });
+
+    it("respects an explicit loginHint over the cached default", async () => {
+      const dir = getTempDir();
+      const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
+      const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
+
+      const fakePCA = installFakePCA();
+      fakePCA.acquireTokenInteractive.mockResolvedValue(authResult());
+      await auth.login(testSignal());
+      fakePCA.acquireTokenInteractive.mockClear();
+      fakePCA.acquireTokenInteractive.mockResolvedValue(authResult());
+
+      await auth.login(testSignal(), { claims: claimsJson, loginHint: "other@example.com" });
+
+      const call = fakePCA.acquireTokenInteractive.mock.calls[0]?.[0] as { loginHint?: string };
+      expect(call.loginHint).toBe("other@example.com");
+    });
+
+    it("plain login (no claims) keeps prompt=select_account and no loginHint", async () => {
+      const dir = getTempDir();
+      const openBrowser = vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined);
+      const auth = new MsalAuthenticator(TEST_CLIENT_ID, "common", dir, openBrowser);
+
+      const fakePCA = installFakePCA();
+      fakePCA.acquireTokenInteractive.mockResolvedValue(authResult());
+
+      await auth.login(testSignal());
+
+      const call = fakePCA.acquireTokenInteractive.mock.calls[0]?.[0] as {
+        claims?: string;
+        prompt?: string;
+        loginHint?: string;
+      };
+      expect(call.claims).toBeUndefined();
+      expect(call.prompt).toBe("select_account");
+      expect(call.loginHint).toBeUndefined();
+    });
   });
 });
 
