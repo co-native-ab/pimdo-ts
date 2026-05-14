@@ -17,10 +17,12 @@ describe("OAuthScope enum", () => {
   it("has expected Graph PIM scope values", () => {
     expect(OAuthScope.UserRead).toBe("User.Read");
     expect(OAuthScope.OfflineAccess).toBe("offline_access");
-    expect(OAuthScope.PrivilegedAccessReadWriteAzureADGroup).toBe(
-      "PrivilegedAccess.ReadWrite.AzureADGroup",
+    expect(OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup).toBe(
+      "PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup",
     );
-    expect(OAuthScope.RoleManagementReadWriteDirectory).toBe("RoleManagement.ReadWrite.Directory");
+    expect(OAuthScope.RoleAssignmentScheduleReadWriteDirectory).toBe(
+      "RoleAssignmentSchedule.ReadWrite.Directory",
+    );
   });
 
   it("has the ARM user_impersonation scope", () => {
@@ -51,8 +53,8 @@ describe("AVAILABLE_SCOPES", () => {
 
   it("marks PIM scopes (graph + ARM) as not required", () => {
     const optional = AVAILABLE_SCOPES.filter((s) => !s.required).map((s) => s.scope);
-    expect(optional).toContain(OAuthScope.PrivilegedAccessReadWriteAzureADGroup);
-    expect(optional).toContain(OAuthScope.RoleManagementReadWriteDirectory);
+    expect(optional).toContain(OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup);
+    expect(optional).toContain(OAuthScope.RoleAssignmentScheduleReadWriteDirectory);
     expect(optional).toContain(OAuthScope.ArmUserImpersonation);
   });
 });
@@ -64,7 +66,9 @@ describe("ALWAYS_REQUIRED_SCOPES", () => {
   });
 
   it("does not contain optional PIM scopes", () => {
-    expect(ALWAYS_REQUIRED_SCOPES).not.toContain(OAuthScope.PrivilegedAccessReadWriteAzureADGroup);
+    expect(ALWAYS_REQUIRED_SCOPES).not.toContain(
+      OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
+    );
     expect(ALWAYS_REQUIRED_SCOPES).not.toContain(OAuthScope.ArmUserImpersonation);
   });
 });
@@ -89,7 +93,7 @@ describe("isOAuthScope", () => {
   it("returns true for valid scope strings", () => {
     expect(isOAuthScope("User.Read")).toBe(true);
     expect(isOAuthScope("offline_access")).toBe(true);
-    expect(isOAuthScope("PrivilegedAccess.ReadWrite.AzureADGroup")).toBe(true);
+    expect(isOAuthScope("PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup")).toBe(true);
     expect(isOAuthScope("https://management.azure.com/user_impersonation")).toBe(true);
   });
 
@@ -107,13 +111,13 @@ describe("toOAuthScopes", () => {
     const result = toOAuthScopes([
       "User.Read",
       "invalid",
-      "PrivilegedAccess.ReadWrite.AzureADGroup",
+      "PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup",
       "",
       "https://management.azure.com/user_impersonation",
     ]);
     expect(result).toEqual([
       OAuthScope.UserRead,
-      OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
+      OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
       OAuthScope.ArmUserImpersonation,
     ]);
   });
@@ -148,7 +152,7 @@ describe("scopesForResource", () => {
     const graph = scopesForResource(all, Resource.Graph);
     expect(graph).not.toContain(OAuthScope.ArmUserImpersonation);
     expect(graph).toContain(OAuthScope.UserRead);
-    expect(graph).toContain(OAuthScope.PrivilegedAccessReadWriteAzureADGroup);
+    expect(graph).toContain(OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup);
   });
 
   it("returns only ARM scopes for Resource.Arm", () => {

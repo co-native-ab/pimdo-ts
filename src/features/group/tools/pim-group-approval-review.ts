@@ -3,7 +3,7 @@
 // {@link buildApprovalReviewTool}.
 
 import {
-  GROUP_PIM_RW_SCOPES,
+  APPROVE_GROUP_SCOPES,
   approveGroupAssignment,
   listGroupApprovalRequests,
 } from "../client.js";
@@ -19,7 +19,7 @@ export const pimGroupApprovalReviewTool = buildApprovalReviewTool<GroupAssignmen
       "Open a browser form for the signed-in user (acting as approver) to " +
       "Approve, Deny, or Skip pending PIM group activation approvals. Each " +
       "Approve/Deny PATCHes the live approval stage via Microsoft Graph.",
-    requiredScopes: deriveRequiredScopes([GROUP_PIM_RW_SCOPES]),
+    requiredScopes: deriveRequiredScopes([APPROVE_GROUP_SCOPES]),
   },
   noun: "PIM group",
   approvalListToolName: "pim_group_approval_list",

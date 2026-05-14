@@ -3,8 +3,8 @@
 
 import { GET_MY_OBJECT_ID_SCOPES, getMyObjectId } from "../../../graph/me.js";
 import {
-  GROUP_PIM_RW_SCOPES,
   LIST_ELIGIBLE_GROUP_SCOPES,
+  WRITE_GROUP_SCHEDULE_SCOPES,
   listEligibleGroupAssignments,
   requestGroupActivation,
 } from "../client.js";
@@ -26,7 +26,7 @@ export const pimGroupRequestTool = buildRequestTool<GroupEligibleAssignment>({
       LIST_ELIGIBLE_GROUP_SCOPES,
       GET_GROUP_MAX_DURATION_SCOPES,
       GET_MY_OBJECT_ID_SCOPES,
-      GROUP_PIM_RW_SCOPES,
+      WRITE_GROUP_SCHEDULE_SCOPES,
     ]),
   },
   noun: "PIM group",

@@ -24,9 +24,11 @@ import http from "node:http";
 import { jsonResponse, readJson, startMockServer } from "./mock-server-base.js";
 import { enforceScopes } from "./mock-scope-enforcement.js";
 import {
-  GROUP_PIM_RW_SCOPES,
+  APPROVE_GROUP_SCOPES,
   LIST_ACTIVE_GROUP_SCOPES,
   LIST_ELIGIBLE_GROUP_SCOPES,
+  LIST_GROUP_REQUESTS_SCOPES,
+  WRITE_GROUP_SCHEDULE_SCOPES,
 } from "../src/features/group/client.js";
 import {
   APPROVE_ROLE_ENTRA_SCOPES,
@@ -335,7 +337,7 @@ async function handleRequest(
       pathname,
     );
   if (method === "GET" && reqListMatch) {
-    if (!enforceScopes(req, res, GROUP_PIM_RW_SCOPES, errorResponse)) return;
+    if (!enforceScopes(req, res, LIST_GROUP_REQUESTS_SCOPES, errorResponse)) return;
     const on = reqListMatch[1] as "principal" | "approver";
     const all = on === "principal" ? state.myRequests : state.approverRequests;
     const filter = parsed.searchParams.get("$filter");
@@ -345,7 +347,7 @@ async function handleRequest(
 
   // POST assignmentScheduleRequests
   if (method === "POST" && pathname === `${PIM}/assignmentScheduleRequests`) {
-    if (!enforceScopes(req, res, GROUP_PIM_RW_SCOPES, errorResponse)) return;
+    if (!enforceScopes(req, res, WRITE_GROUP_SCHEDULE_SCOPES, errorResponse)) return;
     const body = await readJson(req);
     state.submittedRequests.push({ body, method, path: pathname });
     const created: GroupAssignmentRequest = {
@@ -365,7 +367,7 @@ async function handleRequest(
   const approvalGet =
     /^\/identityGovernance\/privilegedAccess\/group\/assignmentApprovals\/([^/]+)$/.exec(pathname);
   if (method === "GET" && approvalGet) {
-    if (!enforceScopes(req, res, GROUP_PIM_RW_SCOPES, errorResponse)) return;
+    if (!enforceScopes(req, res, APPROVE_GROUP_SCOPES, errorResponse)) return;
     const approvalId = approvalGet[1] ?? "";
     const approval = state.approvals.get(approvalId);
     if (!approval) return errorResponse(res, 404, "NotFound", `approval ${approvalId} not found`);
@@ -377,7 +379,7 @@ async function handleRequest(
       pathname,
     );
   if (method === "PATCH" && stagePatch) {
-    if (!enforceScopes(req, res, GROUP_PIM_RW_SCOPES, errorResponse)) return;
+    if (!enforceScopes(req, res, APPROVE_GROUP_SCOPES, errorResponse)) return;
     const approvalId = stagePatch[1] ?? "";
     const stageId = stagePatch[2] ?? "";
     const approval = state.approvals.get(approvalId);

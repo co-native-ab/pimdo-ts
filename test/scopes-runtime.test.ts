@@ -9,7 +9,7 @@ import { assertScopes, deriveRequiredScopes } from "../src/scopes-runtime.js";
 
 const RW_DIR = OAuthScope.RoleEligibilityScheduleReadWriteDirectory;
 const R_DIR = OAuthScope.RoleEligibilityScheduleReadDirectory;
-const RM_RW = OAuthScope.RoleManagementReadWriteDirectory;
+const PA_RW = OAuthScope.PrivilegedAccessReadWriteAzureAD;
 const RAS_RW = OAuthScope.RoleAssignmentScheduleReadWriteDirectory;
 const POL_R = OAuthScope.RoleManagementPolicyReadDirectory;
 const USER_READ = OAuthScope.UserRead;
@@ -42,9 +42,9 @@ describe("assertScopes", () => {
   });
 
   it("returns when granted scopes satisfy a conjunction alternative", async () => {
-    const cred = credWithScopes([RM_RW, RAS_RW]);
+    const cred = credWithScopes([PA_RW, RAS_RW]);
     await expect(
-      assertScopes(cred, [[RM_RW, RAS_RW]], AbortSignal.timeout(1000)),
+      assertScopes(cred, [[PA_RW, RAS_RW]], AbortSignal.timeout(1000)),
     ).resolves.toBeUndefined();
   });
 
@@ -56,16 +56,16 @@ describe("assertScopes", () => {
   });
 
   it("missingExample picks the smallest gap when multiple alternatives are unsatisfied", async () => {
-    // granted has RM_RW but not RAS_RW or R_DIR. Alternatives:
-    //   - [RM_RW, RAS_RW]  → missing 1 (RAS_RW)
+    // granted has PA_RW but not RAS_RW or R_DIR. Alternatives:
+    //   - [PA_RW, RAS_RW]  → missing 1 (RAS_RW)
     //   - [R_DIR, RAS_RW]  → missing 2
     // Cheapest gap is RAS_RW.
-    const cred = credWithScopes([RM_RW]);
+    const cred = credWithScopes([PA_RW]);
     try {
       await assertScopes(
         cred,
         [
-          [RM_RW, RAS_RW],
+          [PA_RW, RAS_RW],
           [R_DIR, RAS_RW],
         ],
         AbortSignal.timeout(1000),
@@ -75,9 +75,9 @@ describe("assertScopes", () => {
       expect(err).toBeInstanceOf(MissingScopeError);
       const e = err as MissingScopeError;
       expect(e.missingExample).toEqual([RAS_RW]);
-      expect(e.granted).toEqual([RM_RW]);
+      expect(e.granted).toEqual([PA_RW]);
       expect(e.required).toEqual([
-        [RM_RW, RAS_RW],
+        [PA_RW, RAS_RW],
         [R_DIR, RAS_RW],
       ]);
     }
@@ -120,15 +120,15 @@ describe("deriveRequiredScopes", () => {
   });
 
   it("AND-merges single-alternative call sites", () => {
-    // [[POL_R]] ∧ [[RM_RW]] → [[POL_R, RM_RW]] (sorted alphabetically)
-    expect(deriveRequiredScopes([[[POL_R]], [[RM_RW]]])).toEqual([[RM_RW, POL_R]]);
+    // [[POL_R]] ∧ [[PA_RW]] → [[POL_R, PA_RW]] (sorted alphabetically)
+    expect(deriveRequiredScopes([[[POL_R]], [[PA_RW]]])).toEqual([[PA_RW, POL_R]]);
   });
 
   it("strips ALWAYS_REQUIRED_SCOPES (User.Read) from each alternative", () => {
     // [[USER_READ]] alone collapses to [] (unconditionally enabled).
     expect(deriveRequiredScopes([[[USER_READ]]])).toEqual([]);
-    // Mixed: [[USER_READ, RM_RW]] strips USER_READ → [[RM_RW]].
-    expect(deriveRequiredScopes([[[USER_READ, RM_RW]]])).toEqual([[RM_RW]]);
+    // Mixed: [[USER_READ, PA_RW]] strips USER_READ → [[PA_RW]].
+    expect(deriveRequiredScopes([[[USER_READ, PA_RW]]])).toEqual([[PA_RW]]);
   });
 
   it("expands an OR-pair call site against a single-alternative call site", () => {
@@ -148,12 +148,12 @@ describe("deriveRequiredScopes", () => {
   });
 
   it("dedupes scopes that appear in multiple call sites", () => {
-    // [[POL_R, RM_RW]] ∧ [[RM_RW]] → [[POL_R, RM_RW]] sorted to [[RM_RW, POL_R]]
-    expect(deriveRequiredScopes([[[POL_R, RM_RW]], [[RM_RW]]])).toEqual([[RM_RW, POL_R]]);
+    // [[POL_R, PA_RW]] ∧ [[PA_RW]] → [[POL_R, PA_RW]] sorted to [[PA_RW, POL_R]]
+    expect(deriveRequiredScopes([[[POL_R, PA_RW]], [[PA_RW]]])).toEqual([[PA_RW, POL_R]]);
   });
 
   it("each alternative is sorted for stable output", () => {
-    const out = deriveRequiredScopes([[[POL_R]], [[RM_RW]], [[RAS_RW]]]);
-    expect(out).toEqual([[RAS_RW, RM_RW, POL_R]]);
+    const out = deriveRequiredScopes([[[POL_R]], [[PA_RW]], [[RAS_RW]]]);
+    expect(out).toEqual([[PA_RW, RAS_RW, POL_R]]);
   });
 });

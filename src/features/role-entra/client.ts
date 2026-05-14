@@ -94,9 +94,13 @@ export async function listEligibleRoleEntraAssignments(
  * Microsoft Graph permissions for
  * `GET /roleManagement/directory/roleAssignmentScheduleInstances/filterByCurrentUser(on='principal')`.
  *
+ * Read variant is the documented least-priv; ReadWrite is accepted as
+ * a downgrade-tolerant alternative.
+ *
  * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleassignmentscheduleinstances?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ACTIVE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
+  [OAuthScope.RoleAssignmentScheduleReadDirectory],
   [OAuthScope.RoleAssignmentScheduleReadWriteDirectory],
 ];
 
@@ -116,10 +120,14 @@ export async function listActiveRoleEntraAssignments(
  * Microsoft Graph permissions for
  * `GET /roleManagement/directory/roleAssignmentScheduleRequests/filterByCurrentUser(on='principal'|'approver')`.
  *
+ * Documented least-priv is `RoleAssignmentSchedule.Read.Directory`;
+ * ReadWrite is accepted as a downgrade-tolerant alternative.
+ *
  * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleassignmentschedulerequests?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ROLE_ENTRA_REQUESTS_SCOPES: OAuthScope[][] = [
-  [OAuthScope.RoleManagementReadWriteDirectory],
+  [OAuthScope.RoleAssignmentScheduleReadDirectory],
+  [OAuthScope.RoleAssignmentScheduleReadWriteDirectory],
 ];
 
 /** GET pending-approval role-assignment-schedule requests submitted by me. */
@@ -171,18 +179,12 @@ export interface RequestRoleEntraActivationParams {
  * `POST /roleManagement/directory/roleAssignmentScheduleRequests`
  * with `action=selfActivate` or `action=selfDeactivate`.
  *
- * Both `RoleAssignmentSchedule.ReadWrite.Directory` and
- * `RoleManagement.ReadWrite.Directory` are required — the assignment
- * schedule scope authorises writing the request, the role-management
- * scope authorises mutating the active assignment.
+ * Documented least-priv is `RoleAssignmentSchedule.ReadWrite.Directory`.
  *
  * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-post-roleassignmentschedulerequests?view=graph-rest-1.0&tabs=http#permissions
  */
 export const ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES: OAuthScope[][] = [
-  [
-    OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
-    OAuthScope.RoleManagementReadWriteDirectory,
-  ],
+  [OAuthScope.RoleAssignmentScheduleReadWriteDirectory],
 ];
 
 /** POST a `selfActivate` role-assignment-schedule request. */
@@ -247,19 +249,30 @@ async function postScheduleRequest(
  * `/roleManagement/directory/roleAssignmentApprovals/...` only on the
  * BETA endpoint.
  *
- * The approval-stage GET/PATCH path is gated by the
- * `PrivilegedAccess.*.AzureAD` permission family in addition to
- * `RoleManagement.ReadWrite.Directory`. Without one of the
- * `PrivilegedAccess` permissions Graph returns 403 at submit time,
- * so we model both call sites here. We accept the Read variant as a
- * downgrade target consistent with how list scopes are modeled.
+ * **Docs vs. observed.** The Microsoft Graph documentation only lists
+ * `RoleAssignmentSchedule.{Read,ReadWrite}.Directory` as required for
+ * the GET (`approval-get`) and PATCH (`approvalstep-update`) on the
+ * BETA approvals surface. In practice (verified against a live tenant
+ * via the `pim_role_entra_approval_review` tool) the PATCH returns
+ * HTTP 403 unless the caller also holds
+ * `PrivilegedAccess.ReadWrite.AzureAD`. Issuing the GET and the PATCH
+ * always happens within the same review flow, so the combined runtime
+ * requirement is modeled as a single AND-alternative below.
+ *
+ * **Do NOT collapse this back to a single docs-aligned scope** without
+ * re-testing live in a real tenant — removing the
+ * `PrivilegedAccess.ReadWrite.AzureAD` requirement will silently
+ * re-break the approval flow in tenants that mirror the observed
+ * behavior.
  *
  * @see https://learn.microsoft.com/en-us/graph/api/approval-get?view=graph-rest-beta&tabs=http#permissions
  * @see https://learn.microsoft.com/en-us/graph/api/approvalstep-update?view=graph-rest-beta&tabs=http#permissions
  */
 export const APPROVE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
-  [OAuthScope.RoleManagementReadWriteDirectory, OAuthScope.PrivilegedAccessReadWriteAzureAD],
-  [OAuthScope.RoleManagementReadWriteDirectory, OAuthScope.PrivilegedAccessReadAzureAD],
+  [
+    OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+    OAuthScope.PrivilegedAccessReadWriteAzureAD,
+  ],
 ];
 
 /**
