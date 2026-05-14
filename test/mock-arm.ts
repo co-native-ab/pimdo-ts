@@ -141,6 +141,7 @@ export class MockArmState {
     principalId?: string;
     endDateTime?: string;
     roleDisplayName?: string;
+    status?: string;
   }): RoleAzureActiveAssignment {
     const id =
       partial.id ??
@@ -156,6 +157,7 @@ export class MockArmState {
         scope: partial.scope,
         memberType: "Direct",
         assignmentType: "Activated",
+        status: partial.status ?? "Provisioned",
         endDateTime: partial.endDateTime ?? null,
         expandedProperties: {
           roleDefinition: {

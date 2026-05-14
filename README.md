@@ -163,6 +163,8 @@ pimdo authenticates against **two resources** from the same login:
 | `RoleAssignmentSchedule.ReadWrite.Directory`           | Graph    | scheduled Entra role activations                                                                |
 | `RoleEligibilitySchedule.Read.Directory`               | Graph    | reading Entra eligibility schedules                                                             |
 | `RoleManagementPolicy.Read.Directory`                  | Graph    | reading Entra-role activation policy (max duration etc.) — required by `pim_role_entra_request` |
+| `PrivilegedAccess.Read.AzureAD`                        | Graph    | reading Entra-role approval steps assigned to you (read-only fallback)                          |
+| `PrivilegedAccess.ReadWrite.AzureAD`                   | Graph    | approving / denying Entra-role activation requests via `pim_role_entra_approval_review`         |
 | `https://management.azure.com/user_impersonation`      | ARM      | all Azure resource role operations                                                              |
 
 The MCP server starts with no PIM tools enabled. As the tenant grants the scopes listed above (typically through admin consent), the corresponding tools light up automatically on the next login.

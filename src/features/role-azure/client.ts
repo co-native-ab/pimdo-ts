@@ -91,6 +91,31 @@ export async function listEligibleRoleAzureAssignments(
 }
 
 /**
+ * Lifecycle statuses that indicate the active assignment is no longer
+ * effective. ARM may continue to return revoked/expired instances on
+ * `roleAssignmentScheduleInstances` for a short period after a
+ * deactivation, so we drop them client-side to keep the active-list
+ * tool aligned with what the user can actually use.
+ *
+ * Anything not in this set (including unknown statuses) is preserved
+ * so we never accidentally hide a truly active assignment.
+ */
+const TERMINAL_ACTIVE_STATUSES = new Set<string>([
+  "Revoked",
+  "Revoking",
+  "Expired",
+  "Canceled",
+  "Cancelled",
+  "Denied",
+  "Failed",
+]);
+
+function isActiveStatus(status: string | undefined): boolean {
+  if (!status) return true;
+  return !TERMINAL_ACTIVE_STATUSES.has(status);
+}
+
+/**
  * GET role-assignment-schedule instances where the signed-in user is the
  * principal. ARM rejects an empty-scope listing for active assignments
  * (returns []), so we derive scopes from the eligibility list.
@@ -117,9 +142,13 @@ export async function listActiveRoleAzureAssignments(
     const items = await getAllPages(client, path, ActiveListSchema, signal);
     for (const item of items) {
       // Only surface user principals.
-      if (item.properties.principalType === undefined || item.properties.principalType === "User") {
-        result.push(item);
+      if (item.properties.principalType !== undefined && item.properties.principalType !== "User") {
+        continue;
       }
+      // Drop terminal lifecycle states (Revoked/Expired/...) so the
+      // active list stays aligned with what's actually usable.
+      if (!isActiveStatus(item.properties.status)) continue;
+      result.push(item);
     }
   }
   return result;

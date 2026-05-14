@@ -247,11 +247,19 @@ async function postScheduleRequest(
  * `/roleManagement/directory/roleAssignmentApprovals/...` only on the
  * BETA endpoint.
  *
+ * The approval-stage GET/PATCH path is gated by the
+ * `PrivilegedAccess.*.AzureAD` permission family in addition to
+ * `RoleManagement.ReadWrite.Directory`. Without one of the
+ * `PrivilegedAccess` permissions Graph returns 403 at submit time,
+ * so we model both call sites here. We accept the Read variant as a
+ * downgrade target consistent with how list scopes are modeled.
+ *
  * @see https://learn.microsoft.com/en-us/graph/api/approval-get?view=graph-rest-beta&tabs=http#permissions
  * @see https://learn.microsoft.com/en-us/graph/api/approvalstep-update?view=graph-rest-beta&tabs=http#permissions
  */
 export const APPROVE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
-  [OAuthScope.RoleManagementReadWriteDirectory],
+  [OAuthScope.RoleManagementReadWriteDirectory, OAuthScope.PrivilegedAccessReadWriteAzureAD],
+  [OAuthScope.RoleManagementReadWriteDirectory, OAuthScope.PrivilegedAccessReadAzureAD],
 ];
 
 /**

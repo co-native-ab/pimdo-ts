@@ -38,6 +38,10 @@ export enum OAuthScope {
   RoleAssignmentScheduleReadWriteDirectory = "RoleAssignmentSchedule.ReadWrite.Directory",
   RoleEligibilityScheduleReadDirectory = "RoleEligibilitySchedule.Read.Directory",
   RoleEligibilityScheduleReadWriteDirectory = "RoleEligibilitySchedule.ReadWrite.Directory",
+  // Required by the BETA approval surface
+  // (`/roleManagement/directory/roleAssignmentApprovals/...`).
+  PrivilegedAccessReadAzureAD = "PrivilegedAccess.Read.AzureAD",
+  PrivilegedAccessReadWriteAzureAD = "PrivilegedAccess.ReadWrite.AzureAD",
 
   // ARM — PIM for Azure (resource) Roles
   ArmUserImpersonation = "https://management.azure.com/user_impersonation",
@@ -134,6 +138,18 @@ export const AVAILABLE_SCOPES: readonly ScopeDefinition[] = [
     scope: OAuthScope.RoleEligibilityScheduleReadWriteDirectory,
     label: "Entra Roles (eligible assignments)",
     description: "Read and manage your eligible assignment schedules for directory roles",
+    required: false,
+  },
+  {
+    scope: OAuthScope.PrivilegedAccessReadAzureAD,
+    label: "Entra Roles (approvals, read-only)",
+    description: "Read pending Entra-role approval steps assigned to you",
+    required: false,
+  },
+  {
+    scope: OAuthScope.PrivilegedAccessReadWriteAzureAD,
+    label: "Entra Roles (approvals)",
+    description: "Approve or deny Entra-role activation requests assigned to you",
     required: false,
   },
   {
