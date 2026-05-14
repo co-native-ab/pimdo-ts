@@ -18,9 +18,9 @@ import { type OAuthScope, OAuthScope as GS, type Resource } from "../src/scopes.
 const DEFAULT_GRANTED_SCOPES: readonly OAuthScope[] = [
   GS.UserRead,
   GS.OfflineAccess,
-  GS.PrivilegedEligibilityScheduleReadWriteAzureADGroup,
+  GS.PrivilegedEligibilityScheduleReadAzureADGroup,
   GS.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
-  GS.RoleEligibilityScheduleReadWriteDirectory,
+  GS.RoleEligibilityScheduleReadDirectory,
   GS.RoleAssignmentScheduleReadWriteDirectory,
   GS.PrivilegedAccessReadWriteAzureAD,
   GS.ArmUserImpersonation,

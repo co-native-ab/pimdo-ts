@@ -26,18 +26,26 @@ export enum OAuthScope {
   OfflineAccess = "offline_access",
 
   // Graph — PIM for Entra Groups
-  PrivilegedAssignmentScheduleReadAzureADGroup = "PrivilegedAssignmentSchedule.Read.AzureADGroup",
+  //
+  // pimdo never creates or deletes group eligibilities, so the
+  // eligibility scope is `Read` only. Active-assignment schedules are
+  // mutated by self-activate/self-deactivate/approve flows, so that
+  // scope must be `ReadWrite` (which implicitly covers list operations).
+  // See ADR-0017 for the policy of choosing a single variant per scope
+  // family rather than offering both as alternatives.
   PrivilegedAssignmentScheduleReadWriteAzureADGroup = "PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup",
   PrivilegedEligibilityScheduleReadAzureADGroup = "PrivilegedEligibilitySchedule.Read.AzureADGroup",
-  PrivilegedEligibilityScheduleReadWriteAzureADGroup = "PrivilegedEligibilitySchedule.ReadWrite.AzureADGroup",
   RoleManagementPolicyReadAzureADGroup = "RoleManagementPolicy.Read.AzureADGroup",
 
   // Graph — PIM for Entra (directory) Roles
+  //
+  // Same single-variant policy as the group scopes above: `Read` for
+  // role-eligibility (we never mutate eligibilities), `ReadWrite` for
+  // role-assignment (we self-activate/self-deactivate/approve). See
+  // ADR-0017.
   RoleManagementPolicyReadDirectory = "RoleManagementPolicy.Read.Directory",
-  RoleAssignmentScheduleReadDirectory = "RoleAssignmentSchedule.Read.Directory",
   RoleAssignmentScheduleReadWriteDirectory = "RoleAssignmentSchedule.ReadWrite.Directory",
   RoleEligibilityScheduleReadDirectory = "RoleEligibilitySchedule.Read.Directory",
-  RoleEligibilityScheduleReadWriteDirectory = "RoleEligibilitySchedule.ReadWrite.Directory",
   // Required at runtime by the BETA approval surface
   // (`/roleManagement/directory/roleAssignmentApprovals/...`) in addition
   // to the documented `RoleAssignmentSchedule.*.Directory` permissions —
@@ -84,20 +92,8 @@ export const AVAILABLE_SCOPES: readonly ScopeDefinition[] = [
   },
   {
     scope: OAuthScope.PrivilegedEligibilityScheduleReadAzureADGroup,
-    label: "Group PIM (eligible assignments, read-only)",
-    description: "Read your eligible assignment schedules for Entra groups",
-    required: false,
-  },
-  {
-    scope: OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup,
     label: "Group PIM (eligible assignments)",
-    description: "Read and manage your eligible assignment schedules for Entra groups",
-    required: false,
-  },
-  {
-    scope: OAuthScope.PrivilegedAssignmentScheduleReadAzureADGroup,
-    label: "Group PIM (active assignments, read-only)",
-    description: "Read your active assignment schedules for Entra groups",
+    description: "Read your eligible assignment schedules for Entra groups",
     required: false,
   },
   {
@@ -114,20 +110,8 @@ export const AVAILABLE_SCOPES: readonly ScopeDefinition[] = [
   },
   {
     scope: OAuthScope.RoleEligibilityScheduleReadDirectory,
-    label: "Entra Roles (eligible assignments, read-only)",
-    description: "Read your eligible assignment schedules for directory roles",
-    required: false,
-  },
-  {
-    scope: OAuthScope.RoleEligibilityScheduleReadWriteDirectory,
     label: "Entra Roles (eligible assignments)",
-    description: "Read and manage your eligible assignment schedules for directory roles",
-    required: false,
-  },
-  {
-    scope: OAuthScope.RoleAssignmentScheduleReadDirectory,
-    label: "Entra Roles (active assignments, read-only)",
-    description: "Read your active assignment schedules for directory roles",
+    description: "Read your eligible assignment schedules for directory roles",
     required: false,
   },
   {

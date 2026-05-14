@@ -29,10 +29,15 @@ Two facts shape the design:
 
 1. **Consent is partial.** A tenant or user can decline any
    scope at consent time. Tenants can also _downgrade_ requested
-   scopes at consent time (e.g. `RoleEligibilitySchedule.ReadWrite.
-Directory` → `RoleEligibilitySchedule.Read.Directory`). The
-   set of granted scopes is therefore not knowable at compile
-   time; it must be read off the token response.
+   `ReadWrite` scopes to their `Read` variants at consent time
+   (e.g. `RoleAssignmentSchedule.ReadWrite.Directory` →
+   `RoleAssignmentSchedule.Read.Directory`). The set of granted
+   scopes is therefore not knowable at compile time; it must be
+   read off the token response. pimdo intentionally **does not
+   accept the downgraded `Read` variant as a fallback** for tools
+   that need `ReadWrite` (see "Single-variant policy" below) — a
+   downgraded tenant simply loses the affected mutation tools
+   from the visible tool list.
 2. **Agent UX matters.** If the agent can _see_ a tool that
    would always fail with "consent required", it will keep
    trying. The cleanest experience is for the tool list the
@@ -73,11 +78,11 @@ interface ToolDef {
 reads "(A AND B) OR C". This is the smallest shape that captures both
 patterns we have:
 
-- **OR between alternatives.** Read tools that Microsoft accepts under
-  either `Read` or `ReadWrite` against the same path are listed as two
-  single-scope alternatives — `[[Read.Directory], [ReadWrite.Directory]]`
-  — so the tool stays visible after a tenant downgrades the requested
-  `ReadWrite` consent to `Read`.
+- **OR between alternatives.** When a single tool's handler exercises
+  multiple call sites whose Graph permission requirements differ, the
+  derived `requiredScopes` may end up with several alternatives. (This
+  is rare in practice now that we apply the single-variant policy
+  below — most tools collapse to one alternative.)
 - **AND within an alternative.** Privilege-changing tools whose handler
   calls multiple endpoints with distinct scopes list every required
   scope inside one alternative — `[[A, B, C, D]]` — so the tool is
@@ -86,19 +91,43 @@ patterns we have:
   consenting to just one of the four scopes; the agent could call them
   and would always 401.
 
-#### When to use one alternative vs. multiple
+#### Single-variant policy (Read xor ReadWrite per scope family)
 
-- **One alternative with multiple scopes** — when the handler genuinely
-  needs every scope in the list to function. Example:
-  `pim_role_entra_request` calls `RoleAssignmentSchedule.ReadWrite`,
-  reads policy via `RoleManagementPolicy.Read`, and ranges over
-  eligibilities via `RoleEligibilitySchedule.ReadWrite`; missing any one
-  of those scopes guarantees a 401.
-- **Multiple single-scope alternatives** — when any single member is
-  sufficient. Example: `pim_role_entra_eligible_list` reads
-  eligibilities, which Microsoft serves equally to `Read.Directory`
-  _and_ `ReadWrite.Directory` callers. Listing both as alternatives
-  makes the substitutability explicit.
+For every scope that Microsoft Graph publishes as a `Read` /
+`ReadWrite` pair (e.g. `PrivilegedEligibilitySchedule.{Read,ReadWrite}.
+AzureADGroup`, `RoleAssignmentSchedule.{Read,ReadWrite}.Directory`),
+pimdo requests **exactly one variant**, chosen as the minimum needed
+across the full feature surface that uses it:
+
+- If pimdo never mutates the underlying resource, request the `Read`
+  variant only. Eligibility schedules are read-only in pimdo (we list
+  what the user is eligible for; we never create or delete
+  eligibilities), so we ask for `*EligibilitySchedule.Read.*` and
+  never the `ReadWrite` companion.
+- If any tool in the family needs to mutate, request the `ReadWrite`
+  variant only — it implicitly satisfies list operations on the same
+  surface, so the standalone `Read` variant is redundant. Assignment
+  schedules fall in this bucket because of self-activate /
+  self-deactivate / approve.
+
+This deliberately removes the "downgrade-tolerant alternative" pattern
+that earlier iterations of pimdo accepted at runtime. Reasoning:
+
+1. Consumers should consent to the _true_ least-privileged set, not a
+   superset built to be defensive against tenant policy.
+2. A tenant that downgrades a requested `ReadWrite` scope to its `Read`
+   variant in practice does not want the calling app to mutate. Hiding
+   the affected tools is the correct behaviour; silently dropping back
+   to the `Read` endpoint would obscure that policy decision.
+3. The Graph documentation that lists `Read` as an alternative for a
+   given list endpoint remains accurate — pimdo has simply chosen not
+   to take advantage of it. Future tools that need a Read-only
+   alternative for some new reason can re-introduce a multi-alternative
+   `requiredScopes` for that specific call site.
+
+The `*_SCOPES` constants in `src/features/*/client.ts` therefore each
+contain a single alternative. `assertScopes` enforces the same
+single-variant requirement at runtime.
 
 ### Registry mechanics
 
@@ -148,10 +177,10 @@ ALWAYS AVAILABLE:
   - auth_status: …
 
 SCOPE-GATED TOOLS:
-  Requires RoleEligibilitySchedule.Read.Directory OR RoleEligibilitySchedule.ReadWrite.Directory:
+  Requires RoleEligibilitySchedule.Read.Directory:
     - pim_role_entra_eligible_list: …
-  Requires (RoleAssignmentSchedule.ReadWrite.Directory AND RoleManagement.ReadWrite.Directory):
-    - pim_role_entra_deactivate: …
+  Requires (RoleAssignmentSchedule.ReadWrite.Directory AND PrivilegedAccess.ReadWrite.AzureAD):
+    - pim_role_entra_approval_review: …
   …
 ```
 
@@ -164,10 +193,11 @@ scope (or scope combination) would make it appear.
 
 - **POS-001:** The agent's tool list always reflects what the
   user actually consented to. No "always failing" tools.
-- **POS-002:** Tenants that downgrade `ReadWrite` to `Read` get
-  the read tools and lose the mutation tools — exactly the
-  intended behaviour, with no per-tenant configuration in
-  pimdo-ts itself.
+- **POS-002:** Tenants that downgrade `ReadWrite` to `Read` lose
+  the affected mutation tools cleanly (they disappear from the
+  tool list) — exactly the intended behaviour, with no
+  per-tenant configuration in pimdo-ts itself and no silent
+  fallback to a Read-only code path.
 - **POS-003:** Adding a new tool is a one-line
   `requiredScopes: [...]` declaration. No registry rewiring.
 - **POS-004:** The "scope required" hint in instructions text
@@ -229,9 +259,11 @@ scope (or scope combination) would make it appear.
   these" — multi-scope mutation tools (`pim_*_request`,
   `pim_*_deactivate`) became visible after consenting to a single
   scope and would always 401 at call time. Tightening to "ALL"
-  was equally wrong because it broke the `Read`/`ReadWrite`
-  substitutability for read tools after a tenant downgrade. DNF
-  is the smallest shape that handles both.
+  was equally wrong because it could not express the
+  conjunctive-then-disjunctive shape we needed for some tools.
+  DNF is the smallest shape that handles both, even though our
+  current single-variant policy collapses most tool descriptors
+  to one alternative.
 
 ### Per-Tool Scope as a String, No Enum
 
@@ -258,15 +290,18 @@ scope (or scope combination) would make it appear.
 - **IMP-004:** Tests use `StaticAuthenticator` to inject a
   fixed scope set. See `test/tools/*.test.ts` for the pattern.
 - **IMP-005:** When adding a new tool, declare the minimum
-  `requiredScopes` that match the operation. For read paths
-  that Microsoft accepts under either `Read` or `ReadWrite`,
-  list them as **two separate alternatives**
-  (`[[Read.Directory], [ReadWrite.Directory]]`) — the agent
-  should not lose access just because the tenant downgraded.
-  For mutation paths whose handler calls multiple endpoints
-  with distinct scopes, list every needed scope **inside one
-  alternative** (`[[A, B, C]]`) so the tool stays hidden until
-  all of them are granted.
+  `requiredScopes` that match the operation, following the
+  single-variant policy: pick **one** of `Read` / `ReadWrite`
+  per scope family (Read if the tool only reads; ReadWrite if
+  any code path mutates). Use a multi-scope alternative
+  (`[[A, B, C]]`) when the handler calls multiple endpoints
+  with distinct scopes so the tool stays hidden until all are
+  granted. Reach for multi-alternative DNF
+  (`[[X], [Y]]`) only when there is a real reason that two
+  distinct scope shapes are both acceptable — Microsoft's
+  documented "Read or ReadWrite" alternative on a list endpoint
+  is **not** a sufficient reason on its own (see the
+  single-variant policy in the Decision section).
 
 ## References
 

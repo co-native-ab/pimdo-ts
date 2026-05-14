@@ -57,15 +57,15 @@ const PRIVILEGED_BASE = "/identityGovernance/privilegedAccess/group";
  * Microsoft Graph permissions for
  * `GET /identityGovernance/privilegedAccess/group/eligibilitySchedules/filterByCurrentUser(on='principal')`.
  *
- * Read variant is the documented least-priv. We accept the ReadWrite
- * variant as a downgrade-tolerant alternative for tenants whose
- * consent always upgrades reads to read/write.
+ * pimdo never creates or deletes group eligibilities, so we request the
+ * `Read` variant only. The `ReadWrite` variant would also satisfy this
+ * call but is intentionally not requested — see ADR-0017 for the
+ * single-variant policy.
  *
  * @see https://learn.microsoft.com/en-us/graph/api/privilegedaccessgroupeligibilityschedule-filterbycurrentuser?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ELIGIBLE_GROUP_SCOPES: OAuthScope[][] = [
   [OAuthScope.PrivilegedEligibilityScheduleReadAzureADGroup],
-  [OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup],
 ];
 
 /** GET eligibility schedules where the signed-in user is the principal. */
@@ -84,13 +84,14 @@ export async function listEligibleGroupAssignments(
  * Microsoft Graph permissions for
  * `GET /identityGovernance/privilegedAccess/group/assignmentScheduleInstances/filterByCurrentUser(on='principal')`.
  *
- * Read variant is the documented least-priv; ReadWrite is accepted as
- * a downgrade-tolerant alternative.
+ * The same `ReadWrite` scope used by self-activate / self-deactivate
+ * implicitly covers list operations. The standalone `Read` variant
+ * would also satisfy this call but is intentionally not requested —
+ * see ADR-0017.
  *
  * @see https://learn.microsoft.com/en-us/graph/api/privilegedaccessgroupassignmentscheduleinstance-filterbycurrentuser?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ACTIVE_GROUP_SCOPES: OAuthScope[][] = [
-  [OAuthScope.PrivilegedAssignmentScheduleReadAzureADGroup],
   [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup],
 ];
 
@@ -110,15 +111,16 @@ export async function listActiveGroupAssignments(
  * Microsoft Graph permissions for
  * `GET /identityGovernance/privilegedAccess/group/assignmentScheduleRequests/filterByCurrentUser(on='principal'|'approver')`.
  *
- * Listing assignment-schedule requests (mine and approver-side) is a
- * read-only operation and the documented least-priv is the Read variant
- * of `PrivilegedAssignmentSchedule.AzureADGroup`. ReadWrite is accepted
- * as a downgrade-tolerant alternative.
+ * Listing assignment-schedule requests is read-only on the wire, but
+ * pimdo already requests `PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup`
+ * for the activate/deactivate/approve flows on the same surface, so we
+ * reuse it here rather than asking the consumer to consent to a second
+ * scope. The standalone `Read` variant would also satisfy this call —
+ * see ADR-0017 for the single-variant policy.
  *
  * @see https://learn.microsoft.com/en-us/graph/api/privilegedaccessgroupassignmentschedulerequest-filterbycurrentuser?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_GROUP_REQUESTS_SCOPES: OAuthScope[][] = [
-  [OAuthScope.PrivilegedAssignmentScheduleReadAzureADGroup],
   [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup],
 ];
 

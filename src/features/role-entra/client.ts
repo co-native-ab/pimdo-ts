@@ -66,16 +66,14 @@ export const DIRECTORY_SCOPE_ROOT = "/";
  * Microsoft Graph permissions for
  * `GET /roleManagement/directory/roleEligibilitySchedules/filterByCurrentUser(on='principal')`.
  *
- * The Read variant is sufficient — listing your own eligibility
- * schedules does not require the ReadWrite permission. Tenants that
- * consent-downgrade `ReadWrite → Read` therefore still satisfy this
- * call site via the first alternative.
+ * pimdo never creates or deletes Entra-role eligibilities, so we
+ * request the `Read` variant only. The `ReadWrite` variant would also
+ * satisfy this call but is intentionally not requested — see ADR-0017.
  *
  * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleeligibilityschedules?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ELIGIBLE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
   [OAuthScope.RoleEligibilityScheduleReadDirectory],
-  [OAuthScope.RoleEligibilityScheduleReadWriteDirectory],
 ];
 
 /** GET eligibility schedules where the signed-in user is the principal. */
@@ -94,13 +92,14 @@ export async function listEligibleRoleEntraAssignments(
  * Microsoft Graph permissions for
  * `GET /roleManagement/directory/roleAssignmentScheduleInstances/filterByCurrentUser(on='principal')`.
  *
- * Read variant is the documented least-priv; ReadWrite is accepted as
- * a downgrade-tolerant alternative.
+ * The same `ReadWrite` scope used by self-activate / self-deactivate
+ * implicitly covers list operations. The standalone `Read` variant
+ * would also satisfy this call but is intentionally not requested —
+ * see ADR-0017.
  *
  * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleassignmentscheduleinstances?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ACTIVE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
-  [OAuthScope.RoleAssignmentScheduleReadDirectory],
   [OAuthScope.RoleAssignmentScheduleReadWriteDirectory],
 ];
 
@@ -120,13 +119,14 @@ export async function listActiveRoleEntraAssignments(
  * Microsoft Graph permissions for
  * `GET /roleManagement/directory/roleAssignmentScheduleRequests/filterByCurrentUser(on='principal'|'approver')`.
  *
- * Documented least-priv is `RoleAssignmentSchedule.Read.Directory`;
- * ReadWrite is accepted as a downgrade-tolerant alternative.
+ * Reuses the `ReadWrite` scope already required by the activation /
+ * deactivation / approval flows on the same surface so consumers don't
+ * have to consent to the standalone `Read` variant as well — see
+ * ADR-0017.
  *
  * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleassignmentschedulerequests?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ROLE_ENTRA_REQUESTS_SCOPES: OAuthScope[][] = [
-  [OAuthScope.RoleAssignmentScheduleReadDirectory],
   [OAuthScope.RoleAssignmentScheduleReadWriteDirectory],
 ];
 

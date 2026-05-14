@@ -72,12 +72,11 @@ function buildRows(): Row[] {
 function renderUses(uses: Row["uses"], isAlways: boolean): string {
   if (isAlways) return "always (sign-in identity / refresh tokens)";
   if (uses.length === 0) return "—";
-  return uses
-    .map((u) => {
-      const link = `[${escapeCell(u.label)}](${u.docsUrl})`;
-      return u.required ? link : `${link} (alternative — Read variant accepted)`;
-    })
-    .join("; ");
+  // Per the single-variant policy in ADR-0017, every requested scope is
+  // declared as the unique alternative for its call sites; the
+  // "alternative — Read variant accepted" annotation that earlier
+  // iterations emitted is therefore unreachable.
+  return uses.map((u) => `[${escapeCell(u.label)}](${u.docsUrl})`).join("; ");
 }
 
 function renderTable(rows: Row[]): string {
