@@ -53,7 +53,6 @@ describe("pim_role_entra_request consent-downgrade regression", () => {
     OAuthScope.OfflineAccess,
     OAuthScope.RoleEligibilityScheduleReadDirectory, // downgraded
     OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
-    OAuthScope.RoleManagementReadWriteDirectory,
     OAuthScope.RoleManagementPolicyReadDirectory,
   ];
 
@@ -92,7 +91,7 @@ describe("pim_role_entra_request consent-downgrade regression", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("requestRoleEntraActivation still requires both ReadWrite scopes", async () => {
+  it("requestRoleEntraActivation still requires the ReadWrite assignment scope", async () => {
     // Downgraded eligibility alone is NOT enough for the activation POST.
     const cred = credWith([OAuthScope.RoleEligibilityScheduleReadDirectory]);
     await expect(

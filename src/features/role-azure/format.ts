@@ -61,7 +61,7 @@ export function formatActiveAssignmentsText(items: readonly RoleAzureActiveAssig
       `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
         it.properties.scope,
         it.properties.expandedProperties,
-      )} [instance=${it.id}]${expiryTail(AssignmentKind.Active, it.properties.endDateTime)}`,
+      )} [instance=${it.id}] status=${it.properties.status ?? "?"}${expiryTail(AssignmentKind.Active, it.properties.endDateTime)}`,
   );
 }
 

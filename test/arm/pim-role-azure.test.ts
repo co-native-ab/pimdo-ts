@@ -65,6 +65,49 @@ describe("arm/pim-role-azure", () => {
     expect(result[0]?.properties.principalId).toBe("me-id");
   });
 
+  it("listActiveRoleAzureAssignments filters terminal lifecycle statuses", async () => {
+    state.seedEligibility({ roleDefinitionId: "role-1", scope: "/subscriptions/sub-a" });
+    state.seedActive({
+      id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleInstances/active-keep",
+      roleDefinitionId: "role-1",
+      scope: "/subscriptions/sub-a",
+      status: "Provisioned",
+    });
+    state.seedActive({
+      id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleInstances/active-revoked",
+      roleDefinitionId: "role-1",
+      scope: "/subscriptions/sub-a",
+      status: "Revoked",
+    });
+    state.seedActive({
+      id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleInstances/active-expired",
+      roleDefinitionId: "role-1",
+      scope: "/subscriptions/sub-a",
+      status: "Expired",
+    });
+    state.seedActive({
+      id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleInstances/active-unknown",
+      roleDefinitionId: "role-1",
+      scope: "/subscriptions/sub-a",
+      status: "SomeNewStatus",
+    });
+
+    const result = await listActiveRoleAzureAssignments(client, testSignal());
+    const ids = result.map((r) => r.id);
+    expect(ids).toContain(
+      "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleInstances/active-keep",
+    );
+    expect(ids).toContain(
+      "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleInstances/active-unknown",
+    );
+    expect(ids).not.toContain(
+      "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleInstances/active-revoked",
+    );
+    expect(ids).not.toContain(
+      "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleInstances/active-expired",
+    );
+  });
+
   it("listActiveRoleAzureAssignments returns [] when no eligibilities", async () => {
     const result = await listActiveRoleAzureAssignments(client, testSignal());
     expect(result).toEqual([]);

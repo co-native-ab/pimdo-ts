@@ -83,6 +83,36 @@ describe("pim_role_azure list tools", () => {
     });
   });
 
+  it("active_list renders status and hides terminal-status rows", async () => {
+    await withState(async (state, config) => {
+      state.seedEligibility({
+        roleDefinitionId: "role-1",
+        scope: "/subscriptions/sub-a",
+        roleDisplayName: "Reader",
+      });
+      state.seedActive({
+        id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleInstances/keep",
+        roleDefinitionId: "role-1",
+        scope: "/subscriptions/sub-a",
+        roleDisplayName: "Reader",
+        status: "Provisioned",
+      });
+      state.seedActive({
+        id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleInstances/drop",
+        roleDefinitionId: "role-1",
+        scope: "/subscriptions/sub-a",
+        roleDisplayName: "Reader",
+        status: "Revoked",
+      });
+      const res = await call(pimRoleAzureActiveListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain("status=Provisioned");
+      expect(text).toContain("/keep");
+      expect(text).not.toContain("/drop");
+      expect(text).not.toContain("status=Revoked");
+    });
+  });
+
   it("request_list reports my pending requests", async () => {
     await withState(async (state, config) => {
       state.myRequests.push({

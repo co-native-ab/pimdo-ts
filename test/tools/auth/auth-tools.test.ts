@@ -132,19 +132,19 @@ describe("auth_status tool", () => {
         description: "x",
         requiredScopes: [[OAuthScope.UserRead]],
       },
-      // Hidden: needs PrivilegedAccess.ReadWrite.AzureADGroup which is not granted
+      // Hidden: needs PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup which is not granted
       {
         name: "pim_group_eligible_list",
         title: "x",
         description: "x",
-        requiredScopes: [[OAuthScope.PrivilegedAccessReadWriteAzureADGroup]],
+        requiredScopes: [[OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup]],
       },
     ];
     const res = await call(authStatusTool, config);
     const text = res.content[0]?.text ?? "";
     expect(text).toContain("Hidden tools (1):");
     expect(text).toContain("pim_group_eligible_list");
-    expect(text).toContain(OAuthScope.PrivilegedAccessReadWriteAzureADGroup);
+    expect(text).toContain(OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup);
     expect(text).not.toContain("visible_tool");
   });
 });

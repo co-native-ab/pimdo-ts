@@ -4,8 +4,8 @@
 
 import { GET_MY_OBJECT_ID_SCOPES, getMyObjectId } from "../../../graph/me.js";
 import {
-  GROUP_PIM_RW_SCOPES,
   LIST_ACTIVE_GROUP_SCOPES,
+  WRITE_GROUP_SCHEDULE_SCOPES,
   listActiveGroupAssignments,
   requestGroupDeactivation,
 } from "../client.js";
@@ -24,7 +24,7 @@ export const pimGroupDeactivateTool = buildDeactivateTool<GroupActiveAssignment>
     requiredScopes: deriveRequiredScopes([
       LIST_ACTIVE_GROUP_SCOPES,
       GET_MY_OBJECT_ID_SCOPES,
-      GROUP_PIM_RW_SCOPES,
+      WRITE_GROUP_SCHEDULE_SCOPES,
     ]),
   },
   noun: "PIM group",

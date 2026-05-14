@@ -92,7 +92,7 @@ describe("enforceScopes", () => {
     const ok = enforceScopes(
       fakeReq("Bearer fake-token"),
       res,
-      [[OAuthScope.RoleManagementReadWriteDirectory]],
+      [[OAuthScope.RoleAssignmentScheduleReadWriteDirectory]],
       writeError,
     );
     expect(ok).toBe(true);
