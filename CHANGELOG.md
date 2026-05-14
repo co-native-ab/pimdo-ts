@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-No version has been tagged yet. The first release will be cut once the
-remaining pre-release polish lands.
+_Nothing yet._
+
+## [0.1.0] — 2026-05-14
+
+First public release of `@co-native-ab/pimdo-ts`. Published to npm via
+GitHub Actions OIDC Trusted Publishing with `--provenance` and build
+attestations.
 
 ### Added
 

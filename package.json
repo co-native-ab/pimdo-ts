@@ -17,7 +17,8 @@
     "url": "git+https://github.com/co-native-ab/pimdo-ts.git"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "icons": "node scripts/encode-icons.mjs",
