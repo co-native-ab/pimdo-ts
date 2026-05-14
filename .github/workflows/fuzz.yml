@@ -1,0 +1,75 @@
+name: Fuzz
+
+# Property-based fuzz tests via jazzer.js. PRs run a short budget per
+# target so the wall-clock cost stays bounded; the nightly schedule
+# runs longer to actually find bugs. The repo has no native code and
+# no per-PR corpus persistence, so this stays simple — just run, fail
+# loudly on a crash, upload the libFuzzer artefact for triage.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "fuzz/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/fuzz.yml"
+  schedule:
+    - cron: "37 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - duration
+          - escape-html
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Short budget on PR runs (~30s wall-clock per target), longer
+      # budget for the nightly schedule.
+      - name: Run fuzzer
+        env:
+          BUDGET: ${{ github.event_name == 'pull_request' && '30' || '600' }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/jazzer "fuzz/${TARGET}.fuzz.cjs" \
+            "fuzz/corpus/${TARGET}" \
+            --sync \
+            -- -max_total_time="${BUDGET}" -max_len=4096
+
+      - name: Upload crash artefact
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: |
+            crash-*
+            timeout-*
+            oom-*
+            leak-*
+          if-no-files-found: ignore
+          retention-days: 14
