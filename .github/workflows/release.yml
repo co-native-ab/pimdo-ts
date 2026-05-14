@@ -32,7 +32,10 @@ jobs:
           jq --arg v "$VERSION" '.version = $v' manifest.json > tmp.json
           test -s tmp.json
           mv tmp.json manifest.json
-          npm run format:manifest
+          # Regenerate README + manifest tool tables. This also normalises
+          # manifest.json formatting (jq above expands compact objects that
+          # prettier won't re-collapse, which would otherwise trip readme:check).
+          npm run readme
       - name: Check
         run: npm run check
       - name: Build
