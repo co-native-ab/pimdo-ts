@@ -4,7 +4,7 @@
 import type { ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { GROUP_PIM_RW_SCOPES, listGroupApprovalRequests } from "../client.js";
+import { LIST_GROUP_REQUESTS_SCOPES, listGroupApprovalRequests } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
 import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
@@ -19,7 +19,7 @@ const def: ToolDef = {
   description:
     "List pending PIM group activation requests where the signed-in user " +
     "is an approver and has not yet recorded a decision.",
-  requiredScopes: deriveRequiredScopes([GROUP_PIM_RW_SCOPES]),
+  requiredScopes: deriveRequiredScopes([LIST_GROUP_REQUESTS_SCOPES]),
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {

@@ -50,15 +50,19 @@ describe("syncToolState", () => {
       fakeEntry("login", [], true), // always enabled
       fakeEntry("auth_status", [], true), // always enabled
       fakeEntry("logout", [[OAuthScope.UserRead]], false),
-      fakeEntry("pim_group_request", [[OAuthScope.PrivilegedAccessReadWriteAzureADGroup]], false),
+      fakeEntry(
+        "pim_group_request",
+        [[OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup]],
+        false,
+      ),
       fakeEntry(
         "pim_role_entra_eligible_list",
-        [[OAuthScope.RoleManagementReadWriteDirectory]],
+        [[OAuthScope.RoleAssignmentScheduleReadWriteDirectory]],
         false,
       ),
       fakeEntry(
         "pim_role_entra_active_list",
-        [[OAuthScope.RoleManagementReadWriteDirectory]],
+        [[OAuthScope.RoleAssignmentScheduleReadWriteDirectory]],
         false,
       ),
       // Read tool that accepts EITHER Read or ReadWrite (DNF: two
@@ -72,13 +76,13 @@ describe("syncToolState", () => {
         false,
       ),
       // Mutation tool that requires BOTH scopes (DNF: one alternative
-      // with two scopes). Mirrors pim_role_entra_deactivate.
+      // with two scopes). Mirrors pim_role_entra_approval_review.
       fakeEntry(
         "pim_role_entra_deactivate",
         [
           [
-            OAuthScope.RoleManagementReadWriteDirectory,
             OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+            OAuthScope.PrivilegedAccessReadWriteAzureAD,
           ],
         ],
         false,
@@ -90,9 +94,9 @@ describe("syncToolState", () => {
   it("enables all tools when all scopes are granted", () => {
     const scopes = [
       OAuthScope.UserRead,
-      OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
-      OAuthScope.RoleManagementReadWriteDirectory,
+      OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
       OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+      OAuthScope.PrivilegedAccessReadWriteAzureAD,
       OAuthScope.RoleEligibilityScheduleReadDirectory,
     ];
     syncToolState(entries, scopes, server);
@@ -117,16 +121,16 @@ describe("syncToolState", () => {
     expect(entries[7]!.registeredTool.enabled).toBe(false); // pim_role_entra_deactivate
   });
 
-  it("enables PrivilegedAccess.ReadWrite.AzureADGroup tools only when group-PIM scope granted", () => {
-    syncToolState(entries, [OAuthScope.PrivilegedAccessReadWriteAzureADGroup], server);
+  it("enables PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup tools only when group-PIM scope granted", () => {
+    syncToolState(entries, [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup], server);
 
     expect(entries[3]!.registeredTool.enabled).toBe(true); // pim_group_request
     expect(entries[4]!.registeredTool.enabled).toBe(false);
     expect(entries[5]!.registeredTool.enabled).toBe(false);
   });
 
-  it("RoleManagement.ReadWrite.Directory enables both read and write tools", () => {
-    syncToolState(entries, [OAuthScope.RoleManagementReadWriteDirectory], server);
+  it("RoleAssignmentSchedule.ReadWrite.Directory enables both read and write tools", () => {
+    syncToolState(entries, [OAuthScope.RoleAssignmentScheduleReadWriteDirectory], server);
 
     expect(entries[4]!.registeredTool.enabled).toBe(true); // pim_role_entra_eligible_list
     expect(entries[5]!.registeredTool.enabled).toBe(true); // pim_role_entra_active_list
@@ -151,19 +155,19 @@ describe("syncToolState", () => {
 
   it("conjunctive tool enables only when ALL scopes in the alternative are granted", () => {
     // Only one of two scopes — must stay disabled.
-    syncToolState(entries, [OAuthScope.RoleManagementReadWriteDirectory], server);
+    syncToolState(entries, [OAuthScope.RoleAssignmentScheduleReadWriteDirectory], server);
     expect(entries[7]!.registeredTool.enabled).toBe(false);
 
     // Other scope alone — also disabled.
-    syncToolState(entries, [OAuthScope.RoleAssignmentScheduleReadWriteDirectory], server);
+    syncToolState(entries, [OAuthScope.PrivilegedAccessReadWriteAzureAD], server);
     expect(entries[7]!.registeredTool.enabled).toBe(false);
 
     // Both — enabled.
     syncToolState(
       entries,
       [
-        OAuthScope.RoleManagementReadWriteDirectory,
         OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+        OAuthScope.PrivilegedAccessReadWriteAzureAD,
       ],
       server,
     );
@@ -195,8 +199,8 @@ describe("syncToolState", () => {
     syncToolState(
       entries,
       [
-        OAuthScope.PrivilegedAccessReadWriteAzureADGroup,
-        OAuthScope.RoleManagementReadWriteDirectory,
+        OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup,
+        OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
       ],
       server,
     );
@@ -222,19 +226,19 @@ describe("buildInstructions", () => {
       name: "pim_role_entra_request",
       title: "Send Email",
       description: "Send an email",
-      requiredScopes: [[OAuthScope.PrivilegedAccessReadWriteAzureADGroup]],
+      requiredScopes: [[OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup]],
     },
     {
       name: "pim_role_entra_eligible_list",
       title: "List Tasks",
       description: "List todo items",
-      requiredScopes: [[OAuthScope.RoleManagementReadWriteDirectory]],
+      requiredScopes: [[OAuthScope.RoleAssignmentScheduleReadWriteDirectory]],
     },
     {
       name: "pim_role_entra_active_list",
       title: "Create Task",
       description: "Create a todo",
-      requiredScopes: [[OAuthScope.RoleManagementReadWriteDirectory]],
+      requiredScopes: [[OAuthScope.RoleAssignmentScheduleReadWriteDirectory]],
     },
     {
       name: "pim_role_entra_eligible_list_disjunctive",
@@ -252,7 +256,7 @@ describe("buildInstructions", () => {
       requiredScopes: [
         [
           OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
-          OAuthScope.RoleManagementReadWriteDirectory,
+          OAuthScope.PrivilegedAccessReadWriteAzureAD,
         ],
       ],
     },
@@ -284,8 +288,8 @@ describe("buildInstructions", () => {
   it("groups scope-gated tools by scope", () => {
     const text = buildInstructions(defs);
     expect(text).toContain("SCOPE-GATED TOOLS:");
-    expect(text).toContain("PrivilegedAccess.ReadWrite.AzureADGroup");
-    expect(text).toContain("RoleManagement.ReadWrite.Directory");
+    expect(text).toContain("PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup");
+    expect(text).toContain("RoleAssignmentSchedule.ReadWrite.Directory");
   });
 
   it("renders disjunctive alternatives with OR and conjunctive ones with AND", () => {
@@ -294,8 +298,8 @@ describe("buildInstructions", () => {
     expect(text).toContain("RoleEligibilitySchedule.Read.Directory");
     expect(text).toContain("RoleEligibilitySchedule.ReadWrite.Directory");
     expect(text).toMatch(/Read\.Directory.*OR.*ReadWrite\.Directory/);
-    // Conjunctive tool ("RoleAssignmentSchedule … AND RoleManagement …")
-    expect(text).toMatch(/RoleAssignmentSchedule\.ReadWrite\.Directory AND/);
+    // Conjunctive tool ("PrivilegedAccess … AND RoleAssignmentSchedule …")
+    expect(text).toMatch(/PrivilegedAccess\.ReadWrite\.AzureAD AND/);
   });
 
   it("includes behavior rules", () => {

@@ -57,12 +57,14 @@ const PRIVILEGED_BASE = "/identityGovernance/privilegedAccess/group";
  * Microsoft Graph permissions for
  * `GET /identityGovernance/privilegedAccess/group/eligibilitySchedules/filterByCurrentUser(on='principal')`.
  *
- * The Graph PIM-for-groups surface only documents a `ReadWrite` scope —
- * there is no published `Read`-only variant for this endpoint.
+ * Read variant is the documented least-priv. We accept the ReadWrite
+ * variant as a downgrade-tolerant alternative for tenants whose
+ * consent always upgrades reads to read/write.
  *
  * @see https://learn.microsoft.com/en-us/graph/api/privilegedaccessgroupeligibilityschedule-filterbycurrentuser?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ELIGIBLE_GROUP_SCOPES: OAuthScope[][] = [
+  [OAuthScope.PrivilegedEligibilityScheduleReadAzureADGroup],
   [OAuthScope.PrivilegedEligibilityScheduleReadWriteAzureADGroup],
 ];
 
@@ -82,9 +84,13 @@ export async function listEligibleGroupAssignments(
  * Microsoft Graph permissions for
  * `GET /identityGovernance/privilegedAccess/group/assignmentScheduleInstances/filterByCurrentUser(on='principal')`.
  *
+ * Read variant is the documented least-priv; ReadWrite is accepted as
+ * a downgrade-tolerant alternative.
+ *
  * @see https://learn.microsoft.com/en-us/graph/api/privilegedaccessgroupassignmentscheduleinstance-filterbycurrentuser?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ACTIVE_GROUP_SCOPES: OAuthScope[][] = [
+  [OAuthScope.PrivilegedAssignmentScheduleReadAzureADGroup],
   [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup],
 ];
 
@@ -102,15 +108,48 @@ export async function listActiveGroupAssignments(
 
 /**
  * Microsoft Graph permissions for
- * `GET /identityGovernance/privilegedAccess/group/assignmentScheduleRequests/filterByCurrentUser(on='principal'|'approver')`
- * and the `POST /...assignmentScheduleRequests` endpoint behind activate /
- * deactivate / approval-step PATCH operations.
+ * `GET /identityGovernance/privilegedAccess/group/assignmentScheduleRequests/filterByCurrentUser(on='principal'|'approver')`.
+ *
+ * Listing assignment-schedule requests (mine and approver-side) is a
+ * read-only operation and the documented least-priv is the Read variant
+ * of `PrivilegedAssignmentSchedule.AzureADGroup`. ReadWrite is accepted
+ * as a downgrade-tolerant alternative.
  *
  * @see https://learn.microsoft.com/en-us/graph/api/privilegedaccessgroupassignmentschedulerequest-filterbycurrentuser?view=graph-rest-1.0&tabs=http#permissions
+ */
+export const LIST_GROUP_REQUESTS_SCOPES: OAuthScope[][] = [
+  [OAuthScope.PrivilegedAssignmentScheduleReadAzureADGroup],
+  [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup],
+];
+
+/**
+ * Microsoft Graph permissions for
+ * `POST /identityGovernance/privilegedAccess/group/assignmentScheduleRequests`
+ * with `action=selfActivate` or `action=selfDeactivate`.
+ *
+ * Documented least-priv is `PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup`.
+ *
  * @see https://learn.microsoft.com/en-us/graph/api/privilegedaccessgroup-post-assignmentschedulerequests?view=graph-rest-1.0&tabs=http#permissions
  */
-export const GROUP_PIM_RW_SCOPES: OAuthScope[][] = [
-  [OAuthScope.PrivilegedAccessReadWriteAzureADGroup],
+export const WRITE_GROUP_SCHEDULE_SCOPES: OAuthScope[][] = [
+  [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup],
+];
+
+/**
+ * Microsoft Graph permissions for the group-approval flow:
+ * `GET   /identityGovernance/privilegedAccess/group/assignmentApprovals/{id}` and
+ * `PATCH /identityGovernance/privilegedAccess/group/assignmentApprovals/{id}/stages/{stageId}`.
+ *
+ * Documented least-priv is the Read variant for the GET and the
+ * ReadWrite variant for the PATCH; our implementation always issues the
+ * GET followed by the PATCH within the same flow, so we model the
+ * combined least-priv as a single ReadWrite alternative.
+ *
+ * @see https://learn.microsoft.com/en-us/graph/api/approval-get?view=graph-rest-1.0&tabs=http#permissions
+ * @see https://learn.microsoft.com/en-us/graph/api/approvalstage-update?view=graph-rest-1.0&tabs=http#permissions
+ */
+export const APPROVE_GROUP_SCOPES: OAuthScope[][] = [
+  [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup],
 ];
 
 /** GET pending-approval assignment-schedule requests submitted by me. */
@@ -118,7 +157,7 @@ export async function listMyGroupRequests(
   client: GraphClient,
   signal: AbortSignal,
 ): Promise<GroupAssignmentRequest[]> {
-  await assertScopes(client.credential, GROUP_PIM_RW_SCOPES, signal);
+  await assertScopes(client.credential, LIST_GROUP_REQUESTS_SCOPES, signal);
   return listRequests(client, CurrentUserFilter.Principal, signal);
 }
 
@@ -127,7 +166,7 @@ export async function listGroupApprovalRequests(
   client: GraphClient,
   signal: AbortSignal,
 ): Promise<GroupAssignmentRequest[]> {
-  await assertScopes(client.credential, GROUP_PIM_RW_SCOPES, signal);
+  await assertScopes(client.credential, LIST_GROUP_REQUESTS_SCOPES, signal);
   return listRequests(client, CurrentUserFilter.Approver, signal);
 }
 
@@ -162,7 +201,7 @@ export async function requestGroupActivation(
   params: RequestGroupActivationParams,
   signal: AbortSignal,
 ): Promise<GroupAssignmentRequest> {
-  await assertScopes(client.credential, GROUP_PIM_RW_SCOPES, signal);
+  await assertScopes(client.credential, WRITE_GROUP_SCHEDULE_SCOPES, signal);
   const body = {
     accessId: "member",
     action: GraphScheduleAction.SelfActivate,
@@ -186,7 +225,7 @@ export async function requestGroupDeactivation(
   params: RequestGroupDeactivationParams,
   signal: AbortSignal,
 ): Promise<GroupAssignmentRequest> {
-  await assertScopes(client.credential, GROUP_PIM_RW_SCOPES, signal);
+  await assertScopes(client.credential, WRITE_GROUP_SCHEDULE_SCOPES, signal);
   const body = {
     accessId: "member",
     action: GraphScheduleAction.SelfDeactivate,
@@ -223,7 +262,7 @@ export async function approveGroupAssignment(
   justification: string,
   signal: AbortSignal,
 ): Promise<void> {
-  await assertScopes(client.credential, GROUP_PIM_RW_SCOPES, signal);
+  await assertScopes(client.credential, APPROVE_GROUP_SCOPES, signal);
   const approval = await getGroupAssignmentApproval(client, approvalId, signal);
   const stage = pickLiveStage(approval, approvalId);
   const path = `${PRIVILEGED_BASE}/assignmentApprovals/${encodeURIComponent(
