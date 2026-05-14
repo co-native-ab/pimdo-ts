@@ -80,10 +80,32 @@ const LOGIN_TIMEOUT_MS = 120_000; // 2 minutes
 // Authenticator interface
 // ---------------------------------------------------------------------------
 
+/** Optional inputs for {@link Authenticator.login}. */
+export interface LoginOptions {
+  /**
+   * Conditional Access claims-challenge JSON, lifted verbatim from a
+   * {@link import("./errors.js").StepUpRequiredError}. When provided,
+   * MSAL passes it to AAD on the interactive call so the user is
+   * prompted to satisfy the policy (MFA, compliant device, etc.) and
+   * the resulting access token carries the required `acrs` claim.
+   */
+  claims?: string;
+  /**
+   * Pre-populates AAD's username field, skipping the account picker.
+   * When omitted and {@link claims} is set, defaults to the cached
+   * account's username so step-up flows go straight to the right
+   * account — matching Azure Portal / `az login --claims-challenge`
+   * behaviour. Plain logins (no `claims`, no explicit `loginHint`)
+   * keep today's `prompt=select_account` UX so users can switch
+   * accounts.
+   */
+  loginHint?: string;
+}
+
 /** Abstraction for login + token acquisition. */
 export interface Authenticator {
   /** Perform an interactive browser login. */
-  login(signal: AbortSignal): Promise<LoginResult>;
+  login(signal: AbortSignal, opts?: LoginOptions): Promise<LoginResult>;
 
   /**
    * Acquire a cached access token for `resource`, refreshing silently
@@ -400,40 +422,64 @@ export class MsalAuthenticator implements Authenticator {
     return account;
   }
 
-  async login(signal: AbortSignal): Promise<LoginResult> {
+  async login(signal: AbortSignal, opts?: LoginOptions): Promise<LoginResult> {
     if (signal.aborted) throw signal.reason;
-    logger.info("starting browser login");
+    const isStepUp = opts?.claims !== undefined && opts.claims.length > 0;
+    logger.info("starting browser login", { stepUp: isStepUp });
 
     // `prompt: "select_account"` invites the user to switch accounts,
     // so any prior cached PCA / account from this process are now
     // stale. Drop them and rebuild lazily after the interactive flow.
+    //
+    // Step-up is the exception: we want the existing account, not a
+    // picker, so keep cachedAccount around to use as the loginHint
+    // default below — but still rebuild the PCA so MSAL re-evaluates
+    // the cache after the new tokens land.
+    const previousAccount = this.cachedAccount;
     this.client = null;
-    this.cachedAccount = null;
+    if (!isStepUp) {
+      this.cachedAccount = null;
+    }
 
     const client = this.getClient();
     const loopback = createMsalLoopback(this.openBrowser, signal);
 
+    // Default loginHint to the cached username on step-up so AAD
+    // skips the account picker and drops the user straight onto MFA
+    // for the right account.
+    const loginHint =
+      opts?.loginHint ?? (isStepUp ? (previousAccount?.username ?? undefined) : undefined);
+
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     try {
+      const interactiveRequest: msal.InteractiveRequest = {
+        // Requesting only User.Read is intentional: Azure AD's admin consent
+        // grants all required scopes (Tasks.ReadWrite, Mail.Send, offline_access)
+        // regardless of which scopes are included in the interactive request.
+        // The granted scopes are read from the token response and stored in
+        // cachedScopes to drive dynamic tool visibility.
+        scopes: ["User.Read"],
+        // On step-up we want to re-authenticate the same account
+        // (satisfying the missing factor), not invite an account
+        // switch — so use prompt=login. Plain logins keep the
+        // account picker.
+        prompt: isStepUp ? "login" : "select_account",
+        loopbackClient: loopback,
+        openBrowser: async (authUrl: string) => {
+          loopback.setAuthUrl(authUrl);
+          await this.openBrowser(loopback.getRedirectUri());
+        },
+      };
+      if (opts?.claims !== undefined && opts.claims.length > 0) {
+        interactiveRequest.claims = opts.claims;
+      }
+      if (loginHint !== undefined) {
+        interactiveRequest.loginHint = loginHint;
+      }
+
       const racePromises: Promise<msal.AuthenticationResult>[] = [
-        withSignal(
-          client.acquireTokenInteractive({
-            // Requesting only User.Read is intentional: Azure AD's admin consent
-            // grants all required scopes (Tasks.ReadWrite, Mail.Send, offline_access)
-            // regardless of which scopes are included in the interactive request.
-            // The granted scopes are read from the token response and stored in
-            // cachedScopes to drive dynamic tool visibility.
-            scopes: ["User.Read"],
-            prompt: "select_account",
-            loopbackClient: loopback,
-            openBrowser: async (authUrl: string) => {
-              loopback.setAuthUrl(authUrl);
-              await this.openBrowser(loopback.getRedirectUri());
-            },
-          }),
-          signal,
-        ),
+        withSignal(client.acquireTokenInteractive(interactiveRequest), signal),
         new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => {
             reject(
@@ -647,7 +693,7 @@ export class MsalAuthenticator implements Authenticator {
 export class StaticAuthenticator implements Authenticator {
   constructor(private readonly accessToken: string) {}
 
-  login(_signal: AbortSignal): Promise<LoginResult> {
+  login(_signal: AbortSignal, _opts?: LoginOptions): Promise<LoginResult> {
     return Promise.resolve({
       message: "Already authenticated with static token.",
       grantedScopes: defaultScopes(),

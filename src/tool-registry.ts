@@ -260,6 +260,12 @@ export function buildInstructions(defs: readonly ToolDef[]): string {
       "do not ask the user whether they want to log in.",
   );
   lines.push(
+    "- When a tool returns a Conditional Access step-up error (StepUpRequiredError), " +
+      "call the login tool with the `claims` value embedded in that error message, then " +
+      "re-invoke the original tool. The browser will prompt the user for the missing " +
+      "factor (MFA, compliant device, etc.) on the currently signed-in account.",
+  );
+  lines.push(
     "- Privilege-changing tools (request, deactivate, approval review) always route " +
       "through a browser flow. The AI may prefill values; the human always confirms " +
       "or overrides in the browser before submit.",

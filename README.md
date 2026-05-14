@@ -64,11 +64,11 @@ The tables below are generated from each tool's descriptor (`def.name` + `def.de
 
 <!-- tool-table:auth:start -->
 
-| Tool          | Description                                                                                                                                                                                                                                             |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `login`       | Sign in to Microsoft Graph. Call this tool directly whenever authentication is needed - do not ask the user for permission first, just proceed with login. Opens a browser for interactive sign-in. Once signed in, all other tools work automatically. |
-| `logout`      | Sign out of Microsoft Graph and clear all cached tokens. After logging out, the login tool must be used to re-authenticate.                                                                                                                             |
-| `auth_status` | Check current authentication status, logged-in user, granted scopes, and server version. A good first tool to call when diagnosing PIM access issues or confirming that the right consent has been granted.                                             |
+| Tool          | Description                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `login`       | Sign in to Microsoft Graph. Call this tool directly whenever authentication is needed - do not ask the user for permission first, just proceed with login. Opens a browser for interactive sign-in. Once signed in, all other tools work automatically. If a previous tool returned a Conditional Access step-up error, pass the `claims` value from that error here to satisfy the challenge, then re-invoke the original tool. |
+| `logout`      | Sign out of Microsoft Graph and clear all cached tokens. After logging out, the login tool must be used to re-authenticate.                                                                                                                                                                                                                                                                                                      |
+| `auth_status` | Check current authentication status, logged-in user, granted scopes, and server version. A good first tool to call when diagnosing PIM access issues or confirming that the right consent has been granted.                                                                                                                                                                                                                      |
 
 <!-- tool-table:auth:end -->
 
@@ -141,6 +141,12 @@ pimdo requires a working browser on the workstation it runs on. If pimdo cannot 
 The same login produces tokens for **both** Microsoft Graph and Azure Resource Manager — pimdo calls `Authenticator.tokenForResource(resource, signal)` per request and lets MSAL refresh them silently. To sign out and clear cached tokens, call the `logout` tool.
 
 Use the `auth_status` tool to check whether you are logged in and see the current user, granted scopes, and server version.
+
+### Conditional Access step-up
+
+Some PIM activations are gated by Conditional Access "authentication context" rules — most commonly an MFA requirement (`acrs=c1`), but also compliant-device, hybrid-join, sign-in risk, and similar policies. When a tool call hits such a rule, pimdo surfaces a `StepUpRequiredError` whose message contains the literal claims challenge from Microsoft Graph or Azure Resource Manager.
+
+Recovery is one call: re-invoke the `login` tool with the `claims` value from the error message. pimdo opens the browser again, AAD prompts you for the missing factor (MFA, device compliance, …), and once you complete it the AI assistant can re-invoke the original PIM tool. `loginHint` defaults to the currently signed-in user, so you land directly on the right account without going through the picker.
 
 ## Required scopes
 

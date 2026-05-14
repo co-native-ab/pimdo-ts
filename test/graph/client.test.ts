@@ -19,6 +19,7 @@ import {
   RequestError,
   parseResponse,
 } from "../../src/graph/client.js";
+import { StepUpRequiredError } from "../../src/errors.js";
 
 /** Start a local HTTP server that delegates each request to the next handler. */
 async function makeServer(
@@ -161,6 +162,67 @@ describe("GraphClient transport", () => {
           );
         },
       );
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("throws StepUpRequiredError when WWW-Authenticate carries a claims challenge", async () => {
+    const claimsJson = '{"access_token":{"acrs":{"essential":true,"value":"c1"}}}';
+    const { server, url } = await makeServer([
+      (_req, res) => {
+        res.writeHead(401, {
+          "Content-Type": "application/json",
+          "WWW-Authenticate": `Bearer error="insufficient_claims", claims="${claimsJson}"`,
+        });
+        res.end(JSON.stringify({ error: { code: "InvalidAuthenticationToken", message: "no" } }));
+      },
+    ]);
+    try {
+      const client = new GraphClient(url, "tok");
+      await expect(client.request(HttpMethod.GET, "/me", testSignal())).rejects.toSatisfy(
+        (err: unknown) => {
+          if (!(err instanceof StepUpRequiredError)) return false;
+          return (
+            err instanceof RequestError &&
+            err.resource === "graph" &&
+            err.statusCode === 401 &&
+            err.claims === claimsJson &&
+            err.message.includes(claimsJson) &&
+            err.message.includes("`login`")
+          );
+        },
+      );
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("throws StepUpRequiredError on a PIM 400 with &claims= in the body", async () => {
+    const claimsJson = '{"access_token":{"acrs":{"essential":true,"value":"c1"}}}';
+    const message = `&claims=${encodeURIComponent(claimsJson)}`;
+    const { server, url } = await makeServer([
+      (_req, res) => {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            error: { code: "RoleAssignmentRequestAcrsValidationFailed", message },
+          }),
+        );
+      },
+    ]);
+    try {
+      const client = new GraphClient(url, "tok");
+      await expect(
+        client.request(HttpMethod.POST, "/identityGovernance/x", {}, testSignal()),
+      ).rejects.toSatisfy((err: unknown) => {
+        if (!(err instanceof StepUpRequiredError)) return false;
+        return (
+          err.statusCode === 400 &&
+          err.code === "RoleAssignmentRequestAcrsValidationFailed" &&
+          err.claims === claimsJson
+        );
+      });
     } finally {
       await closeServer(server);
     }

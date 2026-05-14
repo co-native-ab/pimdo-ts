@@ -44,10 +44,11 @@ function buildConfig(
 async function call(
   tool: { handler: (c: ServerConfig) => unknown },
   c: ServerConfig,
+  args: Record<string, unknown> = {},
 ): Promise<ToolResult> {
   type Cb = (a: unknown, extra: { signal: AbortSignal }) => Promise<ToolResult>;
   const cb = tool.handler(c) as Cb;
-  return cb({}, { signal: testSignal() });
+  return cb(args, { signal: testSignal() });
 }
 
 /** Authenticator stub where every method behaves per the supplied overrides. */
@@ -189,6 +190,30 @@ describe("login tool", () => {
     expect(text).toContain("Login failed: ");
     expect(text).toContain("Could not open browser");
     expect(text).toContain("can call this tool again");
+  });
+
+  it("forwards claims and loginHint to the authenticator on step-up", async () => {
+    // Step-up flow: user is already authenticated (token set), but a tool
+    // returned a step-up error and the AI now calls login again with claims.
+    const auth = new MockAuthenticator({ token: "tok", browserLogin: true });
+    const claims = '{"access_token":{"acrs":{"essential":true,"value":"c1"}}}';
+    const res = await call(loginTool, buildConfig(auth), {
+      claims,
+      loginHint: "user@example.com",
+    });
+    expect(res.isError).toBeFalsy();
+    expect(auth.lastLoginOpts).toEqual({ claims, loginHint: "user@example.com" });
+    const text = res.content[0]?.text ?? "";
+    expect(text).toContain("Logged in as");
+    expect(text).toContain("Re-invoke the original tool");
+  });
+
+  it("does not short-circuit with 'Already logged in' when claims is supplied", async () => {
+    const auth = new MockAuthenticator({ token: "tok", browserLogin: true });
+    const claims = '{"access_token":{"acrs":{"essential":true,"value":"c1"}}}';
+    const res = await call(loginTool, buildConfig(auth), { claims });
+    expect(res.content[0]?.text).not.toContain("Already logged in");
+    expect(auth.lastLoginOpts?.claims).toBe(claims);
   });
 });
 

@@ -27,7 +27,7 @@
   "tools": [
     {
       "name": "login",
-      "description": "Sign in to Microsoft Graph. Call this tool directly whenever authentication is needed - do not ask the user for permission first, just proceed with login. Opens a browser for interactive sign-in. Once signed in, all other tools work automatically."
+      "description": "Sign in to Microsoft Graph. Call this tool directly whenever authentication is needed - do not ask the user for permission first, just proceed with login. Opens a browser for interactive sign-in. Once signed in, all other tools work automatically. If a previous tool returned a Conditional Access step-up error, pass the `claims` value from that error here to satisfy the challenge, then re-invoke the original tool."
     },
     {
       "name": "logout",

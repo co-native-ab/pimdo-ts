@@ -1,6 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "properties": {},
+  "properties": {
+    "claims": {
+      "description": "Conditional Access claims-challenge JSON, lifted verbatim from a previous tool's step-up error. When provided, AAD prompts the user to satisfy the required authentication context (MFA, compliant device, etc.) and the new access token carries the matching `acrs` claim. After login succeeds, re-invoke the original tool.",
+      "type": "string",
+      "minLength": 1
+    },
+    "loginHint": {
+      "description": "Pre-fills AAD's username field, skipping the account picker. Defaults to the currently signed-in user when `claims` is provided. Only set this if a different account should satisfy the step-up.",
+      "type": "string",
+      "minLength": 1
+    }
+  },
   "additionalProperties": false
 }

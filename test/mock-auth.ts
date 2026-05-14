@@ -5,7 +5,7 @@
 // requested, so tests can pass a single MockAuthenticator to both the
 // graph and ARM clients.
 
-import type { Authenticator, LoginResult, AccountInfo } from "../src/auth.js";
+import type { Authenticator, LoginOptions, LoginResult, AccountInfo } from "../src/auth.js";
 import { AuthenticationRequiredError } from "../src/errors.js";
 import { type OAuthScope, OAuthScope as GS, type Resource } from "../src/scopes.js";
 
@@ -38,6 +38,7 @@ export class MockAuthenticator implements Authenticator {
   private _browserLogin: boolean;
   private _logoutCalled = false;
   private _grantedScopes: OAuthScope[];
+  private _lastLoginOpts: LoginOptions | undefined;
 
   constructor(opts?: {
     token?: string;
@@ -51,10 +52,12 @@ export class MockAuthenticator implements Authenticator {
     this._grantedScopes = opts?.grantedScopes ?? [...DEFAULT_GRANTED_SCOPES];
   }
 
-  login(signal: AbortSignal): Promise<LoginResult> {
+  login(signal: AbortSignal, opts?: LoginOptions): Promise<LoginResult> {
     if (signal.aborted)
       return Promise.reject(signal.reason instanceof Error ? signal.reason : new Error("Aborted"));
-    if (this._token) {
+    this._lastLoginOpts = opts;
+    const isStepUp = opts?.claims !== undefined && opts.claims.length > 0;
+    if (this._token && !isStepUp) {
       return Promise.resolve({
         message: "Already authenticated.",
         grantedScopes: this._grantedScopes,
@@ -114,5 +117,10 @@ export class MockAuthenticator implements Authenticator {
   /** Whether logout was called. */
   get wasLoggedOut(): boolean {
     return this._logoutCalled;
+  }
+
+  /** The opts passed to the most recent login call, or undefined. */
+  get lastLoginOpts(): LoginOptions | undefined {
+    return this._lastLoginOpts;
   }
 }
