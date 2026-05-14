@@ -1,20 +1,15 @@
-// Per-tool downgrade-path coverage.
+// Per-tool single-variant policy coverage (ADR-0017).
 //
-// These tests assert two related properties of the scope-validation
-// pipeline introduced for the per-call-site `requiredScopes` work:
+// pimdo intentionally requests a single Read/ReadWrite variant per scope
+// family — `Read` for call sites that never mutate (eligibility lists,
+// policy reads) and `ReadWrite` for call sites that do (assignment
+// schedules, approvals). A tenant that consent-downgrades a requested
+// `ReadWrite` scope to its `Read` variant therefore loses access to
+// every tool that depends on that `ReadWrite` scope; pimdo does NOT
+// silently fall back to the `Read` variant.
 //
-//   1. A tool whose underlying call sites accept a downgraded
-//      `Read.X` scope keeps its tool-registry visibility (i.e. its
-//      auto-derived `requiredScopes` DNF includes a Read-only
-//      alternative) — this is the regression test for the
-//      `pim_role_entra_request` bug where the tool was hidden in
-//      tenants that consent-downgraded `RoleEligibilitySchedule.ReadWrite`
-//      to `.Read`.
-//
-//   2. `assertScopes` enforces the per-call-site DNF at runtime: a
-//      missing scope produces a typed `MissingScopeError` (NOT an
-//      `AuthenticationRequiredError`, which would trigger the
-//      auto-relogin code path and silently re-fail).
+// These tests pin that contract so a future "be tolerant" refactor
+// can't quietly re-introduce the over-permissive alternatives.
 
 import { describe, expect, it } from "vitest";
 
@@ -36,7 +31,7 @@ function credWith(scopes: OAuthScope[]): TokenCredential {
   };
 }
 
-describe("pim_role_entra_request consent-downgrade regression", () => {
+describe("pim_role_entra_request single-variant policy", () => {
   // The four call sites the tool exercises, mirrored from
   // src/features/role-entra/tools/pim-role-entra-request.ts.
   const TOOL_CALL_SITES = [
@@ -46,56 +41,55 @@ describe("pim_role_entra_request consent-downgrade regression", () => {
     ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES,
   ];
 
-  // Scope set seen on tenants that consent-downgrade
-  // `RoleEligibilitySchedule.ReadWrite.Directory` to its Read variant.
+  // Scope set seen on a tenant that consent-downgrades the requested
+  // `RoleAssignmentSchedule.ReadWrite.Directory` scope to its Read
+  // variant. The eligibility scope is already the `Read` variant by
+  // design (we never request the ReadWrite variant) so it is not
+  // downgraded.
   const DOWNGRADED_SCOPES: OAuthScope[] = [
     OAuthScope.UserRead,
     OAuthScope.OfflineAccess,
-    OAuthScope.RoleEligibilityScheduleReadDirectory, // downgraded
-    OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+    OAuthScope.RoleEligibilityScheduleReadDirectory,
+    // RoleAssignmentSchedule.ReadWrite.Directory was downgraded — only the
+    // Read variant ends up in the token, and pimdo no longer accepts it
+    // as a fallback for the activation POST.
     OAuthScope.RoleManagementPolicyReadDirectory,
   ];
 
-  it("derived requiredScopes contain a Read-only alternative", () => {
+  it("derived requiredScopes have no Read-only fallback for the assignment scope", () => {
     const required = deriveRequiredScopes(TOOL_CALL_SITES);
-    // At least one alternative must NOT include the ReadWrite eligibility scope.
-    const hasReadOnlyAlt = required.some(
-      (alt) => !alt.includes(OAuthScope.RoleEligibilityScheduleReadWriteDirectory),
+    // Every alternative must include the ReadWrite assignment scope —
+    // there is no Read-only escape hatch.
+    const everyAltRequiresReadWrite = required.every((alt) =>
+      alt.includes(OAuthScope.RoleAssignmentScheduleReadWriteDirectory),
     );
-    expect(hasReadOnlyAlt).toBe(true);
+    expect(everyAltRequiresReadWrite).toBe(true);
   });
 
-  it("downgraded scopes satisfy at least one alternative (tool stays enabled)", () => {
+  it("downgraded tenant: tool is hidden because no alternative is satisfied", () => {
     const required = deriveRequiredScopes(TOOL_CALL_SITES);
     const granted = new Set(DOWNGRADED_SCOPES);
-    const enabled = required.some((alt) => alt.every((s) => granted.has(s)));
-    expect(enabled).toBe(true);
-  });
-
-  it("removing the eligibility scope entirely disables the tool", () => {
-    const required = deriveRequiredScopes(TOOL_CALL_SITES);
-    const stripped = DOWNGRADED_SCOPES.filter(
-      (s) =>
-        s !== OAuthScope.RoleEligibilityScheduleReadDirectory &&
-        s !== OAuthScope.RoleEligibilityScheduleReadWriteDirectory,
-    );
-    const granted = new Set<OAuthScope>(stripped);
     const enabled = required.some((alt) => alt.every((s) => granted.has(s)));
     expect(enabled).toBe(false);
   });
 
-  it("listEligible call site accepts the downgraded Read variant at runtime", async () => {
-    const cred = credWith([OAuthScope.RoleEligibilityScheduleReadDirectory]);
-    await expect(
-      assertScopes(cred, LIST_ELIGIBLE_ROLE_ENTRA_SCOPES, AbortSignal.timeout(1000)),
-    ).resolves.toBeUndefined();
-  });
-
-  it("requestRoleEntraActivation still requires the ReadWrite assignment scope", async () => {
-    // Downgraded eligibility alone is NOT enough for the activation POST.
-    const cred = credWith([OAuthScope.RoleEligibilityScheduleReadDirectory]);
+  it("requestRoleEntraActivation rejects with MissingScopeError on a downgraded tenant", async () => {
+    const cred = credWith(DOWNGRADED_SCOPES);
     await expect(
       assertScopes(cred, ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES, AbortSignal.timeout(1000)),
     ).rejects.toBeInstanceOf(MissingScopeError);
+  });
+
+  it("non-downgraded tenant: tool is enabled when ReadWrite is granted", () => {
+    const required = deriveRequiredScopes(TOOL_CALL_SITES);
+    const granted = new Set<OAuthScope>([
+      OAuthScope.UserRead,
+      OAuthScope.OfflineAccess,
+      OAuthScope.RoleEligibilityScheduleReadDirectory,
+      OAuthScope.RoleAssignmentScheduleReadWriteDirectory,
+      OAuthScope.RoleManagementPolicyReadDirectory,
+    ]);
+    const enabled = required.some((alt) => alt.every((s) => granted.has(s)));
+    expect(enabled).toBe(true);
   });
 });

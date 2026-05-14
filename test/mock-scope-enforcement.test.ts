@@ -106,7 +106,7 @@ describe("enforceScopes", () => {
       res,
       [
         [OAuthScope.RoleEligibilityScheduleReadDirectory],
-        [OAuthScope.RoleEligibilityScheduleReadWriteDirectory],
+        [OAuthScope.RoleManagementPolicyReadDirectory],
       ],
       writeError,
     );
@@ -121,7 +121,7 @@ describe("enforceScopes", () => {
       res,
       [
         [OAuthScope.RoleEligibilityScheduleReadDirectory],
-        [OAuthScope.RoleEligibilityScheduleReadWriteDirectory],
+        [OAuthScope.RoleManagementPolicyReadDirectory],
       ],
       writeError,
     );

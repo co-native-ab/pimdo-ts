@@ -77,25 +77,23 @@ acts as the signed-in user; no application-level permissions are
 used. Today's full scope set (`src/scopes.ts` `OAuthScope`):
 
 - Graph base: `User.Read`, `offline_access`.
-- Graph PIM Entra Groups: `PrivilegedAccess.ReadWrite.AzureADGroup`,
+- Graph PIM Entra Groups: `PrivilegedEligibilitySchedule.Read.AzureADGroup`,
   `PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup`,
-  `PrivilegedEligibilitySchedule.ReadWrite.AzureADGroup`,
   `RoleManagementPolicy.Read.AzureADGroup`.
-- Graph PIM Entra Roles: `RoleManagement.Read.Directory`,
-  `RoleManagement.ReadWrite.Directory`,
-  `RoleManagementPolicy.Read.Directory`,
+- Graph PIM Entra Roles: `RoleEligibilitySchedule.Read.Directory`,
   `RoleAssignmentSchedule.ReadWrite.Directory`,
-  `RoleEligibilitySchedule.Read.Directory`,
-  `RoleEligibilitySchedule.ReadWrite.Directory`.
+  `RoleManagementPolicy.Read.Directory`,
+  `PrivilegedAccess.ReadWrite.AzureAD` (for the BETA approval surface).
 - ARM PIM Azure Roles:
   `https://management.azure.com/user_impersonation` only.
 
 There are no scopes for unrelated Graph surfaces (Mail, Files,
-Calendar, Teams, …). An IT administrator can see exactly what is
-requested at consent time, and a tenant that downgrades a `ReadWrite`
-to `Read` at consent (a tenant-level option) automatically narrows
-which tools light up. See ADR-0017 (scope-gated dynamic tool
-visibility).
+Calendar, Teams, …). pimdo applies a **single-variant policy** per
+scope family — `Read` for read-only call sites, `ReadWrite` for any
+family that includes a mutation — so the consent prompt shows the
+true minimum permission set rather than a redundant Read+ReadWrite
+pair. ADR-0017 documents the policy and the corresponding decision
+not to silently fall back to a downgraded `Read` variant at runtime.
 
 ### 2. Privilege-Changing Tools Always Confirm in the Browser
 
@@ -125,8 +123,8 @@ silent argument schema is documented in ADR-0014.
 They do not change PIM state, do not write to Graph or ARM, and do
 not require a browser interaction — so the agent can use them freely
 to plan an activation. Scope gating still applies: a list tool is
-visible only when the corresponding `Read` (or `ReadWrite`) scope
-was granted at login.
+visible only when the corresponding scope (per the single-variant
+policy in ADR-0017) was granted at login.
 
 ### 4. Login + Logout Are Always Browser-Driven
 
@@ -174,9 +172,11 @@ exposed to tool code.
   browser confirmation step also gives the human a final read of
   every justification + duration before submission.
 - **POS-002:** IT admins evaluating consent see only PIM-related
-  scopes, not a wide-open Graph footprint. Tenants can downgrade
-  `ReadWrite` to `Read` at consent time and pimdo silently narrows
-  which tools light up.
+  scopes, not a wide-open Graph footprint, and never a redundant
+  `Read`+`ReadWrite` pair for the same resource family. Tenants that
+  downgrade a `ReadWrite` to `Read` at consent time cleanly lose the
+  affected mutation tools rather than silently falling back to a
+  read-only code path (ADR-0017).
 - **POS-003:** Approver flows cannot be auto-approved by the agent;
   every approve/deny click is a human action. The same is true for
   deactivations (rare in practice, but irreversible without

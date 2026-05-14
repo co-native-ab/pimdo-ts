@@ -65,13 +65,15 @@ describe("syncToolState", () => {
         [[OAuthScope.RoleAssignmentScheduleReadWriteDirectory]],
         false,
       ),
-      // Read tool that accepts EITHER Read or ReadWrite (DNF: two
-      // single-scope alternatives). Mirrors pim_role_entra_eligible_list.
+      // Synthetic disjunctive tool that accepts EITHER scope alternative
+      // (DNF: two single-scope alternatives). Exercises the OR-branch of
+      // syncToolState; no real pimdo tool currently uses this shape now
+      // that ADR-0017 collapsed the Read/ReadWrite alternatives.
       fakeEntry(
         "pim_role_entra_eligible_list_disjunctive",
         [
           [OAuthScope.RoleEligibilityScheduleReadDirectory],
-          [OAuthScope.RoleEligibilityScheduleReadWriteDirectory],
+          [OAuthScope.RoleManagementPolicyReadDirectory],
         ],
         false,
       ),
@@ -141,10 +143,9 @@ describe("syncToolState", () => {
     syncToolState(entries, [OAuthScope.RoleEligibilityScheduleReadDirectory], server);
     expect(entries[6]!.registeredTool.enabled).toBe(true);
 
-    // ReadWrite variant — must also enable on its own (mirrors a tenant
-    // downgrade keeping the read tool visible).
+    // Other alternative — must also enable on its own.
     entries[6]!.registeredTool.enabled = false;
-    syncToolState(entries, [OAuthScope.RoleEligibilityScheduleReadWriteDirectory], server);
+    syncToolState(entries, [OAuthScope.RoleManagementPolicyReadDirectory], server);
     expect(entries[6]!.registeredTool.enabled).toBe(true);
 
     // Neither — disabled.
@@ -242,11 +243,11 @@ describe("buildInstructions", () => {
     },
     {
       name: "pim_role_entra_eligible_list_disjunctive",
-      title: "Eligible (read or read-write)",
-      description: "Read eligibilities — accepts Read or ReadWrite",
+      title: "Disjunctive (two alternatives)",
+      description: "Synthetic OR-pair test fixture",
       requiredScopes: [
         [OAuthScope.RoleEligibilityScheduleReadDirectory],
-        [OAuthScope.RoleEligibilityScheduleReadWriteDirectory],
+        [OAuthScope.RoleManagementPolicyReadDirectory],
       ],
     },
     {
@@ -294,10 +295,12 @@ describe("buildInstructions", () => {
 
   it("renders disjunctive alternatives with OR and conjunctive ones with AND", () => {
     const text = buildInstructions(defs);
-    // Disjunctive tool ("Read OR ReadWrite")
+    // Disjunctive tool — two single-scope alternatives joined with OR.
     expect(text).toContain("RoleEligibilitySchedule.Read.Directory");
-    expect(text).toContain("RoleEligibilitySchedule.ReadWrite.Directory");
-    expect(text).toMatch(/Read\.Directory.*OR.*ReadWrite\.Directory/);
+    expect(text).toContain("RoleManagementPolicy.Read.Directory");
+    expect(text).toMatch(
+      /RoleEligibilitySchedule\.Read\.Directory.*OR.*RoleManagementPolicy\.Read\.Directory/,
+    );
     // Conjunctive tool ("PrivilegedAccess … AND RoleAssignmentSchedule …")
     expect(text).toMatch(/PrivilegedAccess\.ReadWrite\.AzureAD AND/);
   });

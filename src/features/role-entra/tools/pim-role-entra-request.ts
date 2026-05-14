@@ -34,10 +34,7 @@ export const pimRoleEntraRequestTool = buildRequestTool<RoleEntraEligibleAssignm
       "row creates a selfActivate role-assignment-schedule request via Microsoft Graph.",
     // Auto-derived from the four call sites this tool exercises:
     // listEligibleRoleEntraAssignments, getDirectoryRoleMaxDuration,
-    // getMyObjectId, requestRoleEntraActivation. Crucially the
-    // eligibility list accepts the `Read.Directory` variant — tenants
-    // that consent-downgrade `ReadWrite → Read` therefore satisfy the
-    // first alternative and the tool stays enabled.
+    // getMyObjectId, requestRoleEntraActivation.
     requiredScopes: deriveRequiredScopes([
       LIST_ELIGIBLE_ROLE_ENTRA_SCOPES,
       GET_DIRECTORY_ROLE_MAX_DURATION_SCOPES,

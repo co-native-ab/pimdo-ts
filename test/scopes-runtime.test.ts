@@ -7,7 +7,7 @@ import type { TokenCredential } from "../src/http/base-client.js";
 import { OAuthScope } from "../src/scopes.js";
 import { assertScopes, deriveRequiredScopes } from "../src/scopes-runtime.js";
 
-const RW_DIR = OAuthScope.RoleEligibilityScheduleReadWriteDirectory;
+const POL_AZG = OAuthScope.RoleManagementPolicyReadAzureADGroup;
 const R_DIR = OAuthScope.RoleEligibilityScheduleReadDirectory;
 const PA_RW = OAuthScope.PrivilegedAccessReadWriteAzureAD;
 const RAS_RW = OAuthScope.RoleAssignmentScheduleReadWriteDirectory;
@@ -30,14 +30,14 @@ describe("assertScopes", () => {
   it("skips the check when the credential does not expose grantedScopes", async () => {
     const cred: TokenCredential = { getToken: () => Promise.resolve("t") };
     await expect(
-      assertScopes(cred, [[RW_DIR]], AbortSignal.timeout(1000)),
+      assertScopes(cred, [[POL_AZG]], AbortSignal.timeout(1000)),
     ).resolves.toBeUndefined();
   });
 
   it("returns when granted scopes satisfy a single alternative", async () => {
     const cred = credWithScopes([R_DIR]);
     await expect(
-      assertScopes(cred, [[R_DIR], [RW_DIR]], AbortSignal.timeout(1000)),
+      assertScopes(cred, [[R_DIR], [POL_AZG]], AbortSignal.timeout(1000)),
     ).resolves.toBeUndefined();
   });
 
@@ -51,7 +51,7 @@ describe("assertScopes", () => {
   it("throws MissingScopeError when no alternative is satisfied", async () => {
     const cred = credWithScopes([USER_READ]);
     await expect(
-      assertScopes(cred, [[R_DIR], [RW_DIR]], AbortSignal.timeout(1000)),
+      assertScopes(cred, [[R_DIR], [POL_AZG]], AbortSignal.timeout(1000)),
     ).rejects.toBeInstanceOf(MissingScopeError);
   });
 
@@ -86,12 +86,12 @@ describe("assertScopes", () => {
   it("error message names the missing scope and the requirement", async () => {
     const cred = credWithScopes([]);
     try {
-      await assertScopes(cred, [[R_DIR], [RW_DIR]], AbortSignal.timeout(1000));
+      await assertScopes(cred, [[R_DIR], [POL_AZG]], AbortSignal.timeout(1000));
       expect.fail("expected MissingScopeError");
     } catch (err) {
       const msg = (err as Error).message;
       expect(msg).toContain(R_DIR);
-      expect(msg).toContain(RW_DIR);
+      expect(msg).toContain(POL_AZG);
       expect(msg).toContain("OR");
     }
   });
@@ -132,19 +132,18 @@ describe("deriveRequiredScopes", () => {
   });
 
   it("expands an OR-pair call site against a single-alternative call site", () => {
-    // ([[Read], [ReadWrite]]) ∧ [[POL_R]] → [[Read, POL_R], [ReadWrite, POL_R]],
-    // each alternative sorted alphabetically.
-    const out = deriveRequiredScopes([[[R_DIR], [RW_DIR]], [[POL_R]]]);
+    // ([[A], [B]]) ∧ [[C]] → [[A, C], [B, C]], each alternative sorted alphabetically.
+    const out = deriveRequiredScopes([[[R_DIR], [POL_AZG]], [[POL_R]]]);
     expect(out).toContainEqual([R_DIR, POL_R]);
-    expect(out).toContainEqual([RW_DIR, POL_R]);
+    expect(out).toContainEqual([POL_AZG, POL_R]);
     expect(out).toHaveLength(2);
   });
 
-  it("intersection of [Read OR ReadWrite] with [ReadWrite] keeps only ReadWrite alternatives", () => {
-    // ([[R], [RW]]) ∧ [[RW]] → cartesian: [[R, RW], [RW, RW]] → dedup → [[R, RW], [RW]].
-    // After superset removal, [R, RW] is dropped (strict superset of [RW]).
-    const out = deriveRequiredScopes([[[R_DIR], [RW_DIR]], [[RW_DIR]]]);
-    expect(out).toEqual([[RW_DIR]]);
+  it("intersection of [A OR B] with [B] collapses to [B] via superset removal", () => {
+    // ([[A], [B]]) ∧ [[B]] → cartesian: [[A, B], [B, B]] → dedup → [[A, B], [B]].
+    // After superset removal, [A, B] is dropped (strict superset of [B]).
+    const out = deriveRequiredScopes([[[R_DIR], [POL_AZG]], [[POL_AZG]]]);
+    expect(out).toEqual([[POL_AZG]]);
   });
 
   it("dedupes scopes that appear in multiple call sites", () => {

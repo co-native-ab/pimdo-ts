@@ -66,8 +66,10 @@ function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
 
         // Surface tools that are currently hidden because their
         // requiredScopes are not satisfied. Common cause: the tenant's
-        // admin consent downgraded a `ReadWrite` scope to its `Read`
-        // variant (or omitted the scope entirely).
+        // admin consent omitted a scope (or downgraded a requested
+        // `ReadWrite` scope to its `Read` variant — pimdo intentionally
+        // does not accept the `Read` variant as a fallback for tools
+        // that need `ReadWrite`; see ADR-0017).
         if (config.toolDefs) {
           const grantedSet = new Set<OAuthScope>(scopes);
           const hidden = config.toolDefs.filter(

@@ -610,7 +610,7 @@ describe("MsalAuthenticator multi-resource silent probe", () => {
 
     const fakePCA = installFakePCA();
     fakePCA.acquireTokenInteractive.mockResolvedValue(
-      authResult({ scopes: ["User.Read", "RoleAssignmentSchedule.Read.Directory"] }),
+      authResult({ scopes: ["User.Read", "RoleAssignmentSchedule.ReadWrite.Directory"] }),
     );
     // Simulates azidentity-style refresh-token reuse: the same login session
     // can mint an ARM token silently because the user previously consented
@@ -625,7 +625,7 @@ describe("MsalAuthenticator multi-resource silent probe", () => {
       expect.objectContaining({ scopes: [ARM_SCOPE] }),
     );
     expect(result.grantedScopes).toContain("User.Read");
-    expect(result.grantedScopes).toContain("RoleAssignmentSchedule.Read.Directory");
+    expect(result.grantedScopes).toContain("RoleAssignmentSchedule.ReadWrite.Directory");
     expect(result.grantedScopes).toContain(ARM_SCOPE);
   });
 
