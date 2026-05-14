@@ -43,7 +43,17 @@ jobs:
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
+      # Coverage is collected on a single matrix entry (Ubuntu, Node 24)
+      # because v8-coverage workers crash intermittently on Windows + Node 24
+      # (`Process completed with exit code 1` after every test has already
+      # passed, with no failure summary). Coverage data is identical across
+      # OS/Node-version combinations, so this loses nothing and only the
+      # ubuntu+24 entry is the one whose report is uploaded below anyway.
+      - name: Test
+        if: matrix.os != 'ubuntu-latest' || matrix.node-version != 24
+        run: npm test
       - name: Test with coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 24
         run: npm run test:coverage
       - name: Upload coverage report
         if: always() && matrix.os == 'ubuntu-latest' && matrix.node-version == 24
