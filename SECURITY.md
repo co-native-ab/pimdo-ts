@@ -26,15 +26,15 @@ resolved.
 
 ## Supported versions
 
-pimdo-ts is currently **pre-release** — no version has been tagged
-yet. Once the first release ships, only the latest published version
-on npm and on the GitHub Releases page will receive security fixes.
-There is no extended support for older pre-release builds.
+Only the latest published version on npm and on the GitHub Releases
+page receives security fixes. There is no extended support for older
+versions while the project is pre-1.0.
 
-| Version      | Supported          |
-| ------------ | ------------------ |
-| `main`       | :white_check_mark: |
-| Pre-releases | :x:                |
+| Version          | Supported          |
+| ---------------- | ------------------ |
+| `main`           | :white_check_mark: |
+| `0.1.x` (latest) | :white_check_mark: |
+| Older `0.x`      | :x:                |
 
 ## Scope
 
