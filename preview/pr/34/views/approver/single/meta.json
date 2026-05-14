@@ -1,0 +1,10 @@
+{
+  "view": "approver",
+  "family": "Group",
+  "scenario": "single",
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "generator": "scripts/preview/generate.ts"
+}
