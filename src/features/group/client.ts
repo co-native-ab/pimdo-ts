@@ -248,6 +248,25 @@ async function postScheduleRequest(
   return parseResponse(res, GroupAssignmentRequestSchema, "POST", path);
 }
 
+/**
+ * Cancel a pending PIM group assignment-schedule request that the
+ * signed-in user submitted. Reuses the existing
+ * {@link WRITE_GROUP_SCHEDULE_SCOPES} scope (same one used by self
+ * activate / deactivate). Returns nothing — Graph responds with 204
+ * No Content and the request body is empty.
+ *
+ * @see https://learn.microsoft.com/en-us/graph/api/privilegedaccessgroupassignmentschedulerequest-cancel?view=graph-rest-1.0&tabs=http#permissions
+ */
+export async function cancelGroupAssignmentRequest(
+  client: GraphClient,
+  requestId: string,
+  signal: AbortSignal,
+): Promise<void> {
+  await assertScopes(client.credential, WRITE_GROUP_SCHEDULE_SCOPES, signal);
+  const path = `${PRIVILEGED_BASE}/assignmentScheduleRequests/${encodeURIComponent(requestId)}/cancel`;
+  await client.request(HttpMethod.POST, path, {}, signal);
+}
+
 // ---------------------------------------------------------------------------
 // Approve / deny
 // ---------------------------------------------------------------------------

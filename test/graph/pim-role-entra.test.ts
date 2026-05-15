@@ -7,6 +7,7 @@ import { ApprovalDecision } from "../../src/enums.js";
 import { GraphClient } from "../../src/graph/client.js";
 import {
   approveRoleEntraAssignment,
+  cancelRoleEntraAssignmentRequest,
   listActiveRoleEntraAssignments,
   listEligibleRoleEntraAssignments,
   listMyRoleEntraRequests,
@@ -160,5 +161,13 @@ describe("graph/pim-role-entra", () => {
     await expect(
       approveRoleEntraAssignment(client, approvalId, ApprovalDecision.Approve, "x", testSignal()),
     ).rejects.toThrow(/no live step/);
+  });
+
+  it("cancelRoleEntraAssignmentRequest POSTs to the cancel sub-resource", async () => {
+    await cancelRoleEntraAssignmentRequest(client, "role-req-7", testSignal());
+    expect(state.cancelledRequests).toHaveLength(1);
+    expect(state.cancelledRequests[0]?.path).toBe(
+      "/roleManagement/directory/roleAssignmentScheduleRequests/role-req-7/cancel",
+    );
   });
 });

@@ -239,6 +239,24 @@ async function postScheduleRequest(
   return parseResponse(res, RoleEntraAssignmentRequestSchema, "POST", path);
 }
 
+/**
+ * Cancel a pending PIM Entra-role assignment-schedule request that the
+ * signed-in user submitted. Reuses
+ * {@link ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES} (same scope as
+ * activate/deactivate). Graph responds with 204 No Content.
+ *
+ * @see https://learn.microsoft.com/en-us/graph/api/unifiedroleassignmentschedulerequest-cancel?view=graph-rest-1.0&tabs=http#permissions
+ */
+export async function cancelRoleEntraAssignmentRequest(
+  client: GraphClient,
+  requestId: string,
+  signal: AbortSignal,
+): Promise<void> {
+  await assertScopes(client.credential, ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES, signal);
+  const path = `${ROLE_BASE}/roleAssignmentScheduleRequests/${encodeURIComponent(requestId)}/cancel`;
+  await client.request(HttpMethod.POST, path, {}, signal);
+}
+
 // ---------------------------------------------------------------------------
 // Approve / deny (BETA)
 // ---------------------------------------------------------------------------
