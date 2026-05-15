@@ -34,17 +34,21 @@ After installation, `pimdo` appears in your extensions list. Configure optional 
 Requires [Node.js](https://nodejs.org/) 22 or later.
 
 ```bash
-npx @co-native-ab/pimdo-ts
+npx @co-native-ab/pimdo-ts@latest
 ```
+
+> The `@latest` tag (or an explicit `@vX.Y.Z`) is required. On some platforms `npx` cannot resolve the binary for a scoped package without an explicit version specifier and fails with `npm error could not determine executable to run`.
 
 Configure in your MCP client:
 
 ```json
 {
   "command": "npx",
-  "args": ["@co-native-ab/pimdo-ts"]
+  "args": ["@co-native-ab/pimdo-ts@latest"]
 }
 ```
+
+Pin a specific version (e.g. `@co-native-ab/pimdo-ts@X.Y.Z`) if you want reproducible installs.
 
 ### Standalone JS bundle
 
