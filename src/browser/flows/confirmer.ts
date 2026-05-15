@@ -21,7 +21,7 @@ export interface ConfirmerResult {
 
 const SubmittedConfirmationSchema = z.object({
   id: z.string().min(1),
-  reason: z.string(),
+  reason: z.string().optional(),
 });
 
 const ConfirmerSubmissionSchema = z.object({
@@ -34,6 +34,13 @@ export interface ConfirmerConfig {
   subtitle: string;
   submitLabel: string;
   reasonLabel?: string;
+  /**
+   * Whether to render the per-row reason column. Defaults to `true`.
+   * Set to `false` for actions whose underlying API takes no
+   * justification body (e.g. PIM `cancel`). When `false` the
+   * submitted rows always carry an empty `reason` string.
+   */
+  showReason?: boolean;
   rows: readonly ConfirmerRowSpec[];
   timeoutMs?: number;
 }
@@ -55,6 +62,7 @@ export function runConfirmerFlow(
           subtitle: config.subtitle,
           submitLabel: config.submitLabel,
           reasonLabel: config.reasonLabel,
+          showReason: config.showReason,
           rows: config.rows,
         }),
       submitSchema: ConfirmerSubmissionSchema,
@@ -66,7 +74,9 @@ export function runConfirmerFlow(
             throw new Error(`Unknown row id: ${row.id}`);
           }
         }
-        return Promise.resolve({ rows: data.rows.map((r) => ({ ...r })) });
+        return Promise.resolve({
+          rows: data.rows.map((r) => ({ id: r.id, reason: r.reason ?? "" })),
+        });
       },
     },
     signal,

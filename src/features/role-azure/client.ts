@@ -257,6 +257,48 @@ async function putScheduleRequest(
   return parseResponse(res, RoleAzureAssignmentRequestSchema, "PUT", path);
 }
 
+/**
+ * GET role-assignment-schedule requests where the signed-in user is the
+ * principal, filtered client-side to those still `PendingApproval`.
+ *
+ * Unlike Graph (where `$filter=status eq 'PendingApproval'` is supported
+ * server-side), the ARM endpoint does not honour a status filter on
+ * `roleAssignmentScheduleRequests`, so we filter after the fact. The
+ * unfiltered helper {@link listMyRoleAzureRequests} is kept as the
+ * source for `pim_role_azure_request_list`, which intentionally
+ * surfaces all visible request states.
+ */
+export async function listMyPendingRoleAzureRequests(
+  client: ArmClient,
+  signal: AbortSignal,
+): Promise<RoleAzureAssignmentRequest[]> {
+  const all = await listMyRoleAzureRequests(client, signal);
+  return all.filter((r) => r.properties.status === "PendingApproval");
+}
+
+/**
+ * Cancel a pending PIM Azure-role assignment-schedule request that the
+ * signed-in user submitted. Reuses {@link ROLE_AZURE_SCOPES}; ARM
+ * responds with 204 No Content. The full ARM relative path requires
+ * the original request's ARM scope (e.g. `/subscriptions/<id>`) and
+ * the request name (the trailing UUID under
+ * `roleAssignmentScheduleRequests/`).
+ *
+ * @see https://learn.microsoft.com/en-us/rest/api/authorization/role-assignment-schedule-requests/cancel
+ */
+export async function cancelRoleAzureAssignmentRequest(
+  client: ArmClient,
+  scope: string,
+  requestName: string,
+  signal: AbortSignal,
+): Promise<void> {
+  await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
+  const path =
+    `/${trimLeadingSlash(scope)}/providers/${PROVIDER}/roleAssignmentScheduleRequests/${encodeURIComponent(requestName)}/cancel` +
+    `?api-version=${ARM_ROLES_API_VERSION}`;
+  await client.request(HttpMethod.POST, path, signal);
+}
+
 // ---------------------------------------------------------------------------
 // Approve / deny (via /batch — see file-level comment)
 // ---------------------------------------------------------------------------

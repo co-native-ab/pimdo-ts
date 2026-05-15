@@ -14,6 +14,7 @@ import { fetchCsrfToken, testSignal } from "../../../helpers.js";
 
 import { pimRoleEntraApprovalReviewTool } from "../../../../src/features/role-entra/tools/pim-role-entra-approval-review.js";
 import { pimRoleEntraDeactivateTool } from "../../../../src/features/role-entra/tools/pim-role-entra-deactivate.js";
+import { pimRoleEntraRequestCancelTool } from "../../../../src/features/role-entra/tools/pim-role-entra-request-cancel.js";
 import { pimRoleEntraRequestTool } from "../../../../src/features/role-entra/tools/pim-role-entra-request.js";
 
 interface ToolResult {
@@ -398,5 +399,102 @@ describe("pim_role_entra_approval_review error / edge paths", () => {
     const res = await callTool(pimRoleEntraApprovalReviewTool, h.config, {});
     expect(res.isError).toBe(true);
     expect(res.content[0]?.text).toContain("Approval review failed: ");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pim_role_entra_request_cancel
+// ---------------------------------------------------------------------------
+
+describe("pim_role_entra_request_cancel error / edge paths", () => {
+  it("returns 'No pending PIM Entra-role requests to cancel.' when nothing is pending", async () => {
+    const h = await setupHarness();
+    try {
+      const res = await callTool(pimRoleEntraRequestCancelTool, h.config, {});
+      expect(res.content[0]?.text).toContain("No pending PIM Entra-role requests to cancel.");
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("returns 'None of the requested request ids matched' when all items are unknown", async () => {
+    const h = await setupHarness();
+    try {
+      h.state.roleEntraMyRequests.push({
+        id: "role-req-1",
+        roleDefinitionId: "role-def-1",
+        principalId: h.state.me.id,
+        directoryScopeId: "/",
+        action: "selfActivate",
+        status: "PendingApproval",
+        roleDefinition: { id: "role-def-1", displayName: "Role One" },
+      });
+      const res = await callTool(pimRoleEntraRequestCancelTool, h.config, {
+        items: [{ requestId: "ghost" }],
+      });
+      expect(res.content[0]?.text).toContain("None of the requested request ids matched");
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("submits the cancel POST on confirmation", async () => {
+    const h = await setupHarness();
+    try {
+      h.state.roleEntraMyRequests.push({
+        id: "role-req-1",
+        roleDefinitionId: "role-def-1",
+        principalId: h.state.me.id,
+        directoryScopeId: "/",
+        action: "selfActivate",
+        status: "PendingApproval",
+        roleDefinition: { id: "role-def-1", displayName: "Role One" },
+      });
+      const promise = callTool(pimRoleEntraRequestCancelTool, h.config, {});
+      const url = await waitFor(() => h.capturedUrls.at(-1));
+      const csrf = await fetchCsrfToken(url);
+      await postJson(`${url}/submit`, {
+        csrfToken: csrf,
+        rows: [{ id: "role-req-1" }],
+      });
+      const res = await promise;
+      expect(res.content[0]?.text).toContain("Submitted 1 PIM Entra-role cancellation(s)");
+      expect(h.state.cancelledRequests.some((c) => c.path.endsWith("/role-req-1/cancel"))).toBe(
+        true,
+      );
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("returns 'Cancellation cancelled.' when the user cancels the row form", async () => {
+    const h = await setupHarness();
+    try {
+      h.state.roleEntraMyRequests.push({
+        id: "role-req-1",
+        roleDefinitionId: "role-def-1",
+        principalId: h.state.me.id,
+        directoryScopeId: "/",
+        action: "selfActivate",
+        status: "PendingApproval",
+        roleDefinition: { id: "role-def-1", displayName: "Role One" },
+      });
+      const promise = callTool(pimRoleEntraRequestCancelTool, h.config, {});
+      const url = await waitFor(() => h.capturedUrls.at(-1));
+      const csrf = await fetchCsrfToken(url);
+      await postJson(`${url}/cancel`, { csrfToken: csrf });
+      const res = await promise;
+      expect(res.content[0]?.text).toBe("Cancellation cancelled.");
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("returns 'Cancellation failed:' when the initial Graph list call errors", async () => {
+    const h = await setupHarness();
+    await h.shutdown();
+    const res = await callTool(pimRoleEntraRequestCancelTool, h.config, {});
+    expect(res.isError).toBe(true);
+    expect(res.content[0]?.text).toContain("Cancellation failed: ");
   });
 });

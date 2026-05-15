@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- Three new MCP tools — `pim_group_request_cancel`,
+  `pim_role_entra_request_cancel`, `pim_role_azure_request_cancel` —
+  letting the signed-in user cancel one or more of their own PIM
+  activation requests that are still in `PendingApproval` state. Each
+  tool reuses the existing browser confirmation pattern (no-reason mode,
+  since the underlying Graph and ARM cancel APIs accept no body) so the
+  human always confirms before any cancel is submitted. No new OAuth
+  scopes are required — each surface reuses its existing PIM
+  ReadWrite (Graph) or ARM `user_impersonation` scope set. (#39)
 
 ## [0.1.0] — 2026-05-14
 

@@ -6,6 +6,7 @@ import { pimRoleEntraApprovalListTool } from "./pim-role-entra-approval-list.js"
 import { pimRoleEntraApprovalReviewTool } from "./pim-role-entra-approval-review.js";
 import { pimRoleEntraDeactivateTool } from "./pim-role-entra-deactivate.js";
 import { pimRoleEntraEligibleListTool } from "./pim-role-entra-eligible-list.js";
+import { pimRoleEntraRequestCancelTool } from "./pim-role-entra-request-cancel.js";
 import { pimRoleEntraRequestListTool } from "./pim-role-entra-request-list.js";
 import { pimRoleEntraRequestTool } from "./pim-role-entra-request.js";
 
@@ -15,6 +16,7 @@ export {
   pimRoleEntraApprovalReviewTool,
   pimRoleEntraDeactivateTool,
   pimRoleEntraEligibleListTool,
+  pimRoleEntraRequestCancelTool,
   pimRoleEntraRequestListTool,
   pimRoleEntraRequestTool,
 };
@@ -24,6 +26,7 @@ export const ROLE_ENTRA_TOOLS: readonly AnyTool[] = [
   pimRoleEntraActiveListTool,
   pimRoleEntraRequestListTool,
   pimRoleEntraRequestTool,
+  pimRoleEntraRequestCancelTool,
   pimRoleEntraDeactivateTool,
   pimRoleEntraApprovalListTool,
   pimRoleEntraApprovalReviewTool,

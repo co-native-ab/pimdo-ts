@@ -6,6 +6,7 @@ import { pimRoleAzureApprovalListTool } from "./pim-role-azure-approval-list.js"
 import { pimRoleAzureApprovalReviewTool } from "./pim-role-azure-approval-review.js";
 import { pimRoleAzureDeactivateTool } from "./pim-role-azure-deactivate.js";
 import { pimRoleAzureEligibleListTool } from "./pim-role-azure-eligible-list.js";
+import { pimRoleAzureRequestCancelTool } from "./pim-role-azure-request-cancel.js";
 import { pimRoleAzureRequestListTool } from "./pim-role-azure-request-list.js";
 import { pimRoleAzureRequestTool } from "./pim-role-azure-request.js";
 
@@ -15,6 +16,7 @@ export {
   pimRoleAzureApprovalReviewTool,
   pimRoleAzureDeactivateTool,
   pimRoleAzureEligibleListTool,
+  pimRoleAzureRequestCancelTool,
   pimRoleAzureRequestListTool,
   pimRoleAzureRequestTool,
 };
@@ -24,6 +26,7 @@ export const ROLE_AZURE_TOOLS: readonly AnyTool[] = [
   pimRoleAzureActiveListTool,
   pimRoleAzureRequestListTool,
   pimRoleAzureRequestTool,
+  pimRoleAzureRequestCancelTool,
   pimRoleAzureDeactivateTool,
   pimRoleAzureApprovalListTool,
   pimRoleAzureApprovalReviewTool,

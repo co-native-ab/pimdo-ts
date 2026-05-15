@@ -151,6 +151,9 @@ export class MockGraphState {
   /** Captured PATCH bodies (assignment approval stages). */
   patchedStages: PatchedStage[] = [];
 
+  /** Captured cancel calls (assignment-schedule requests). */
+  cancelledRequests: { method: "POST"; path: string }[] = [];
+
   private nextId = 1;
 
   genId(prefix = "mock"): string {
@@ -345,6 +348,19 @@ async function handleRequest(
     return jsonResponse(res, 200, { value: filtered });
   }
 
+  // POST assignmentScheduleRequests/{id}/cancel
+  const groupCancelMatch =
+    /^\/identityGovernance\/privilegedAccess\/group\/assignmentScheduleRequests\/([^/]+)\/cancel$/.exec(
+      pathname,
+    );
+  if (method === "POST" && groupCancelMatch) {
+    if (!enforceScopes(req, res, WRITE_GROUP_SCHEDULE_SCOPES, errorResponse)) return;
+    state.cancelledRequests.push({ method: "POST", path: pathname });
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   // POST assignmentScheduleRequests
   if (method === "POST" && pathname === `${PIM}/assignmentScheduleRequests`) {
     if (!enforceScopes(req, res, WRITE_GROUP_SCHEDULE_SCOPES, errorResponse)) return;
@@ -481,6 +497,17 @@ async function handleRequest(
     const filter = parsed.searchParams.get("$filter");
     const filtered = applyRoleEntraStatusFilter(all, filter);
     return jsonResponse(res, 200, { value: filtered });
+  }
+
+  // POST roleAssignmentScheduleRequests/{id}/cancel (Entra role)
+  const roleEntraCancelMatch =
+    /^\/roleManagement\/directory\/roleAssignmentScheduleRequests\/([^/]+)\/cancel$/.exec(pathname);
+  if (method === "POST" && roleEntraCancelMatch) {
+    if (!enforceScopes(req, res, ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES, errorResponse)) return;
+    state.cancelledRequests.push({ method: "POST", path: pathname });
+    res.writeHead(204);
+    res.end();
+    return;
   }
 
   if (method === "POST" && pathname === `${ROLE}/roleAssignmentScheduleRequests`) {

@@ -7,6 +7,7 @@ import { ApprovalDecision } from "../../src/enums.js";
 import { GraphClient } from "../../src/graph/client.js";
 import {
   approveGroupAssignment,
+  cancelGroupAssignmentRequest,
   listActiveGroupAssignments,
   listEligibleGroupAssignments,
   listGroupApprovalRequests,
@@ -155,5 +156,13 @@ describe("graph/pim-group", () => {
     await expect(
       approveGroupAssignment(client, approvalId, ApprovalDecision.Approve, "x", testSignal()),
     ).rejects.toThrow(/no live stage/);
+  });
+
+  it("cancelGroupAssignmentRequest POSTs to the cancel sub-resource", async () => {
+    await cancelGroupAssignmentRequest(client, "req-abc", testSignal());
+    expect(state.cancelledRequests).toHaveLength(1);
+    expect(state.cancelledRequests[0]?.path).toBe(
+      "/identityGovernance/privilegedAccess/group/assignmentScheduleRequests/req-abc/cancel",
+    );
   });
 });

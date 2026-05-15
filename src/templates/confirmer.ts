@@ -22,8 +22,14 @@ export interface ConfirmerPageConfig {
   subtitle: string;
   /** Submit button label. */
   submitLabel: string;
-  /** Label for the per-row reason textarea. */
+  /** Label for the per-row reason textarea. Ignored when {@link showReason} is false. */
   reasonLabel?: string;
+  /**
+   * Whether to render the per-row reason column. Defaults to `true`.
+   * Set to `false` for actions whose underlying API takes no
+   * justification body (e.g. PIM `cancel`).
+   */
+  showReason?: boolean;
   rows: readonly ConfirmerRowSpec[];
 }
 
@@ -46,7 +52,22 @@ function renderRow(row: ConfirmerRowSpec, reasonLabel: string, index: number): s
       </tr>`;
 }
 
+function renderRowNoReason(row: ConfirmerRowSpec): string {
+  const included = row.includedByDefault !== false;
+  return `<tr class="row" data-row-id="${escapeHtml(row.id)}">
+        <td class="cell-include">
+          <input type="checkbox" class="include-toggle" aria-label="Include" ${included ? "checked" : ""}>
+        </td>
+        <td class="cell-primary">
+          <div class="row-label">${escapeHtml(row.label)}</div>
+          ${row.subtitle ? `<div class="row-subtitle">${escapeHtml(row.subtitle)}</div>` : ""}
+          <p class="row-error" hidden></p>
+        </td>
+      </tr>`;
+}
+
 export function confirmerPageHtml(config: ConfirmerPageConfig): string {
+  const showReason = config.showReason !== false;
   const reasonLabel = config.reasonLabel ?? "Reason";
   const bulkToolbar = renderBulkToolbar(
     [
@@ -56,6 +77,17 @@ export function confirmerPageHtml(config: ConfirmerPageConfig): string {
     "row-summary",
   );
 
+  const headerCells = showReason
+    ? `              <th class="col-include" scope="col" aria-label="Include"></th>
+              <th class="col-primary" scope="col">Group / role</th>
+              <th class="col-input" scope="col">${escapeHtml(reasonLabel)} <span class="cell-num">(optional)</span></th>`
+    : `              <th class="col-include" scope="col" aria-label="Include"></th>
+              <th class="col-primary" scope="col">Group / role</th>`;
+
+  const renderRowsHtml = showReason
+    ? config.rows.map((r, i) => renderRow(r, reasonLabel, i)).join("\n          ")
+    : config.rows.map((r) => renderRowNoReason(r)).join("\n          ");
+
   const formContent =
     config.rows.length > 0
       ? `${bulkToolbar}
@@ -63,15 +95,22 @@ export function confirmerPageHtml(config: ConfirmerPageConfig): string {
         <table class="row-table">
           <thead>
             <tr>
-              <th class="col-include" scope="col" aria-label="Include"></th>
-              <th class="col-primary" scope="col">Group / role</th>
-              <th class="col-input" scope="col">${escapeHtml(reasonLabel)} <span class="cell-num">(optional)</span></th>
+${headerCells}
             </tr>
           </thead>
-          <tbody>${config.rows.map((r, i) => renderRow(r, reasonLabel, i)).join("\n          ")}</tbody>
+          <tbody>${renderRowsHtml}</tbody>
         </table>
       </div>`
       : `<p class="empty-state">// no items to confirm</p>`;
+
+  const buildPayloadRowJs = showReason
+    ? `        rows.push({
+          id: rowEl.getAttribute('data-row-id'),
+          reason: rowEl.querySelector('.reason').value.trim(),
+        });`
+    : `        rows.push({
+          id: rowEl.getAttribute('data-row-id'),
+        });`;
 
   const perFlowScript = `    function applyBulk(action) {
       var include = action === 'include-all';
@@ -103,10 +142,7 @@ export function confirmerPageHtml(config: ConfirmerPageConfig): string {
       var rows = [];
       document.querySelectorAll('.row').forEach(function (rowEl) {
         if (!rowEl.querySelector('.include-toggle').checked) return;
-        rows.push({
-          id: rowEl.getAttribute('data-row-id'),
-          reason: rowEl.querySelector('.reason').value.trim(),
-        });
+${buildPayloadRowJs}
       });
       if (rows.length === 0) {
         throw new Error('Select at least one item to submit.');
