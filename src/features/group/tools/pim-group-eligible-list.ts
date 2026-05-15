@@ -18,7 +18,7 @@ const def: ToolDef = {
   title: "List eligible PIM group assignments",
   description:
     "List Entra groups the signed-in user is eligible to activate via PIM. " +
-    "Returns the group display name, id, eligibility id, and any time bounds.",
+    "Returns the group display name, id, eligibility id and any time bounds.",
   requiredScopes: deriveRequiredScopes([LIST_ELIGIBLE_GROUP_SCOPES]),
 };
 

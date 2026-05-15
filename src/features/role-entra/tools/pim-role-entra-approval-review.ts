@@ -23,7 +23,7 @@ export const pimRoleEntraApprovalReviewTool = buildApprovalReviewTool<RoleEntraA
     title: "Review PIM Entra-role approvals",
     description:
       "Open a browser form for the signed-in user (acting as approver) to " +
-      "Approve, Deny, or Skip pending PIM Entra-role activation approvals. " +
+      "Approve, Deny or Skip pending PIM Entra-role activation approvals. " +
       "Each Approve/Deny PATCHes the live approval stage via the Microsoft Graph beta endpoint.",
     requiredScopes: deriveRequiredScopes([
       LIST_ROLE_ENTRA_REQUESTS_SCOPES,

@@ -18,7 +18,7 @@ const def: ToolDef = {
   title: "List eligible PIM Entra-role assignments",
   description:
     "List Entra (directory) roles the signed-in user is eligible to activate via PIM. " +
-    "Returns the role display name, role definition id, eligibility id, directory scope, and any time bounds.",
+    "Returns the role display name, role definition id, eligibility id, directory scope and any time bounds.",
   requiredScopes: deriveRequiredScopes([LIST_ELIGIBLE_ROLE_ENTRA_SCOPES]),
 };
 

@@ -16,7 +16,7 @@ const def: ToolDef = {
   name: "auth_status",
   title: "Authentication Status",
   description:
-    "Check current authentication status, logged-in user, granted scopes, and " +
+    "Check current authentication status, logged-in user, granted scopes and " +
     "server version. A good first tool to call when diagnosing PIM access " +
     "issues or confirming that the right consent has been granted.",
   requiredScopes: [],

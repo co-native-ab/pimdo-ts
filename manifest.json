@@ -35,11 +35,11 @@
     },
     {
       "name": "auth_status",
-      "description": "Check current authentication status, logged-in user, granted scopes, and server version. A good first tool to call when diagnosing PIM access issues or confirming that the right consent has been granted."
+      "description": "Check current authentication status, logged-in user, granted scopes and server version. A good first tool to call when diagnosing PIM access issues or confirming that the right consent has been granted."
     },
     {
       "name": "pim_group_eligible_list",
-      "description": "List Entra groups the signed-in user is eligible to activate via PIM. Returns the group display name, id, eligibility id, and any time bounds."
+      "description": "List Entra groups the signed-in user is eligible to activate via PIM. Returns the group display name, id, eligibility id and any time bounds."
     },
     {
       "name": "pim_group_active_list",
@@ -63,11 +63,11 @@
     },
     {
       "name": "pim_group_approval_review",
-      "description": "Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM group activation approvals. Each Approve/Deny PATCHes the live approval stage via Microsoft Graph."
+      "description": "Open a browser form for the signed-in user (acting as approver) to Approve, Deny or Skip pending PIM group activation approvals. Each Approve/Deny PATCHes the live approval stage via Microsoft Graph."
     },
     {
       "name": "pim_role_entra_eligible_list",
-      "description": "List Entra (directory) roles the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, directory scope, and any time bounds."
+      "description": "List Entra (directory) roles the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, directory scope and any time bounds."
     },
     {
       "name": "pim_role_entra_active_list",
@@ -91,11 +91,11 @@
     },
     {
       "name": "pim_role_entra_approval_review",
-      "description": "Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM Entra-role activation approvals. Each Approve/Deny PATCHes the live approval stage via the Microsoft Graph beta endpoint."
+      "description": "Open a browser form for the signed-in user (acting as approver) to Approve, Deny or Skip pending PIM Entra-role activation approvals. Each Approve/Deny PATCHes the live approval stage via the Microsoft Graph beta endpoint."
     },
     {
       "name": "pim_role_azure_eligible_list",
-      "description": "List Azure resource roles (subscriptions, resource groups, resources) the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, ARM scope, and any time bounds."
+      "description": "List Azure resource roles (subscriptions, resource groups, resources) the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, ARM scope and any time bounds."
     },
     {
       "name": "pim_role_azure_active_list",
@@ -103,7 +103,7 @@
     },
     {
       "name": "pim_role_azure_request_list",
-      "description": "List PIM Azure-role activation/deactivation requests the signed-in user has submitted. Does not filter by status — surface all visible schedule requests."
+      "description": "List PIM Azure-role activation/deactivation requests the signed-in user has submitted. Does not filter by status - surface all visible schedule requests."
     },
     {
       "name": "pim_role_azure_request",
@@ -115,11 +115,11 @@
     },
     {
       "name": "pim_role_azure_approval_list",
-      "description": "List PIM Azure-role activation requests where the signed-in user is an approver. Does not filter by status — surface the full approver-side queue."
+      "description": "List PIM Azure-role activation requests where the signed-in user is an approver. Does not filter by status - surface the full approver-side queue."
     },
     {
       "name": "pim_role_azure_approval_review",
-      "description": "Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM Azure-role activation approvals. Each Approve/Deny submits the decision via Azure Resource Manager `/batch`."
+      "description": "Open a browser form for the signed-in user (acting as approver) to Approve, Deny or Skip pending PIM Azure-role activation approvals. Each Approve/Deny submits the decision via Azure Resource Manager `/batch`."
     }
   ],
   "keywords": ["microsoft", "entra", "pim", "privileged-identity-management", "ai-agents", "mcp"],
