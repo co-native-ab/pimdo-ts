@@ -110,6 +110,45 @@ describe("pim_group list tools", () => {
       expect(res.content[0]?.text).toContain(approval.id);
     });
   });
+
+  it("approval_list shows requester (by=UPN) and request status", async () => {
+    await withState(async (state, config) => {
+      state.seedPendingApproval({
+        groupId: "g3",
+        groupDisplayName: "Gamma",
+        requesterPrincipalId: "alice-id",
+        requesterDisplayName: "Alice",
+      });
+      const res = await call(pimGroupApprovalListTool, config);
+      const text = res.content[0]?.text ?? "";
+      // Mock seeds userPrincipalName=other@example.com for the requester.
+      expect(text).toContain("by=other@example.com");
+      expect(text).toContain("status=PendingApproval");
+    });
+  });
+
+  it("request_list (mine) suppresses by= and renders created timestamp", async () => {
+    await withState(async (state, config) => {
+      state.myRequests.push({
+        id: "req-2",
+        groupId: "g4",
+        principalId: "me-id",
+        action: "selfActivate",
+        status: "PendingApproval",
+        createdDateTime: "2026-05-15T08:18:15Z",
+        principal: {
+          id: "me-id",
+          displayName: "Me",
+          userPrincipalName: "me@example.com",
+        },
+        group: { id: "g4", displayName: "Delta" },
+      });
+      const res = await call(pimGroupRequestListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain("created=2026-05-15T08:18:15Z");
+      expect(text).not.toContain("by=");
+    });
+  });
 });
 
 describe("pim_group list tools error paths", () => {

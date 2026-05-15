@@ -110,6 +110,49 @@ describe("pim_role_entra list tools", () => {
       expect(res.content[0]?.text).toContain(approval.id);
     });
   });
+
+  it("approval_list shows requester (by=UPN) and request status", async () => {
+    await withState(async (state, config) => {
+      state.seedRoleEntraPendingApproval({
+        roleDefinitionId: "role-3",
+        roleDisplayName: "Application Administrator",
+        requesterPrincipalId: "alice-id",
+        requesterDisplayName: "Alice",
+      });
+      const res = await call(pimRoleEntraApprovalListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain("by=other@example.com");
+      expect(text).toContain("status=PendingApproval");
+    });
+  });
+
+  it("request_list (mine) suppresses by= and renders status + created timestamp", async () => {
+    await withState(async (state, config) => {
+      state.roleEntraMyRequests.push({
+        id: "req-2",
+        roleDefinitionId: "role-4",
+        principalId: "me-id",
+        directoryScopeId: "/",
+        action: "selfActivate",
+        status: "PendingApproval",
+        createdDateTime: "2026-05-15T08:18:15Z",
+        roleDefinition: { id: "role-4", displayName: "Reports Reader" },
+        principal: {
+          id: "me-id",
+          displayName: "Me",
+          userPrincipalName: "me@example.com",
+        },
+      });
+      const res = await call(pimRoleEntraRequestListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain("status=PendingApproval");
+      expect(text).toContain("created=2026-05-15T08:18:15Z");
+      expect(text).not.toContain("by=");
+      // completed= is suppressed because the request hasn't completed yet —
+      // the helper-level unit test covers the suppression rule directly.
+      expect(text).not.toContain("completed=");
+    });
+  });
 });
 
 describe("pim_role_entra list tools error paths", () => {

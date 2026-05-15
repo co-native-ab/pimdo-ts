@@ -5,18 +5,32 @@ import type {
   RoleEntraActiveAssignment,
   RoleEntraAssignmentRequest,
   RoleEntraEligibleAssignment,
+  User,
 } from "../../graph/types.js";
 import {
   approvalTag,
+  completedTag,
+  createdTag,
   expiryTail,
   formatBulletList,
   justificationTail,
   namedLabel,
+  requesterTag,
+  statusTag,
+  type RequesterIdentity,
 } from "../../tools/pim/format-shared.js";
 
 function scopeLabel(directoryScopeId: string | undefined): string {
   if (!directoryScopeId || directoryScopeId === "/") return "Directory";
   return directoryScopeId;
+}
+
+function graphRequester(principal: User | undefined, principalId: string): RequesterIdentity {
+  return {
+    upnOrEmail: principal?.userPrincipalName ?? principal?.mail ?? undefined,
+    displayName: principal?.displayName,
+    id: principal?.id ?? principalId,
+  };
 }
 
 export function formatEligibleAssignmentsText(
@@ -29,7 +43,7 @@ export function formatEligibleAssignmentsText(
     (it) =>
       `- ${namedLabel(it.roleDefinitionId, it.roleDefinition)} @ ${scopeLabel(
         it.directoryScopeId,
-      )} [eligibility=${it.id}]${expiryTail(AssignmentKind.Eligible, it.scheduleInfo?.expiration?.endDateTime)}`,
+      )} [eligibility=${it.id}]${statusTag(it.status)}${expiryTail(AssignmentKind.Eligible, it.scheduleInfo?.expiration?.endDateTime)}`,
   );
 }
 
@@ -64,6 +78,8 @@ export function formatRequestsText(
     (it) =>
       `- ${namedLabel(it.roleDefinitionId, it.roleDefinition)} @ ${scopeLabel(
         it.directoryScopeId,
-      )} [request=${it.id}] action=${it.action ?? "?"}${approvalTag(it.approvalId)}${justificationTail(it.justification)}`,
+      )} [request=${it.id}] action=${it.action ?? "?"}${statusTag(it.status)}${
+        perspective === "approver" ? requesterTag(graphRequester(it.principal, it.principalId)) : ""
+      }${createdTag(it.createdDateTime)}${completedTag(it.completedDateTime, it.createdDateTime)}${approvalTag(it.approvalId)}${justificationTail(it.justification)}`,
   );
 }
