@@ -7,8 +7,10 @@ import { ArmClient } from "../../src/arm/client.js";
 import { ApprovalDecision } from "../../src/enums.js";
 import {
   approveRoleAzureAssignment,
+  cancelRoleAzureAssignmentRequest,
   listActiveRoleAzureAssignments,
   listEligibleRoleAzureAssignments,
+  listMyPendingRoleAzureRequests,
   listMyRoleAzureRequests,
   listRoleAzureApprovalRequests,
   requestRoleAzureActivation,
@@ -216,5 +218,49 @@ describe("arm/pim-role-azure", () => {
     await expect(
       approveRoleAzureAssignment(client, "badbad", ApprovalDecision.Approve, "x", testSignal()),
     ).rejects.toThrow(/HTTP 400/);
+  });
+
+  it("listMyPendingRoleAzureRequests filters out non-PendingApproval entries", async () => {
+    state.myRequests.push(
+      {
+        id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleRequests/req-1",
+        name: "req-1",
+        type: "Microsoft.Authorization/roleAssignmentScheduleRequests",
+        properties: {
+          principalId: "me-id",
+          roleDefinitionId: "role-1",
+          scope: "/subscriptions/sub-a",
+          requestType: "SelfActivate",
+          status: "PendingApproval",
+        },
+      },
+      {
+        id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleRequests/req-2",
+        name: "req-2",
+        type: "Microsoft.Authorization/roleAssignmentScheduleRequests",
+        properties: {
+          principalId: "me-id",
+          roleDefinitionId: "role-1",
+          scope: "/subscriptions/sub-a",
+          requestType: "SelfActivate",
+          status: "Granted",
+        },
+      },
+    );
+    const result = await listMyPendingRoleAzureRequests(client, testSignal());
+    expect(result.map((r) => r.name)).toEqual(["req-1"]);
+    // Sanity-check: the unfiltered helper still returns both.
+    const unfiltered = await listMyRoleAzureRequests(client, testSignal());
+    expect(unfiltered.map((r) => r.name)).toEqual(["req-1", "req-2"]);
+  });
+
+  it("cancelRoleAzureAssignmentRequest POSTs to the cancel sub-resource at the given scope", async () => {
+    await cancelRoleAzureAssignmentRequest(
+      client,
+      "/subscriptions/sub-a",
+      "req-7",
+      testSignal(),
+    );
+    expect(state.cancelledRequests).toEqual([{ scope: "/subscriptions/sub-a", name: "req-7" }]);
   });
 });

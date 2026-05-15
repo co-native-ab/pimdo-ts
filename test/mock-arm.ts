@@ -80,6 +80,9 @@ export class MockArmState {
   /** Captured POST /batch bodies. */
   batchRequests: BatchArmRequest[] = [];
 
+  /** Captured cancel calls (scope + request name). */
+  cancelledRequests: { scope: string; name: string }[] = [];
+
   /**
    * Approval ids that should reject in /batch (e.g. to test failures).
    * If absent, all approvals succeed with HTTP 204.
@@ -319,6 +322,16 @@ async function handleRequest(
       return jsonResponse(res, 200, { value: state.approverRequests });
     }
     return jsonResponse(res, 200, { value: state.myRequests });
+  }
+
+  // POST roleAssignmentScheduleRequests/{name}/cancel
+  const cancelMatch = /^roleAssignmentScheduleRequests\/([^/]+)\/cancel$/.exec(arm.resourcePath);
+  if (method === "POST" && cancelMatch && arm.scope !== "") {
+    const name = cancelMatch[1] ?? "";
+    state.cancelledRequests.push({ scope: arm.scope, name });
+    res.writeHead(204);
+    res.end();
+    return;
   }
 
   // PUT roleAssignmentScheduleRequests/{name}
