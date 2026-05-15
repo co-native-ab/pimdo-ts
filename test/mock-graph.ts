@@ -501,9 +501,7 @@ async function handleRequest(
 
   // POST roleAssignmentScheduleRequests/{id}/cancel (Entra role)
   const roleEntraCancelMatch =
-    /^\/roleManagement\/directory\/roleAssignmentScheduleRequests\/([^/]+)\/cancel$/.exec(
-      pathname,
-    );
+    /^\/roleManagement\/directory\/roleAssignmentScheduleRequests\/([^/]+)\/cancel$/.exec(pathname);
   if (method === "POST" && roleEntraCancelMatch) {
     if (!enforceScopes(req, res, ROLE_ENTRA_SCHEDULE_REQUEST_SCOPES, errorResponse)) return;
     state.cancelledRequests.push({ method: "POST", path: pathname });

@@ -54,6 +54,10 @@
       "description": "Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Entra groups. The user edits justification and duration per row, then submits. Each confirmed row creates a selfActivate assignment-schedule request via Microsoft Graph."
     },
     {
+      "name": "pim_group_request_cancel",
+      "description": "Open a browser form for the signed-in user to confirm cancellation of one or more PIM group activation/deactivation requests that are still waiting for approval. Each confirmed row POSTs the cancel sub-resource via Microsoft Graph."
+    },
+    {
       "name": "pim_group_deactivate",
       "description": "Open a browser form for the signed-in user to confirm deactivation of one or more currently-active PIM group assignments. Each confirmed row submits a selfDeactivate assignment-schedule request via Graph."
     },
@@ -82,6 +86,10 @@
       "description": "Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Entra (directory) roles. The user edits justification and duration per row, then submits. Each confirmed row creates a selfActivate role-assignment-schedule request via Microsoft Graph."
     },
     {
+      "name": "pim_role_entra_request_cancel",
+      "description": "Open a browser form for the signed-in user to confirm cancellation of one or more PIM Entra-role activation/deactivation requests that are still waiting for approval. Each confirmed row POSTs the cancel sub-resource via Microsoft Graph."
+    },
+    {
       "name": "pim_role_entra_deactivate",
       "description": "Open a browser form for the signed-in user to confirm deactivation of one or more currently-active PIM Entra-role assignments. Each confirmed row submits a selfDeactivate role-assignment-schedule request via Graph."
     },
@@ -108,6 +116,10 @@
     {
       "name": "pim_role_azure_request",
       "description": "Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Azure resource roles. The user edits justification and duration per row, then submits. Each confirmed row creates a SelfActivate role-assignment-schedule request via Azure Resource Manager."
+    },
+    {
+      "name": "pim_role_azure_request_cancel",
+      "description": "Open a browser form for the signed-in user to confirm cancellation of one or more PIM Azure-role activation/deactivation requests that are still waiting for approval. Each confirmed row POSTs the cancel sub-resource via Azure Resource Manager."
     },
     {
       "name": "pim_role_azure_deactivate",

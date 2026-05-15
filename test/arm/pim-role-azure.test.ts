@@ -255,12 +255,7 @@ describe("arm/pim-role-azure", () => {
   });
 
   it("cancelRoleAzureAssignmentRequest POSTs to the cancel sub-resource at the given scope", async () => {
-    await cancelRoleAzureAssignmentRequest(
-      client,
-      "/subscriptions/sub-a",
-      "req-7",
-      testSignal(),
-    );
+    await cancelRoleAzureAssignmentRequest(client, "/subscriptions/sub-a", "req-7", testSignal());
     expect(state.cancelledRequests).toEqual([{ scope: "/subscriptions/sub-a", name: "req-7" }]);
   });
 });

@@ -14,6 +14,7 @@ import { fetchCsrfToken, testSignal } from "../../../helpers.js";
 
 import { pimGroupApprovalReviewTool } from "../../../../src/features/group/tools/pim-group-approval-review.js";
 import { pimGroupDeactivateTool } from "../../../../src/features/group/tools/pim-group-deactivate.js";
+import { pimGroupRequestCancelTool } from "../../../../src/features/group/tools/pim-group-request-cancel.js";
 import { pimGroupRequestTool } from "../../../../src/features/group/tools/pim-group-request.js";
 
 interface ToolResult {
@@ -372,5 +373,100 @@ describe("pim_group_approval_review error / edge paths", () => {
     const res = await callTool(pimGroupApprovalReviewTool, h.config, {});
     expect(res.isError).toBe(true);
     expect(res.content[0]?.text).toContain("Approval review failed: ");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pim_group_request_cancel
+// ---------------------------------------------------------------------------
+
+describe("pim_group_request_cancel error / edge paths", () => {
+  it("returns 'No pending PIM group requests to cancel.' when nothing is pending", async () => {
+    const h = await setupHarness();
+    try {
+      const res = await callTool(pimGroupRequestCancelTool, h.config, {});
+      expect(res.content[0]?.text).toContain("No pending PIM group requests to cancel.");
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("returns 'None of the requested request ids matched' when all items are unknown", async () => {
+    const h = await setupHarness();
+    try {
+      h.state.myRequests.push({
+        id: "req-1",
+        groupId: "group-1",
+        principalId: h.state.me.id,
+        accessId: "member",
+        action: "selfActivate",
+        status: "PendingApproval",
+        group: { id: "group-1", displayName: "Group One" },
+      });
+      const res = await callTool(pimGroupRequestCancelTool, h.config, {
+        items: [{ requestId: "ghost" }],
+      });
+      expect(res.content[0]?.text).toContain("None of the requested request ids matched");
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("submits the cancel POST on confirmation", async () => {
+    const h = await setupHarness();
+    try {
+      h.state.myRequests.push({
+        id: "req-1",
+        groupId: "group-1",
+        principalId: h.state.me.id,
+        accessId: "member",
+        action: "selfActivate",
+        status: "PendingApproval",
+        group: { id: "group-1", displayName: "Group One" },
+      });
+      const promise = callTool(pimGroupRequestCancelTool, h.config, {});
+      const url = await waitFor(() => h.capturedUrls.at(-1));
+      const csrf = await fetchCsrfToken(url);
+      await postJson(`${url}/submit`, {
+        csrfToken: csrf,
+        rows: [{ id: "req-1" }],
+      });
+      const res = await promise;
+      expect(res.content[0]?.text).toContain("Submitted 1 PIM group cancellation(s)");
+      expect(h.state.cancelledRequests.some((c) => c.path.endsWith("/req-1/cancel"))).toBe(true);
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("returns 'Cancellation cancelled.' when the user cancels the row form", async () => {
+    const h = await setupHarness();
+    try {
+      h.state.myRequests.push({
+        id: "req-1",
+        groupId: "group-1",
+        principalId: h.state.me.id,
+        accessId: "member",
+        action: "selfActivate",
+        status: "PendingApproval",
+        group: { id: "group-1", displayName: "Group One" },
+      });
+      const promise = callTool(pimGroupRequestCancelTool, h.config, {});
+      const url = await waitFor(() => h.capturedUrls.at(-1));
+      const csrf = await fetchCsrfToken(url);
+      await postJson(`${url}/cancel`, { csrfToken: csrf });
+      const res = await promise;
+      expect(res.content[0]?.text).toBe("Cancellation cancelled.");
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("returns 'Cancellation failed:' when the initial Graph list call errors", async () => {
+    const h = await setupHarness();
+    await h.shutdown();
+    const res = await callTool(pimGroupRequestCancelTool, h.config, {});
+    expect(res.isError).toBe(true);
+    expect(res.content[0]?.text).toContain("Cancellation failed: ");
   });
 });

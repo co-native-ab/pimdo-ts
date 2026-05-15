@@ -47,6 +47,5 @@ export const pimRoleEntraRequestCancelTool = buildCancelTool<RoleEntraAssignment
     subtitle: `${r.action ?? "?"} · ${r.status ?? "?"}`,
   }),
   label: requestLabel,
-  submit: (config, r, signal) =>
-    cancelRoleEntraAssignmentRequest(config.graphClient, r.id, signal),
+  submit: (config, r, signal) => cancelRoleEntraAssignmentRequest(config.graphClient, r.id, signal),
 });

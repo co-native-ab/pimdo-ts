@@ -16,6 +16,7 @@ import { fetchCsrfToken, testSignal } from "../../../helpers.js";
 
 import { pimRoleAzureApprovalReviewTool } from "../../../../src/features/role-azure/tools/pim-role-azure-approval-review.js";
 import { pimRoleAzureDeactivateTool } from "../../../../src/features/role-azure/tools/pim-role-azure-deactivate.js";
+import { pimRoleAzureRequestCancelTool } from "../../../../src/features/role-azure/tools/pim-role-azure-request-cancel.js";
 import { pimRoleAzureRequestTool } from "../../../../src/features/role-azure/tools/pim-role-azure-request.js";
 
 interface ToolResult {
@@ -371,5 +372,127 @@ describe("pim_role_azure_approval_review error / edge paths", () => {
     const res = await callTool(pimRoleAzureApprovalReviewTool, h.config, {});
     expect(res.isError).toBe(true);
     expect(res.content[0]?.text).toContain("Approval review failed: ");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pim_role_azure_request_cancel
+// ---------------------------------------------------------------------------
+
+describe("pim_role_azure_request_cancel error / edge paths", () => {
+  const SCOPE = "/subscriptions/sub-1";
+  const REQ_NAME = "req-1";
+  const REQ_ID = `${SCOPE}/providers/Microsoft.Authorization/roleAssignmentScheduleRequests/${REQ_NAME}`;
+
+  function seedPending(armState: MockArmState): void {
+    armState.myRequests.push({
+      id: REQ_ID,
+      name: REQ_NAME,
+      type: "Microsoft.Authorization/roleAssignmentScheduleRequests",
+      properties: {
+        principalId: "me-id",
+        roleDefinitionId: "role-def-1",
+        scope: SCOPE,
+        requestType: "SelfActivate",
+        status: "PendingApproval",
+        expandedProperties: {
+          roleDefinition: { id: "role-def-1", displayName: "Role One" },
+          scope: { id: SCOPE, displayName: SCOPE, type: "subscription" },
+        },
+      },
+    });
+  }
+
+  it("returns 'No pending PIM Azure-role requests to cancel.' when nothing is pending", async () => {
+    const h = await setupHarness();
+    try {
+      const res = await callTool(pimRoleAzureRequestCancelTool, h.config, {});
+      expect(res.content[0]?.text).toContain("No pending PIM Azure-role requests to cancel.");
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("filters out non-PendingApproval requests", async () => {
+    const h = await setupHarness();
+    try {
+      h.armState.myRequests.push({
+        id: `${SCOPE}/providers/Microsoft.Authorization/roleAssignmentScheduleRequests/req-granted`,
+        name: "req-granted",
+        type: "Microsoft.Authorization/roleAssignmentScheduleRequests",
+        properties: {
+          principalId: "me-id",
+          roleDefinitionId: "role-def-1",
+          scope: SCOPE,
+          requestType: "SelfActivate",
+          status: "Granted",
+          expandedProperties: {
+            roleDefinition: { id: "role-def-1", displayName: "Role One" },
+            scope: { id: SCOPE, displayName: SCOPE, type: "subscription" },
+          },
+        },
+      });
+      const res = await callTool(pimRoleAzureRequestCancelTool, h.config, {});
+      expect(res.content[0]?.text).toContain("No pending PIM Azure-role requests to cancel.");
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("returns 'None of the requested request ids matched' when all items are unknown", async () => {
+    const h = await setupHarness();
+    try {
+      seedPending(h.armState);
+      const res = await callTool(pimRoleAzureRequestCancelTool, h.config, {
+        items: [{ requestId: "ghost" }],
+      });
+      expect(res.content[0]?.text).toContain("None of the requested request ids matched");
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("submits the cancel POST on confirmation", async () => {
+    const h = await setupHarness();
+    try {
+      seedPending(h.armState);
+      const promise = callTool(pimRoleAzureRequestCancelTool, h.config, {});
+      const url = await waitFor(() => h.capturedUrls.at(-1));
+      const csrf = await fetchCsrfToken(url);
+      await postJson(`${url}/submit`, {
+        csrfToken: csrf,
+        rows: [{ id: REQ_ID }],
+      });
+      const res = await promise;
+      expect(res.content[0]?.text).toContain("Submitted 1 PIM Azure-role cancellation(s)");
+      expect(
+        h.armState.cancelledRequests.some((c) => c.scope === SCOPE && c.name === REQ_NAME),
+      ).toBe(true);
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("returns 'Cancellation cancelled.' when the user cancels the row form", async () => {
+    const h = await setupHarness();
+    try {
+      seedPending(h.armState);
+      const promise = callTool(pimRoleAzureRequestCancelTool, h.config, {});
+      const url = await waitFor(() => h.capturedUrls.at(-1));
+      const csrf = await fetchCsrfToken(url);
+      await postJson(`${url}/cancel`, { csrfToken: csrf });
+      const res = await promise;
+      expect(res.content[0]?.text).toBe("Cancellation cancelled.");
+    } finally {
+      await h.shutdown();
+    }
+  });
+
+  it("returns 'Cancellation failed:' when the initial ARM list call errors", async () => {
+    const h = await setupHarness();
+    await h.shutdown();
+    const res = await callTool(pimRoleAzureRequestCancelTool, h.config, {});
+    expect(res.isError).toBe(true);
+    expect(res.content[0]?.text).toContain("Cancellation failed: ");
   });
 });

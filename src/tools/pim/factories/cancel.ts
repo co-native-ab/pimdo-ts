@@ -42,10 +42,7 @@ export interface CancelAdapter<Request> {
 
 function buildInputSchema(requestListToolName: string) {
   const ItemSchema = z.object({
-    requestId: z
-      .string()
-      .min(1)
-      .describe(`The pending request id from ${requestListToolName}.`),
+    requestId: z.string().min(1).describe(`The pending request id from ${requestListToolName}.`),
   });
   return z.object({
     items: z
@@ -68,9 +65,7 @@ export type CancelInputSchema = ReturnType<typeof buildInputSchema>;
  * destructive in the MCP sense, but it is also not idempotent (calling
  * cancel twice will surface a server error on the second attempt).
  */
-export function buildCancelTool<Request>(
-  adapter: CancelAdapter<Request>,
-): Tool<CancelInputSchema> {
+export function buildCancelTool<Request>(adapter: CancelAdapter<Request>): Tool<CancelInputSchema> {
   const inputSchema = buildInputSchema(adapter.requestListToolName);
   const handler = (config: ServerConfig): ToolCallback<CancelInputSchema> => {
     return async (args, { signal }) => {
