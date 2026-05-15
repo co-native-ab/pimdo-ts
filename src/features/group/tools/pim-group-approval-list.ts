@@ -14,23 +14,25 @@ import type { ServerConfig } from "../../../server-config.js";
 import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
-import { classifyStaleApproverRequests } from "../../../tools/pim/stale.js";
+import { classifyStaleApproverRequests, includeStaleField } from "../../../tools/pim/stale.js";
+import { staleHiddenTrailer } from "../../../tools/pim/format-shared.js";
 import { formatRequestsText } from "../format.js";
 
-const inputSchema = z.object({}).shape;
+const inputSchema = z.object({ includeStale: includeStaleField }).shape;
 
 const def: ToolDef = {
   name: "pim_group_approval_list",
   title: "List PIM group approvals assigned to me",
   description:
     "List pending PIM group activation requests where the signed-in user " +
-    "is an approver and has not yet recorded a decision. Stale requests " +
-    "(no live stage assigned to the caller) are flagged [stale].",
+    "is an approver and has not yet recorded a decision. Stale entries " +
+    "(no live stage assigned to the caller) are hidden by default; pass " +
+    "includeStale: true to include them.",
   requiredScopes: deriveRequiredScopes([LIST_GROUP_REQUESTS_SCOPES, APPROVE_GROUP_SCOPES]),
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
-  return async (_args, { signal }) => {
+  return async (args, { signal }) => {
     try {
       const items = await listGroupApprovalRequests(config.graphClient, signal);
       const stale = await classifyStaleApproverRequests(
@@ -44,8 +46,17 @@ function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
         },
         signal,
       );
+      const includeStale = args.includeStale ?? false;
+      if (includeStale) {
+        return {
+          content: [{ type: "text", text: formatRequestsText(items, "approver", stale) }],
+        };
+      }
+      const visible = items.filter((it) => !stale.has(it.id));
+      const body = formatRequestsText(visible, "approver");
+      const trailer = staleHiddenTrailer(stale.size);
       return {
-        content: [{ type: "text", text: formatRequestsText(items, "approver", stale) }],
+        content: [{ type: "text", text: trailer ? `${body}\n${trailer}` : body }],
       };
     } catch (error) {
       return formatError(def.name, error);

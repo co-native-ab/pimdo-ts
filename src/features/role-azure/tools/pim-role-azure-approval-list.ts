@@ -10,10 +10,11 @@ import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import { ROLE_AZURE_SCOPES } from "../client.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
-import { classifyStaleApproverRequests } from "../../../tools/pim/stale.js";
+import { classifyStaleApproverRequests, includeStaleField } from "../../../tools/pim/stale.js";
+import { staleHiddenTrailer } from "../../../tools/pim/format-shared.js";
 import { formatRequestsText } from "../format.js";
 
-const inputSchema = z.object({}).shape;
+const inputSchema = z.object({ includeStale: includeStaleField }).shape;
 
 const def: ToolDef = {
   name: "pim_role_azure_approval_list",
@@ -21,13 +22,14 @@ const def: ToolDef = {
   description:
     "List PIM Azure-role activation requests where the signed-in user " +
     "is an approver. Does not filter by status - surface " +
-    "the full approver-side queue. Stale requests (no live stage " +
-    "assigned to the caller) are flagged [stale].",
+    "the full approver-side queue. Stale entries (no live stage " +
+    "assigned to the caller) are hidden by default; pass " +
+    "includeStale: true to include them.",
   requiredScopes: deriveRequiredScopes([ROLE_AZURE_SCOPES]),
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
-  return async (_args, { signal }) => {
+  return async (args, { signal }) => {
     try {
       const items = await listRoleAzureApprovalRequests(config.armClient, signal);
       const stale = await classifyStaleApproverRequests(
@@ -42,7 +44,16 @@ function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
         },
         signal,
       );
-      return { content: [{ type: "text", text: formatRequestsText(items, "approver", stale) }] };
+      const includeStale = args.includeStale ?? false;
+      if (includeStale) {
+        return { content: [{ type: "text", text: formatRequestsText(items, "approver", stale) }] };
+      }
+      const visible = items.filter((it) => !stale.has(it.id));
+      const body = formatRequestsText(visible, "approver");
+      const trailer = staleHiddenTrailer(stale.size);
+      return {
+        content: [{ type: "text", text: trailer ? `${body}\n${trailer}` : body }],
+      };
     } catch (error) {
       return formatError(def.name, error);
     }

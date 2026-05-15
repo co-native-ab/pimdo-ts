@@ -49,10 +49,11 @@ async function withState(
 async function call(
   tool: { handler: (config: ServerConfig) => unknown },
   config: ServerConfig,
+  args: Record<string, unknown> = {},
 ): Promise<ToolResult> {
   type Cb = (a: unknown, extra: { signal: AbortSignal }) => Promise<ToolResult>;
   const cb = tool.handler(config) as Cb;
-  return cb({}, { signal: testSignal() });
+  return cb(args, { signal: testSignal() });
 }
 
 describe("pim_role_entra list tools", () => {
@@ -93,7 +94,7 @@ describe("pim_role_entra list tools", () => {
         justification: "needed",
         roleDefinition: { id: "role-1", displayName: "Global Reader" },
       });
-      const res = await call(pimRoleEntraRequestListTool, config);
+      const res = await call(pimRoleEntraRequestListTool, config, { includeStale: true });
       expect(res.content[0]?.text).toContain("Global Reader");
       expect(res.content[0]?.text).toContain("req-1");
     });
@@ -143,7 +144,7 @@ describe("pim_role_entra list tools", () => {
           userPrincipalName: "me@example.com",
         },
       });
-      const res = await call(pimRoleEntraRequestListTool, config);
+      const res = await call(pimRoleEntraRequestListTool, config, { includeStale: true });
       const text = res.content[0]?.text ?? "";
       expect(text).toContain("status=PendingApproval");
       expect(text).toContain("created=2026-05-15T08:18:15Z");
@@ -154,7 +155,7 @@ describe("pim_role_entra list tools", () => {
     });
   });
 
-  it("request_list tags pending selfActivate as [stale] when (role+scope) eligibility is gone (#40)", async () => {
+  it("request_list tags pending selfActivate as [stale] when (role+scope) eligibility is gone (#40, includeStale)", async () => {
     await withState(async (state, config) => {
       // Eligible at root for role-1; pending at root for role-1 (live)
       // and at root for role-99 (stale, no eligibility).
@@ -181,7 +182,7 @@ describe("pim_role_entra list tools", () => {
         status: "PendingApproval",
         roleDefinition: { id: "role-99", displayName: "Gone" },
       });
-      const res = await call(pimRoleEntraRequestListTool, config);
+      const res = await call(pimRoleEntraRequestListTool, config, { includeStale: true });
       const text = res.content[0]?.text ?? "";
       const staleLine = text.split("\n").find((l) => l.includes("req-stale")) ?? "";
       const liveLine = text.split("\n").find((l) => l.includes("req-live")) ?? "";
@@ -190,7 +191,42 @@ describe("pim_role_entra list tools", () => {
     });
   });
 
-  it("request_list distinguishes stale by directoryScopeId for the same role (#40)", async () => {
+  it("request_list hides stale entries by default and emits a count trailer (#44)", async () => {
+    await withState(async (state, config) => {
+      state.seedRoleEntraEligibility({
+        roleDefinitionId: "role-1",
+        directoryScopeId: "/",
+        roleDefinition: { id: "role-1", displayName: "Reader" },
+      });
+      state.roleEntraMyRequests.push({
+        id: "req-live",
+        roleDefinitionId: "role-1",
+        principalId: "me-id",
+        directoryScopeId: "/",
+        action: "selfActivate",
+        status: "PendingApproval",
+        roleDefinition: { id: "role-1", displayName: "Reader" },
+      });
+      state.roleEntraMyRequests.push({
+        id: "req-stale",
+        roleDefinitionId: "role-99",
+        principalId: "me-id",
+        directoryScopeId: "/",
+        action: "selfActivate",
+        status: "PendingApproval",
+        roleDefinition: { id: "role-99", displayName: "Gone" },
+      });
+      const res = await call(pimRoleEntraRequestListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain("req-live");
+      expect(text).not.toContain("req-stale");
+      expect(text).not.toContain("[stale]");
+      expect(text).toContain("1 stale entry hidden");
+      expect(text).toContain("pim_role_entra_request_cancel");
+    });
+  });
+
+  it("request_list distinguishes stale by directoryScopeId for the same role (#40, includeStale)", async () => {
     await withState(async (state, config) => {
       // Eligible at AU scope only.
       state.seedRoleEntraEligibility({
@@ -207,12 +243,12 @@ describe("pim_role_entra list tools", () => {
         status: "PendingApproval",
         roleDefinition: { id: "role-1", displayName: "Reader" },
       });
-      const res = await call(pimRoleEntraRequestListTool, config);
+      const res = await call(pimRoleEntraRequestListTool, config, { includeStale: true });
       expect(res.content[0]?.text).toContain("[stale]");
     });
   });
 
-  it("approval_list tags entries with no live step assigned to me as [stale] (#40)", async () => {
+  it("approval_list tags entries with no live step assigned to me as [stale] (#40, includeStale)", async () => {
     await withState(async (state, config) => {
       state.seedRoleEntraPendingApproval({
         roleDefinitionId: "role-live",
@@ -223,11 +259,32 @@ describe("pim_role_entra list tools", () => {
         roleDisplayName: "StaleRole",
         step: { status: "Completed", reviewResult: "Approve" },
       });
-      const res = await call(pimRoleEntraApprovalListTool, config);
+      const res = await call(pimRoleEntraApprovalListTool, config, { includeStale: true });
       const text = res.content[0]?.text ?? "";
       const staleLine = text.split("\n").find((l) => l.includes(stale.request.id)) ?? "";
       expect(staleLine).toContain("[stale]");
       expect(text.match(/\[stale\]/g)?.length ?? 0).toBe(1);
+    });
+  });
+
+  it("approval_list hides stale entries by default with no cancel hint in the trailer (#44)", async () => {
+    await withState(async (state, config) => {
+      const live = state.seedRoleEntraPendingApproval({
+        roleDefinitionId: "role-live",
+        roleDisplayName: "LiveRole",
+      });
+      const stale = state.seedRoleEntraPendingApproval({
+        roleDefinitionId: "role-stale",
+        roleDisplayName: "StaleRole",
+        step: { status: "Completed", reviewResult: "Approve" },
+      });
+      const res = await call(pimRoleEntraApprovalListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain(live.request.id);
+      expect(text).not.toContain(stale.request.id);
+      expect(text).not.toContain("[stale]");
+      expect(text).toContain("1 stale entry hidden");
+      expect(text).not.toContain("request_cancel");
     });
   });
 });

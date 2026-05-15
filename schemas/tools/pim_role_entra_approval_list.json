@@ -1,6 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "properties": {},
+  "properties": {
+    "includeStale": {
+      "description": "Include stale entries in the response. Default false. Stale entries are pending requests the caller can no longer act on - on the principal side this means the user has lost eligibility for the target; on the approver side it means no live stage/step is assigned to the caller. Set to true to see and (for principal-side requests) cancel them via the matching pim_*_request_cancel tool.",
+      "type": "boolean"
+    }
+  },
   "additionalProperties": false
 }

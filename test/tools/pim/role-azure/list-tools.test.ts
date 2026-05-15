@@ -49,10 +49,11 @@ async function withState(
 async function call(
   tool: { handler: (config: ServerConfig) => unknown },
   config: ServerConfig,
+  args: Record<string, unknown> = {},
 ): Promise<ToolResult> {
   type Cb = (a: unknown, extra: { signal: AbortSignal }) => Promise<ToolResult>;
   const cb = tool.handler(config) as Cb;
-  return cb({}, { signal: testSignal() });
+  return cb(args, { signal: testSignal() });
 }
 
 describe("pim_role_azure list tools", () => {
@@ -130,7 +131,7 @@ describe("pim_role_azure list tools", () => {
           },
         },
       });
-      const res = await call(pimRoleAzureRequestListTool, config);
+      const res = await call(pimRoleAzureRequestListTool, config, { includeStale: true });
       expect(res.content[0]?.text).toContain("Owner");
       expect(res.content[0]?.text).toContain("req-1");
       // status is surfaced inline in the REQUEST STATUS column and
@@ -157,7 +158,7 @@ describe("pim_role_azure list tools", () => {
           },
         },
       });
-      const res = await call(pimRoleAzureRequestListTool, config);
+      const res = await call(pimRoleAzureRequestListTool, config, { includeStale: true });
       expect(res.content[0]?.text).toContain("status=Granted");
       expect(res.content[0]?.text).not.toContain("Pending PIM Azure-role requests");
     });
@@ -184,7 +185,7 @@ describe("pim_role_azure list tools", () => {
           },
         },
       });
-      const res = await call(pimRoleAzureRequestListTool, config);
+      const res = await call(pimRoleAzureRequestListTool, config, { includeStale: true });
       const text = res.content[0]?.text ?? "";
       expect(text).toContain("created=2026-05-15T08:18:15Z");
       expect(text).not.toContain("by=");
@@ -222,7 +223,7 @@ describe("pim_role_azure list tools", () => {
     });
   });
 
-  it("request_list tags pending SelfActivate as [stale] when (role+scope) eligibility is gone (#40)", async () => {
+  it("request_list tags pending SelfActivate as [stale] when (role+scope) eligibility is gone (#40, includeStale)", async () => {
     await withState(async (state, config) => {
       state.seedEligibility({
         roleDefinitionId: "role-1",
@@ -259,7 +260,7 @@ describe("pim_role_azure list tools", () => {
           },
         },
       });
-      const res = await call(pimRoleAzureRequestListTool, config);
+      const res = await call(pimRoleAzureRequestListTool, config, { includeStale: true });
       const text = res.content[0]?.text ?? "";
       const staleLine = text.split("\n").find((l) => l.includes("req-stale")) ?? "";
       const liveLine = text.split("\n").find((l) => l.includes("req-live")) ?? "";
@@ -268,7 +269,52 @@ describe("pim_role_azure list tools", () => {
     });
   });
 
-  it("approval_list tags entries with no live stage assigned to me as [stale] (#40)", async () => {
+  it("request_list hides stale entries by default and emits a count trailer (#44)", async () => {
+    await withState(async (state, config) => {
+      state.seedEligibility({
+        roleDefinitionId: "role-1",
+        scope: "/subscriptions/sub-a",
+        roleDisplayName: "Reader",
+      });
+      state.myRequests.push({
+        id: "/subscriptions/sub-b/providers/Microsoft.Authorization/roleAssignmentScheduleRequests/req-stale",
+        properties: {
+          principalId: "me-id",
+          roleDefinitionId: "role-1",
+          scope: "/subscriptions/sub-b",
+          requestType: "SelfActivate",
+          status: "PendingApproval",
+          expandedProperties: {
+            roleDefinition: { id: "role-1", displayName: "Reader" },
+            scope: { id: "/subscriptions/sub-b" },
+          },
+        },
+      });
+      state.myRequests.push({
+        id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleRequests/req-live",
+        properties: {
+          principalId: "me-id",
+          roleDefinitionId: "role-1",
+          scope: "/subscriptions/sub-a",
+          requestType: "SelfActivate",
+          status: "PendingApproval",
+          expandedProperties: {
+            roleDefinition: { id: "role-1", displayName: "Reader" },
+            scope: { id: "/subscriptions/sub-a" },
+          },
+        },
+      });
+      const res = await call(pimRoleAzureRequestListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain("req-live");
+      expect(text).not.toContain("req-stale");
+      expect(text).not.toContain("[stale]");
+      expect(text).toContain("1 stale entry hidden");
+      expect(text).toContain("pim_role_azure_request_cancel");
+    });
+  });
+
+  it("approval_list tags entries with no live stage assigned to me as [stale] (#40, includeStale)", async () => {
     await withState(async (state, config) => {
       state.seedPendingApproval({
         roleDefinitionId: "role-live",
@@ -281,12 +327,35 @@ describe("pim_role_azure list tools", () => {
         roleDisplayName: "StaleRole",
         stages: [{ status: "Completed", reviewResult: "Approve", assignedToMe: true }],
       });
-      const res = await call(pimRoleAzureApprovalListTool, config);
+      const res = await call(pimRoleAzureApprovalListTool, config, { includeStale: true });
       const text = res.content[0]?.text ?? "";
       const staleLine =
         text.split("\n").find((l) => l.includes(stale.properties.approvalId ?? "")) ?? "";
       expect(staleLine).toContain("[stale]");
       expect(text.match(/\[stale\]/g)?.length ?? 0).toBe(1);
+    });
+  });
+
+  it("approval_list hides stale entries by default with no cancel hint in the trailer (#44)", async () => {
+    await withState(async (state, config) => {
+      const live = state.seedPendingApproval({
+        roleDefinitionId: "role-live",
+        scope: "/subscriptions/sub-a",
+        roleDisplayName: "LiveRole",
+      });
+      const stale = state.seedPendingApproval({
+        roleDefinitionId: "role-stale",
+        scope: "/subscriptions/sub-a",
+        roleDisplayName: "StaleRole",
+        stages: [{ status: "Completed", reviewResult: "Approve", assignedToMe: true }],
+      });
+      const res = await call(pimRoleAzureApprovalListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain(live.properties.approvalId ?? "");
+      expect(text).not.toContain(stale.properties.approvalId ?? "");
+      expect(text).not.toContain("[stale]");
+      expect(text).toContain("1 stale entry hidden");
+      expect(text).not.toContain("request_cancel");
     });
   });
 });

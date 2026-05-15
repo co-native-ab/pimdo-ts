@@ -27,6 +27,7 @@ import {
   completedTag,
   createdTag,
   requesterTag,
+  staleHiddenTrailer,
   statusTag,
 } from "../../../src/tools/pim/format-shared.js";
 
@@ -275,5 +276,28 @@ describe("format-shared tag helpers", () => {
       " completed=2026-05-15T09:00:00Z",
     );
     expect(completedTag("2026-05-15T09:00:00Z", undefined)).toBe(" completed=2026-05-15T09:00:00Z");
+  });
+
+  it("staleHiddenTrailer returns empty when count <= 0", () => {
+    expect(staleHiddenTrailer(0)).toBe("");
+    expect(staleHiddenTrailer(-1, "pim_group_request_cancel")).toBe("");
+  });
+
+  it("staleHiddenTrailer pluralises and includes a cancel hint when given", () => {
+    expect(staleHiddenTrailer(1, "pim_group_request_cancel")).toBe(
+      "(1 stale entry hidden — pass includeStale: true to see them; they can be retracted via pim_group_request_cancel)",
+    );
+    expect(staleHiddenTrailer(3, "pim_role_azure_request_cancel")).toBe(
+      "(3 stale entries hidden — pass includeStale: true to see them; they can be retracted via pim_role_azure_request_cancel)",
+    );
+  });
+
+  it("staleHiddenTrailer omits the cancel hint when no tool name is given (approver side)", () => {
+    expect(staleHiddenTrailer(1)).toBe(
+      "(1 stale entry hidden — pass includeStale: true to see them)",
+    );
+    expect(staleHiddenTrailer(2)).toBe(
+      "(2 stale entries hidden — pass includeStale: true to see them)",
+    );
   });
 });

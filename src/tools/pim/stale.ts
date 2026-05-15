@@ -18,6 +18,22 @@
 // Errors propagate. The list-tool handlers wrap these calls in their
 // existing `formatError` so the user sees what failed (Q9 in plan).
 
+import { z } from "zod";
+
+/**
+ * Shared zod field for the `includeStale` flag on every
+ * `pim_*_request_list` / `pim_*_approval_list` tool. Stale rows are
+ * hidden by default (issue #44) — the LLM opts in via
+ * `includeStale: true`. Defined here so the description stays
+ * consistent across all six tools.
+ */
+export const includeStaleField = z
+  .boolean()
+  .optional()
+  .describe(
+    "Include stale entries in the response. Default false. Stale entries are pending requests the caller can no longer act on - on the principal side this means the user has lost eligibility for the target; on the approver side it means no live stage/step is assigned to the caller. Set to true to see and (for principal-side requests) cancel them via the matching pim_*_request_cancel tool.",
+  );
+
 const SELF_ACTIVATE_ACTIONS: ReadonlySet<string> = new Set(["selfActivate", "SelfActivate"]);
 
 /** True for a Graph `selfActivate` or ARM `SelfActivate` action/requestType. */
