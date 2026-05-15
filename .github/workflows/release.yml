@@ -79,10 +79,8 @@ jobs:
             pimdo-ts-*.js
             co-native-ab-pimdo-ts-*.tgz
       # Keyless cosign signatures uploaded alongside each artifact.
-      # Verifiable with `cosign verify-blob` (see README) and recognised
-      # by the OpenSSF Scorecard `Signed-Releases` check, which scans
-      # release assets for `.sigstore` (and friends) next to each
-      # artifact. Uses GitHub OIDC; no key material to manage.
+      # Verifiable with `cosign verify-blob` (see README). Uses GitHub
+      # OIDC; no key material to manage.
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - name: Sign release artifacts
