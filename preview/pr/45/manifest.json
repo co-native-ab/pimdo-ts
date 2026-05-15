@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 2,
+  "generator": "scripts/preview/generate.ts",
+  "build": {
+    "kind": "pr",
+    "id": "45",
+    "sha": "21a18353b4bb5de3440f08da16adbf1c8eb615ab",
+    "shortSha": "21a1835",
+    "repoUrl": "https://github.com/co-native-ab/pimdo-ts"
+  },
+  "views": [
+    {
+      "name": "login",
+      "family": "Auth",
+      "description": "MSAL loopback landing / success / error pages.",
+      "kind": "static",
+      "scenarios": [
+        {
+          "id": "landing",
+          "label": "Landing"
+        },
+        {
+          "id": "success",
+          "label": "Success"
+        },
+        {
+          "id": "error",
+          "label": "Error"
+        }
+      ]
+    },
+    {
+      "name": "logout",
+      "family": "Auth",
+      "description": "Logout confirmation + signed-out state.",
+      "kind": "static",
+      "scenarios": [
+        {
+          "id": "confirm",
+          "label": "Confirm"
+        },
+        {
+          "id": "done",
+          "label": "Done"
+        }
+      ]
+    },
+    {
+      "name": "requester",
+      "family": "Group",
+      "description": "Multi-row activation form. Each row is one requestable item.",
+      "kind": "row-form",
+      "scenarios": [
+        {
+          "id": "single",
+          "label": "Single"
+        },
+        {
+          "id": "pair",
+          "label": "Pair"
+        },
+        {
+          "id": "full",
+          "label": "Full page"
+        }
+      ]
+    },
+    {
+      "name": "approver",
+      "family": "Group",
+      "description": "Reviewer flow. One row per pending approval.",
+      "kind": "row-form",
+      "scenarios": [
+        {
+          "id": "single",
+          "label": "Single"
+        },
+        {
+          "id": "pair",
+          "label": "Pair"
+        },
+        {
+          "id": "full",
+          "label": "Full page"
+        }
+      ]
+    },
+    {
+      "name": "confirmer",
+      "family": "Group",
+      "description": "Confirmation flow used by deactivate. One row per item.",
+      "kind": "row-form",
+      "scenarios": [
+        {
+          "id": "single",
+          "label": "Single"
+        },
+        {
+          "id": "pair",
+          "label": "Pair"
+        },
+        {
+          "id": "full",
+          "label": "Full page"
+        }
+      ]
+    }
+  ]
+}
