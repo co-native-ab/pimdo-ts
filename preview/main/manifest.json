@@ -4,8 +4,8 @@
   "build": {
     "kind": "main",
     "id": "main",
-    "sha": "01ab907ef70236b2bb532820da44c4b49aa6c15d",
-    "shortSha": "01ab907",
+    "sha": "28cc7a331288b5c943bfefba5e9bce97bbe3482e",
+    "shortSha": "28cc7a3",
     "repoUrl": "https://github.com/co-native-ab/pimdo-ts"
   },
   "views": [
