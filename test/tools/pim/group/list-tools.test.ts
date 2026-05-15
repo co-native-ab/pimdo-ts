@@ -50,10 +50,11 @@ async function withState(
 async function call(
   tool: { handler: (config: ServerConfig) => unknown },
   config: ServerConfig,
+  args: Record<string, unknown> = {},
 ): Promise<ToolResult> {
   type Cb = (a: unknown, extra: { signal: AbortSignal }) => Promise<ToolResult>;
   const cb = tool.handler(config) as Cb;
-  return cb({}, { signal: testSignal() });
+  return cb(args, { signal: testSignal() });
 }
 
 describe("pim_group list tools", () => {
@@ -93,7 +94,7 @@ describe("pim_group list tools", () => {
         justification: "needed",
         group: { id: "g1", displayName: "Alpha" },
       });
-      const res = await call(pimGroupRequestListTool, config);
+      const res = await call(pimGroupRequestListTool, config, { includeStale: true });
       expect(res.content[0]?.text).toContain("Alpha");
       expect(res.content[0]?.text).toContain("req-1");
     });
@@ -143,14 +144,14 @@ describe("pim_group list tools", () => {
         },
         group: { id: "g4", displayName: "Delta" },
       });
-      const res = await call(pimGroupRequestListTool, config);
+      const res = await call(pimGroupRequestListTool, config, { includeStale: true });
       const text = res.content[0]?.text ?? "";
       expect(text).toContain("created=2026-05-15T08:18:15Z");
       expect(text).not.toContain("by=");
     });
   });
 
-  it("request_list tags pending selfActivate as [stale] when eligibility is gone (#40)", async () => {
+  it("request_list tags pending selfActivate as [stale] when eligibility is gone (#40, includeStale)", async () => {
     await withState(async (state, config) => {
       // Eligibility for g-live; pending request for g-stale (no eligibility).
       state.seedEligibility({
@@ -173,12 +174,71 @@ describe("pim_group list tools", () => {
         status: "PendingApproval",
         group: { id: "g-live", displayName: "Live" },
       });
-      const res = await call(pimGroupRequestListTool, config);
+      const res = await call(pimGroupRequestListTool, config, { includeStale: true });
       const text = res.content[0]?.text ?? "";
       const staleLine = text.split("\n").find((l) => l.includes("req-stale")) ?? "";
       const liveLine = text.split("\n").find((l) => l.includes("req-live")) ?? "";
       expect(staleLine).toContain("[stale]");
       expect(liveLine).not.toContain("[stale]");
+    });
+  });
+
+  it("request_list hides stale entries by default and emits a count trailer (#44)", async () => {
+    await withState(async (state, config) => {
+      state.seedEligibility({
+        groupId: "g-live",
+        group: { id: "g-live", displayName: "Live" },
+      });
+      state.myRequests.push({
+        id: "req-stale",
+        groupId: "g-stale",
+        principalId: "me-id",
+        action: "selfActivate",
+        status: "PendingApproval",
+        group: { id: "g-stale", displayName: "Stale" },
+      });
+      state.myRequests.push({
+        id: "req-live",
+        groupId: "g-live",
+        principalId: "me-id",
+        action: "selfActivate",
+        status: "PendingApproval",
+        group: { id: "g-live", displayName: "Live" },
+      });
+      const res = await call(pimGroupRequestListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain("req-live");
+      expect(text).not.toContain("req-stale");
+      expect(text).not.toContain("[stale]");
+      expect(text).toContain("1 stale entry hidden");
+      expect(text).toContain("pim_group_request_cancel");
+    });
+  });
+
+  it("request_list emits trailer with empty list when every row is stale (#44)", async () => {
+    await withState(async (state, config) => {
+      // No eligibilities at all; both requests are stale.
+      state.myRequests.push({
+        id: "req-stale-1",
+        groupId: "g-a",
+        principalId: "me-id",
+        action: "selfActivate",
+        status: "PendingApproval",
+        group: { id: "g-a", displayName: "A" },
+      });
+      state.myRequests.push({
+        id: "req-stale-2",
+        groupId: "g-b",
+        principalId: "me-id",
+        action: "selfActivate",
+        status: "PendingApproval",
+        group: { id: "g-b", displayName: "B" },
+      });
+      const res = await call(pimGroupRequestListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain("No pending PIM group requests submitted by you.");
+      expect(text).toContain("2 stale entries hidden");
+      expect(text).toContain("pim_group_request_cancel");
     });
   });
 
@@ -197,7 +257,7 @@ describe("pim_group list tools", () => {
     });
   });
 
-  it("approval_list tags entries with no live stage assigned to me as [stale] (#40)", async () => {
+  it("approval_list tags entries with no live stage assigned to me as [stale] (#40, includeStale)", async () => {
     await withState(async (state, config) => {
       // Live: caller still has an InProgress stage assigned.
       state.seedPendingApproval({
@@ -210,11 +270,32 @@ describe("pim_group list tools", () => {
         groupDisplayName: "StaleGroup",
         stage: { status: "Completed", reviewResult: "Approve" },
       });
-      const res = await call(pimGroupApprovalListTool, config);
+      const res = await call(pimGroupApprovalListTool, config, { includeStale: true });
       const text = res.content[0]?.text ?? "";
       const staleLine = text.split("\n").find((l) => l.includes(stale.request.id)) ?? "";
       expect(staleLine).toContain("[stale]");
       expect(text.match(/\[stale\]/g)?.length ?? 0).toBe(1);
+    });
+  });
+
+  it("approval_list hides stale entries by default with no cancel hint in the trailer (#44)", async () => {
+    await withState(async (state, config) => {
+      const live = state.seedPendingApproval({
+        groupId: "g-live",
+        groupDisplayName: "LiveGroup",
+      });
+      const stale = state.seedPendingApproval({
+        groupId: "g-stale",
+        groupDisplayName: "StaleGroup",
+        stage: { status: "Completed", reviewResult: "Approve" },
+      });
+      const res = await call(pimGroupApprovalListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain(live.request.id);
+      expect(text).not.toContain(stale.request.id);
+      expect(text).not.toContain("[stale]");
+      expect(text).toContain("1 stale entry hidden");
+      expect(text).not.toContain("request_cancel");
     });
   });
 });

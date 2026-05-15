@@ -19,18 +19,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   scopes are required — each surface reuses its existing PIM
   ReadWrite (Graph) or ARM `user_impersonation` scope set. (#39)
 
+### Changed
+
+- `pim_group_request_list`, `pim_role_entra_request_list`,
+  `pim_role_azure_request_list`, `pim_group_approval_list`,
+  `pim_role_entra_approval_list`, and `pim_role_azure_approval_list`
+  now hide stale entries by default and surface a one-line
+  `(N stale entries hidden — pass includeStale: true to see them …)`
+  trailer when any were filtered. The principal-side trailer also
+  points at the matching `pim_*_request_cancel` tool. Pass the new
+  `includeStale: true` argument to fall back to the previous behaviour
+  (all rows returned with a `[stale]` tag on entries the caller can no
+  longer act on). The classifier itself is unchanged — this is a
+  signal-to-noise improvement, not a latency change. (#44)
+
 ### Fixed
 
 - `pim_group_request_list`, `pim_role_entra_request_list`, and
-  `pim_role_azure_request_list` now mark pending `selfActivate`
-  entries with an inline `[stale]` tag when the caller no longer has
-  a matching eligibility for the underlying group / role + scope. The
-  same `[stale]` tag is also applied on the approver side
+  `pim_role_azure_request_list` classify pending `selfActivate`
+  entries as stale when the caller no longer has a matching
+  eligibility for the underlying group / role + scope. The same
+  classification is applied on the approver side
   (`pim_group_approval_list`, `pim_role_entra_approval_list`,
   `pim_role_azure_approval_list`) for entries whose underlying
   approval no longer has a live stage assigned to the caller.
   Stale principal-side entries can be retracted with the matching
-  `pim_*_request_cancel` tool added in #39. (#40)
+  `pim_*_request_cancel` tool added in #39. Rendering of stale
+  entries is controlled by the `includeStale` flag introduced in
+  #44 — see the **Changed** section. (#40)
 
 ## [0.1.0] — 2026-05-14
 

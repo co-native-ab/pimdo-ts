@@ -55,6 +55,24 @@ export function staleTag(stale: boolean): string {
   return stale ? " [stale]" : "";
 }
 
+/**
+ * Produce the one-line "(N stale entries hidden …)" trailer appended
+ * to `*_request_list` / `*_approval_list` responses when stale rows
+ * have been filtered out (issue #44 — stale rows are hidden by
+ * default; the LLM opts in via `includeStale: true`).
+ *
+ * Returns the empty string when `count <= 0` so callers can append
+ * unconditionally. Pass `cancelToolName` for principal-side trailers
+ * to surface the retraction path; omit it for approver-side trailers
+ * which have nothing actionable.
+ */
+export function staleHiddenTrailer(count: number, cancelToolName?: string): string {
+  if (count <= 0) return "";
+  const noun = count === 1 ? "entry" : "entries";
+  const cancelHint = cancelToolName ? `; they can be retracted via ${cancelToolName}` : "";
+  return `(${String(count)} stale ${noun} hidden — pass includeStale: true to see them${cancelHint})`;
+}
+
 /** Produce the trailing ` — <kind> until <when>` segment when bounded. */
 export function expiryTail(kind: AssignmentKind, endDateTime: string | null | undefined): string {
   return endDateTime ? ` — ${kind} until ${endDateTime}` : "";
