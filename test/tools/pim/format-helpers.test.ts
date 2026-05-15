@@ -23,6 +23,12 @@ import {
   scopeLabel as azureScopeLabel,
   scopeFromAssignment as azureScopeFromAssignment,
 } from "../../../src/features/role-azure/format.js";
+import {
+  completedTag,
+  createdTag,
+  requesterTag,
+  statusTag,
+} from "../../../src/tools/pim/format-shared.js";
 
 describe("group format helpers", () => {
   it("eligible: empty / displayName / no displayName / with expiry", () => {
@@ -222,7 +228,52 @@ describe("role-azure format helpers", () => {
       ],
       "mine",
     );
-    expect(requestsOut).toContain('status=Provisioned [approval=ap1] — "ok"');
-    expect(requestsOut).toContain("action=? status=?");
+    expect(requestsOut).toContain('[approval=ap1] — "ok"');
+    // status=Provisioned is intentionally suppressed (steady-state noise).
+    expect(requestsOut).not.toContain("status=Provisioned");
+    expect(requestsOut).toContain("[request=/scope/req/r2] action=?");
+    expect(requestsOut).not.toContain("status=?");
+  });
+});
+
+describe("format-shared tag helpers", () => {
+  it("requesterTag prefers upnOrEmail, then displayName, then id", () => {
+    expect(requesterTag({ upnOrEmail: "alice@contoso.com", displayName: "Alice", id: "p1" })).toBe(
+      " by=alice@contoso.com",
+    );
+    expect(requesterTag({ upnOrEmail: undefined, displayName: "Alice", id: "p1" })).toBe(
+      " by=Alice",
+    );
+    expect(requesterTag({ id: "p1" })).toBe(" by=p1");
+  });
+
+  it("requesterTag returns empty when nothing usable is present", () => {
+    expect(requesterTag(undefined)).toBe("");
+    expect(requesterTag({})).toBe("");
+    expect(requesterTag({ upnOrEmail: null, displayName: undefined, id: undefined })).toBe("");
+  });
+
+  it("statusTag suppresses Provisioned and renders other values raw", () => {
+    expect(statusTag("Provisioned")).toBe("");
+    expect(statusTag(undefined)).toBe("");
+    expect(statusTag(null)).toBe("");
+    expect(statusTag("PendingApproval")).toBe(" status=PendingApproval");
+    expect(statusTag("Granted")).toBe(" status=Granted");
+  });
+
+  it("createdTag renders verbatim or empty", () => {
+    expect(createdTag("2026-05-15T08:18:15Z")).toBe(" created=2026-05-15T08:18:15Z");
+    expect(createdTag(undefined)).toBe("");
+    expect(createdTag(null)).toBe("");
+  });
+
+  it("completedTag suppresses when absent or equal to created", () => {
+    expect(completedTag(undefined, "2026-05-15T08:18:15Z")).toBe("");
+    expect(completedTag(null, undefined)).toBe("");
+    expect(completedTag("2026-05-15T08:18:15Z", "2026-05-15T08:18:15Z")).toBe("");
+    expect(completedTag("2026-05-15T09:00:00Z", "2026-05-15T08:18:15Z")).toBe(
+      " completed=2026-05-15T09:00:00Z",
+    );
+    expect(completedTag("2026-05-15T09:00:00Z", undefined)).toBe(" completed=2026-05-15T09:00:00Z");
   });
 });

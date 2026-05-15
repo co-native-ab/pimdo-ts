@@ -47,3 +47,64 @@ export function approvalTag(approvalId: string | null | undefined): string {
 export function expiryTail(kind: AssignmentKind, endDateTime: string | null | undefined): string {
   return endDateTime ? ` — ${kind} until ${endDateTime}` : "";
 }
+
+/**
+ * Normalised view of the requesting principal, regardless of whether the
+ * source is Microsoft Graph (`userPrincipalName`) or ARM
+ * (`expandedProperties.principal.email`). Per-surface formatters resolve
+ * the surface-specific field into this shape and pass it to
+ * {@link requesterTag}.
+ */
+export interface RequesterIdentity {
+  /** UPN (Graph) or email (ARM). May be null/undefined when not surfaced. */
+  upnOrEmail?: string | null;
+  /** Friendly display name when present. */
+  displayName?: string;
+  /** Principal object ID (GUID). Always available as a last-resort fallback. */
+  id?: string;
+}
+
+/**
+ * Produce the trailing ` by=<best-available>` segment for approver-perspective
+ * rows. Falls back through UPN/email → displayName → object ID; renders the
+ * empty string when nothing is available (defensive — should never happen in
+ * practice because every PIM payload carries a `principalId`).
+ */
+export function requesterTag(principal: RequesterIdentity | undefined): string {
+  if (!principal) return "";
+  const candidates = [principal.upnOrEmail, principal.displayName, principal.id];
+  for (const candidate of candidates) {
+    if (candidate) return ` by=${candidate}`;
+  }
+  return "";
+}
+
+/**
+ * Produce the trailing ` status=<value>` segment for rows that carry a
+ * status. The boring steady-state value `Provisioned` is suppressed so
+ * eligible / active rows don't emit redundant `status=Provisioned` noise.
+ */
+export function statusTag(status: string | null | undefined): string {
+  if (!status || status === "Provisioned") return "";
+  return ` status=${status}`;
+}
+
+/** Produce the trailing ` created=<iso>` segment when a timestamp is present. */
+export function createdTag(iso: string | null | undefined): string {
+  return iso ? ` created=${iso}` : "";
+}
+
+/**
+ * Produce the trailing ` completed=<iso>` segment when a completion timestamp is
+ * present and meaningfully different from the creation timestamp. Suppressed
+ * when absent, or when equal to `createdIso` (which would just duplicate the
+ * created tag).
+ */
+export function completedTag(
+  iso: string | null | undefined,
+  createdIso: string | null | undefined,
+): string {
+  if (!iso) return "";
+  if (createdIso && iso === createdIso) return "";
+  return ` completed=${iso}`;
+}

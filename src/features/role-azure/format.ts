@@ -1,6 +1,7 @@
 // Plain-text formatters for the pim_role_azure_* read tools.
 
 import type {
+  ArmExpandedPrincipal,
   RoleAzureActiveAssignment,
   RoleAzureAssignmentRequest,
   RoleAzureEligibleAssignment,
@@ -8,14 +9,29 @@ import type {
 import { AssignmentKind } from "../../enums.js";
 import {
   approvalTag,
+  createdTag,
   expiryTail,
   formatBulletList,
   justificationTail,
+  requesterTag,
+  statusTag,
+  type RequesterIdentity,
 } from "../../tools/pim/format-shared.js";
 
 function shortId(resourceId: string): string {
   const idx = resourceId.lastIndexOf("/");
   return idx === -1 ? resourceId : resourceId.slice(idx + 1);
+}
+
+function armRequester(
+  expanded: ArmExpandedPrincipal | undefined,
+  principalId: string,
+): RequesterIdentity {
+  return {
+    upnOrEmail: expanded?.email,
+    displayName: expanded?.displayName,
+    id: expanded?.id ?? principalId,
+  };
 }
 
 export function roleLabel(
@@ -61,7 +77,7 @@ export function formatActiveAssignmentsText(items: readonly RoleAzureActiveAssig
       `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
         it.properties.scope,
         it.properties.expandedProperties,
-      )} [instance=${it.id}] status=${it.properties.status ?? "?"}${expiryTail(AssignmentKind.Active, it.properties.endDateTime)}`,
+      )} [instance=${it.id}]${statusTag(it.properties.status)}${expiryTail(AssignmentKind.Active, it.properties.endDateTime)}`,
   );
 }
 
@@ -85,7 +101,13 @@ export function formatRequestsText(
       `- ${roleLabel(it.properties.roleDefinitionId, it.properties.expandedProperties)} @ ${scopeLabel(
         it.properties.scope,
         it.properties.expandedProperties,
-      )} [request=${it.id}] action=${it.properties.requestType ?? "?"} status=${it.properties.status ?? "?"}${approvalTag(it.properties.approvalId)}${justificationTail(it.properties.justification)}`,
+      )} [request=${it.id}] action=${it.properties.requestType ?? "?"}${statusTag(it.properties.status)}${
+        perspective === "approver"
+          ? requesterTag(
+              armRequester(it.properties.expandedProperties?.principal, it.properties.principalId),
+            )
+          : ""
+      }${createdTag(it.properties.createdOn)}${approvalTag(it.properties.approvalId)}${justificationTail(it.properties.justification)}`,
   );
 }
 

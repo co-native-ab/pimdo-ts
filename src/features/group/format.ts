@@ -5,14 +5,28 @@ import type {
   GroupActiveAssignment,
   GroupAssignmentRequest,
   GroupEligibleAssignment,
+  User,
 } from "../../graph/types.js";
 import {
   approvalTag,
+  completedTag,
+  createdTag,
   expiryTail,
   formatBulletList,
   justificationTail,
   namedLabel,
+  requesterTag,
+  statusTag,
+  type RequesterIdentity,
 } from "../../tools/pim/format-shared.js";
+
+function graphRequester(principal: User | undefined, principalId: string): RequesterIdentity {
+  return {
+    upnOrEmail: principal?.userPrincipalName ?? principal?.mail ?? undefined,
+    displayName: principal?.displayName,
+    id: principal?.id ?? principalId,
+  };
+}
 
 export function formatEligibleAssignmentsText(items: readonly GroupEligibleAssignment[]): string {
   return formatBulletList(
@@ -20,7 +34,7 @@ export function formatEligibleAssignmentsText(items: readonly GroupEligibleAssig
     `Eligible PIM group assignments (${String(items.length)}):`,
     "No eligible PIM group assignments.",
     (it) =>
-      `- ${namedLabel(it.groupId, it.group)} [eligibility=${it.id}]${expiryTail(
+      `- ${namedLabel(it.groupId, it.group)} [eligibility=${it.id}]${statusTag(it.status)}${expiryTail(
         AssignmentKind.Eligible,
         it.scheduleInfo?.expiration?.endDateTime,
       )}`,
@@ -54,6 +68,8 @@ export function formatRequestsText(
     heading,
     empty,
     (it) =>
-      `- ${namedLabel(it.groupId, it.group)} [request=${it.id}] action=${it.action ?? "?"}${approvalTag(it.approvalId)}${justificationTail(it.justification)}`,
+      `- ${namedLabel(it.groupId, it.group)} [request=${it.id}] action=${it.action ?? "?"}${statusTag(it.status)}${
+        perspective === "approver" ? requesterTag(graphRequester(it.principal, it.principalId)) : ""
+      }${createdTag(it.createdDateTime)}${completedTag(it.completedDateTime, it.createdDateTime)}${approvalTag(it.approvalId)}${justificationTail(it.justification)}`,
   );
 }

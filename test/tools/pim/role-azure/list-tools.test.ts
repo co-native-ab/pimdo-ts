@@ -83,7 +83,7 @@ describe("pim_role_azure list tools", () => {
     });
   });
 
-  it("active_list renders status and hides terminal-status rows", async () => {
+  it("active_list suppresses status=Provisioned and hides terminal-status rows", async () => {
     await withState(async (state, config) => {
       state.seedEligibility({
         roleDefinitionId: "role-1",
@@ -106,7 +106,9 @@ describe("pim_role_azure list tools", () => {
       });
       const res = await call(pimRoleAzureActiveListTool, config);
       const text = res.content[0]?.text ?? "";
-      expect(text).toContain("status=Provisioned");
+      // status=Provisioned is intentionally suppressed (steady-state noise);
+      // see issue #38.
+      expect(text).not.toContain("status=Provisioned");
       expect(text).toContain("/keep");
       expect(text).not.toContain("/drop");
       expect(text).not.toContain("status=Revoked");
@@ -140,7 +142,7 @@ describe("pim_role_azure list tools", () => {
     });
   });
 
-  it("request_list surfaces non-pending statuses (e.g. Provisioned) without the misleading 'Pending' heading", async () => {
+  it("request_list surfaces non-Provisioned statuses (e.g. Granted) without the misleading 'Pending' heading", async () => {
     await withState(async (state, config) => {
       state.myRequests.push({
         id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleRequests/req-2",
@@ -149,15 +151,61 @@ describe("pim_role_azure list tools", () => {
           roleDefinitionId: "role-2",
           scope: "/subscriptions/sub-a",
           requestType: "SelfActivate",
-          status: "Provisioned",
+          status: "Granted",
           expandedProperties: {
             roleDefinition: { id: "role-2", displayName: "Reader" },
           },
         },
       });
       const res = await call(pimRoleAzureRequestListTool, config);
-      expect(res.content[0]?.text).toContain("status=Provisioned");
+      expect(res.content[0]?.text).toContain("status=Granted");
       expect(res.content[0]?.text).not.toContain("Pending PIM Azure-role requests");
+    });
+  });
+
+  it("request_list (mine) does NOT include a `by=` requester tag", async () => {
+    await withState(async (state, config) => {
+      state.myRequests.push({
+        id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleRequests/req-3",
+        properties: {
+          principalId: "me-id",
+          roleDefinitionId: "role-3",
+          scope: "/subscriptions/sub-a",
+          requestType: "SelfActivate",
+          status: "PendingApproval",
+          createdOn: "2026-05-15T08:18:15Z",
+          expandedProperties: {
+            principal: {
+              id: "me-id",
+              displayName: "Me",
+              email: "me@example.com",
+            },
+            roleDefinition: { id: "role-3", displayName: "Reader" },
+          },
+        },
+      });
+      const res = await call(pimRoleAzureRequestListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain("created=2026-05-15T08:18:15Z");
+      expect(text).not.toContain("by=");
+    });
+  });
+
+  it("approval_list shows requester (by=) and createdOn for approver-perspective rows", async () => {
+    await withState(async (state, config) => {
+      state.seedPendingApproval({
+        roleDefinitionId: "role-1",
+        scope: "/subscriptions/sub-a",
+        roleDisplayName: "Owner",
+        requesterPrincipalId: "alice-id",
+        requesterDisplayName: "Alice",
+      });
+      // Mock seeder doesn't expose `email` on ARM principals, so the
+      // fallback should render the displayName.
+      const res = await call(pimRoleAzureApprovalListTool, config);
+      const text = res.content[0]?.text ?? "";
+      expect(text).toContain("by=Alice");
+      expect(text).toContain("status=PendingApproval");
     });
   });
 
