@@ -4,12 +4,13 @@
 import type { ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { listRoleAzureApprovalRequests } from "../client.js";
+import { hasLiveRoleAzureApprovalStageForMe, listRoleAzureApprovalRequests } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
 import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import { ROLE_AZURE_SCOPES } from "../client.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
+import { classifyStaleApproverRequests } from "../../../tools/pim/stale.js";
 import { formatRequestsText } from "../format.js";
 
 const inputSchema = z.object({}).shape;
@@ -20,7 +21,8 @@ const def: ToolDef = {
   description:
     "List PIM Azure-role activation requests where the signed-in user " +
     "is an approver. Does not filter by status - surface " +
-    "the full approver-side queue.",
+    "the full approver-side queue. Stale requests (no live stage " +
+    "assigned to the caller) are flagged [stale].",
   requiredScopes: deriveRequiredScopes([ROLE_AZURE_SCOPES]),
 };
 
@@ -28,7 +30,19 @@ function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
   return async (_args, { signal }) => {
     try {
       const items = await listRoleAzureApprovalRequests(config.armClient, signal);
-      return { content: [{ type: "text", text: formatRequestsText(items, "approver") }] };
+      const stale = await classifyStaleApproverRequests(
+        items,
+        {
+          requestId: (r) => r.id,
+          hasLiveStage: async (r, sig) => {
+            const approvalId = r.properties.approvalId;
+            if (!approvalId) return false;
+            return hasLiveRoleAzureApprovalStageForMe(config.armClient, approvalId, sig);
+          },
+        },
+        signal,
+      );
+      return { content: [{ type: "text", text: formatRequestsText(items, "approver", stale) }] };
     } catch (error) {
       return formatError(def.name, error);
     }

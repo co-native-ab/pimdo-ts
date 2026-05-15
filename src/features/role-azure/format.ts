@@ -14,6 +14,7 @@ import {
   formatBulletList,
   justificationTail,
   requesterTag,
+  staleTag,
   statusTag,
   type RequesterIdentity,
 } from "../../tools/pim/format-shared.js";
@@ -84,6 +85,7 @@ export function formatActiveAssignmentsText(items: readonly RoleAzureActiveAssig
 export function formatRequestsText(
   items: readonly RoleAzureAssignmentRequest[],
   perspective: "mine" | "approver",
+  staleIds: ReadonlySet<string> = new Set(),
 ): string {
   const empty =
     perspective === "mine"
@@ -107,7 +109,7 @@ export function formatRequestsText(
               armRequester(it.properties.expandedProperties?.principal, it.properties.principalId),
             )
           : ""
-      }${createdTag(it.properties.createdOn)}${approvalTag(it.properties.approvalId)}${justificationTail(it.properties.justification)}`,
+      }${createdTag(it.properties.createdOn)}${approvalTag(it.properties.approvalId)}${staleTag(staleIds.has(it.id))}${justificationTail(it.properties.justification)}`,
   );
 }
 

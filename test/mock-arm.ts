@@ -27,6 +27,7 @@ import { ROLE_AZURE_SCOPES } from "../src/features/role-azure/client.js";
 import type {
   ArmErrorEnvelope,
   RoleAzureActiveAssignment,
+  RoleAzureApproval,
   RoleAzureAssignmentRequest,
   RoleAzureEligibleAssignment,
 } from "../src/arm/types.js";
@@ -82,6 +83,9 @@ export class MockArmState {
 
   /** Captured cancel calls (scope + request name). */
   cancelledRequests: { scope: string; name: string }[] = [];
+
+  /** ARM PIM approvals, keyed by approval UUID. */
+  approvals = new Map<string, RoleAzureApproval>();
 
   /**
    * Approval ids that should reject in /batch (e.g. to test failures).
@@ -186,6 +190,12 @@ export class MockArmState {
     justification?: string;
     roleDisplayName?: string;
     approvalId?: string;
+    /** When provided, also seed the underlying approval with these stages. */
+    stages?: {
+      status?: string;
+      reviewResult?: string;
+      assignedToMe?: boolean;
+    }[];
   }): RoleAzureAssignmentRequest {
     const approvalId =
       partial.approvalId ??
@@ -217,8 +227,27 @@ export class MockArmState {
       },
     };
     this.approverRequests.push(r);
+    const stages = (
+      partial.stages ?? [{ status: "InProgress", reviewResult: "NotReviewed", assignedToMe: true }]
+    ).map((s, i) => ({
+      id: `${approvalId}/stages/${this.genId("stage")}`,
+      name: `stage-${String(i)}`,
+      properties: {
+        status: s.status,
+        reviewResult: s.reviewResult,
+        assignedToMe: s.assignedToMe,
+      },
+    }));
+    const uuid = approvalUuidFromIdOrPath(approvalId);
+    this.approvals.set(uuid, { id: approvalId, properties: { stages } });
     return r;
   }
+}
+
+function approvalUuidFromIdOrPath(value: string): string {
+  const trimmed = value.replace(/\/$/, "");
+  const lastSlash = trimmed.lastIndexOf("/");
+  return lastSlash === -1 ? trimmed : trimmed.slice(lastSlash + 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -292,6 +321,17 @@ async function handleRequest(
   }
 
   const filter = parsed.searchParams.get("$filter") ?? "";
+
+  // GET /providers/Microsoft.Authorization/roleAssignmentApprovals/{uuid}
+  const approvalGet = /^roleAssignmentApprovals\/([^/]+)$/.exec(arm.resourcePath);
+  if (method === "GET" && arm.scope === "" && approvalGet) {
+    const uuid = approvalGet[1] ?? "";
+    const approval = state.approvals.get(uuid);
+    if (!approval) {
+      return errorResponse(res, 404, "ApprovalNotFound", `approval ${uuid} not found`);
+    }
+    return jsonResponse(res, 200, approval);
+  }
 
   // GET roleEligibilityScheduleInstances (tenant) — asTarget()
   if (

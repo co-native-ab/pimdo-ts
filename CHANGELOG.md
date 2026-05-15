@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   scopes are required — each surface reuses its existing PIM
   ReadWrite (Graph) or ARM `user_impersonation` scope set. (#39)
 
+### Fixed
+
+- `pim_group_request_list`, `pim_role_entra_request_list`, and
+  `pim_role_azure_request_list` now mark pending `selfActivate`
+  entries with an inline `[stale]` tag when the caller no longer has
+  a matching eligibility for the underlying group / role + scope. The
+  same `[stale]` tag is also applied on the approver side
+  (`pim_group_approval_list`, `pim_role_entra_approval_list`,
+  `pim_role_azure_approval_list`) for entries whose underlying
+  approval no longer has a live stage assigned to the caller.
+  Stale principal-side entries can be retracted with the matching
+  `pim_*_request_cancel` tool added in #39. (#40)
+
 ## [0.1.0] — 2026-05-14
 
 First public release of `@co-native-ab/pimdo-ts`. Published to npm via

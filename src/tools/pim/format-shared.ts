@@ -43,6 +43,18 @@ export function approvalTag(approvalId: string | null | undefined): string {
   return approvalId ? ` [approval=${approvalId}]` : "";
 }
 
+/**
+ * Produce the trailing ` [stale]` segment for request lines that the
+ * caller can no longer act on. Issue #40: `*_request_list` may return
+ * pending `selfActivate` requests for targets the caller has lost
+ * eligibility for, and `*_approval_list` may return approvals where
+ * the caller no longer has a live stage. The retraction path for
+ * principal-side stale requests is `pim_*_request_cancel` (#39).
+ */
+export function staleTag(stale: boolean): string {
+  return stale ? " [stale]" : "";
+}
+
 /** Produce the trailing ` — <kind> until <when>` segment when bounded. */
 export function expiryTail(kind: AssignmentKind, endDateTime: string | null | undefined): string {
   return endDateTime ? ` — ${kind} until ${endDateTime}` : "";
