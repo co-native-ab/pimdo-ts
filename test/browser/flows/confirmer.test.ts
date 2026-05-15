@@ -81,4 +81,40 @@ describe("confirmerFlow", () => {
     await postJson(`${handle.url}/cancel`, { csrfToken: csrf });
     await expectation;
   });
+
+  it("renders no reason column and accepts payloads without reason when showReason is false", async () => {
+    handle = await runConfirmerFlow(
+      {
+        heading: "Cancel pending requests",
+        subtitle: "Confirm which pending requests to cancel.",
+        submitLabel: "Cancel",
+        showReason: false,
+        rows: [
+          { id: "req-1", label: "Group A request" },
+          { id: "req-2", label: "Group B request", subtitle: "Submitted earlier" },
+        ],
+      },
+      testSignal(),
+    );
+
+    const html = await (await fetch(handle.url)).text();
+    expect(html).toContain("Cancel pending requests");
+    expect(html).toContain("Group A request");
+    // No reason column header rendered.
+    expect(html).not.toContain("col-input");
+    expect(html).not.toMatch(/<textarea[^>]+class="reason"/);
+
+    const csrf = await fetchCsrfToken(handle.url);
+    const res = await postJson(`${handle.url}/submit`, {
+      csrfToken: csrf,
+      rows: [{ id: "req-1" }, { id: "req-2" }],
+    });
+    expect(res.status).toBe(200);
+
+    const result = await handle.result;
+    expect(result.rows).toEqual([
+      { id: "req-1", reason: "" },
+      { id: "req-2", reason: "" },
+    ]);
+  });
 });
