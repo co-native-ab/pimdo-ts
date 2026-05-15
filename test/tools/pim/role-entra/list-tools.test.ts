@@ -153,6 +153,83 @@ describe("pim_role_entra list tools", () => {
       expect(text).not.toContain("completed=");
     });
   });
+
+  it("request_list tags pending selfActivate as [stale] when (role+scope) eligibility is gone (#40)", async () => {
+    await withState(async (state, config) => {
+      // Eligible at root for role-1; pending at root for role-1 (live)
+      // and at root for role-99 (stale, no eligibility).
+      state.seedRoleEntraEligibility({
+        roleDefinitionId: "role-1",
+        directoryScopeId: "/",
+        roleDefinition: { id: "role-1", displayName: "Reader" },
+      });
+      state.roleEntraMyRequests.push({
+        id: "req-live",
+        roleDefinitionId: "role-1",
+        principalId: "me-id",
+        directoryScopeId: "/",
+        action: "selfActivate",
+        status: "PendingApproval",
+        roleDefinition: { id: "role-1", displayName: "Reader" },
+      });
+      state.roleEntraMyRequests.push({
+        id: "req-stale",
+        roleDefinitionId: "role-99",
+        principalId: "me-id",
+        directoryScopeId: "/",
+        action: "selfActivate",
+        status: "PendingApproval",
+        roleDefinition: { id: "role-99", displayName: "Gone" },
+      });
+      const res = await call(pimRoleEntraRequestListTool, config);
+      const text = res.content[0]?.text ?? "";
+      const staleLine = text.split("\n").find((l) => l.includes("req-stale")) ?? "";
+      const liveLine = text.split("\n").find((l) => l.includes("req-live")) ?? "";
+      expect(staleLine).toContain("[stale]");
+      expect(liveLine).not.toContain("[stale]");
+    });
+  });
+
+  it("request_list distinguishes stale by directoryScopeId for the same role (#40)", async () => {
+    await withState(async (state, config) => {
+      // Eligible at AU scope only.
+      state.seedRoleEntraEligibility({
+        roleDefinitionId: "role-1",
+        directoryScopeId: "/administrativeUnits/au-1",
+      });
+      // Pending at root (different scope) → stale.
+      state.roleEntraMyRequests.push({
+        id: "req-other-scope",
+        roleDefinitionId: "role-1",
+        principalId: "me-id",
+        directoryScopeId: "/",
+        action: "selfActivate",
+        status: "PendingApproval",
+        roleDefinition: { id: "role-1", displayName: "Reader" },
+      });
+      const res = await call(pimRoleEntraRequestListTool, config);
+      expect(res.content[0]?.text).toContain("[stale]");
+    });
+  });
+
+  it("approval_list tags entries with no live step assigned to me as [stale] (#40)", async () => {
+    await withState(async (state, config) => {
+      state.seedRoleEntraPendingApproval({
+        roleDefinitionId: "role-live",
+        roleDisplayName: "LiveRole",
+      });
+      const stale = state.seedRoleEntraPendingApproval({
+        roleDefinitionId: "role-stale",
+        roleDisplayName: "StaleRole",
+        step: { status: "Completed", reviewResult: "Approve" },
+      });
+      const res = await call(pimRoleEntraApprovalListTool, config);
+      const text = res.content[0]?.text ?? "";
+      const staleLine = text.split("\n").find((l) => l.includes(stale.request.id)) ?? "";
+      expect(staleLine).toContain("[stale]");
+      expect(text.match(/\[stale\]/g)?.length ?? 0).toBe(1);
+    });
+  });
 });
 
 describe("pim_role_entra list tools error paths", () => {

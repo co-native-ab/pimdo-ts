@@ -149,6 +149,74 @@ describe("pim_group list tools", () => {
       expect(text).not.toContain("by=");
     });
   });
+
+  it("request_list tags pending selfActivate as [stale] when eligibility is gone (#40)", async () => {
+    await withState(async (state, config) => {
+      // Eligibility for g-live; pending request for g-stale (no eligibility).
+      state.seedEligibility({
+        groupId: "g-live",
+        group: { id: "g-live", displayName: "Live" },
+      });
+      state.myRequests.push({
+        id: "req-stale",
+        groupId: "g-stale",
+        principalId: "me-id",
+        action: "selfActivate",
+        status: "PendingApproval",
+        group: { id: "g-stale", displayName: "Stale" },
+      });
+      state.myRequests.push({
+        id: "req-live",
+        groupId: "g-live",
+        principalId: "me-id",
+        action: "selfActivate",
+        status: "PendingApproval",
+        group: { id: "g-live", displayName: "Live" },
+      });
+      const res = await call(pimGroupRequestListTool, config);
+      const text = res.content[0]?.text ?? "";
+      const staleLine = text.split("\n").find((l) => l.includes("req-stale")) ?? "";
+      const liveLine = text.split("\n").find((l) => l.includes("req-live")) ?? "";
+      expect(staleLine).toContain("[stale]");
+      expect(liveLine).not.toContain("[stale]");
+    });
+  });
+
+  it("request_list never tags selfDeactivate as [stale] (#40)", async () => {
+    await withState(async (state, config) => {
+      state.myRequests.push({
+        id: "req-deact",
+        groupId: "g-gone",
+        principalId: "me-id",
+        action: "selfDeactivate",
+        status: "PendingApproval",
+        group: { id: "g-gone", displayName: "Gone" },
+      });
+      const res = await call(pimGroupRequestListTool, config);
+      expect(res.content[0]?.text).not.toContain("[stale]");
+    });
+  });
+
+  it("approval_list tags entries with no live stage assigned to me as [stale] (#40)", async () => {
+    await withState(async (state, config) => {
+      // Live: caller still has an InProgress stage assigned.
+      state.seedPendingApproval({
+        groupId: "g-live",
+        groupDisplayName: "LiveGroup",
+      });
+      // Stale: caller no longer has a live stage (already reviewed).
+      const stale = state.seedPendingApproval({
+        groupId: "g-stale",
+        groupDisplayName: "StaleGroup",
+        stage: { status: "Completed", reviewResult: "Approve" },
+      });
+      const res = await call(pimGroupApprovalListTool, config);
+      const text = res.content[0]?.text ?? "";
+      const staleLine = text.split("\n").find((l) => l.includes(stale.request.id)) ?? "";
+      expect(staleLine).toContain("[stale]");
+      expect(text.match(/\[stale\]/g)?.length ?? 0).toBe(1);
+    });
+  });
 });
 
 describe("pim_group list tools error paths", () => {

@@ -221,6 +221,74 @@ describe("pim_role_azure list tools", () => {
       expect(res.content[0]?.text).toContain(req.properties.approvalId ?? "");
     });
   });
+
+  it("request_list tags pending SelfActivate as [stale] when (role+scope) eligibility is gone (#40)", async () => {
+    await withState(async (state, config) => {
+      state.seedEligibility({
+        roleDefinitionId: "role-1",
+        scope: "/subscriptions/sub-a",
+        roleDisplayName: "Reader",
+      });
+      // Same role at a different subscription scope → stale.
+      state.myRequests.push({
+        id: "/subscriptions/sub-b/providers/Microsoft.Authorization/roleAssignmentScheduleRequests/req-stale",
+        properties: {
+          principalId: "me-id",
+          roleDefinitionId: "role-1",
+          scope: "/subscriptions/sub-b",
+          requestType: "SelfActivate",
+          status: "PendingApproval",
+          expandedProperties: {
+            roleDefinition: { id: "role-1", displayName: "Reader" },
+            scope: { id: "/subscriptions/sub-b" },
+          },
+        },
+      });
+      // Same role+scope as the eligibility → live.
+      state.myRequests.push({
+        id: "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleRequests/req-live",
+        properties: {
+          principalId: "me-id",
+          roleDefinitionId: "role-1",
+          scope: "/subscriptions/sub-a",
+          requestType: "SelfActivate",
+          status: "PendingApproval",
+          expandedProperties: {
+            roleDefinition: { id: "role-1", displayName: "Reader" },
+            scope: { id: "/subscriptions/sub-a" },
+          },
+        },
+      });
+      const res = await call(pimRoleAzureRequestListTool, config);
+      const text = res.content[0]?.text ?? "";
+      const staleLine = text.split("\n").find((l) => l.includes("req-stale")) ?? "";
+      const liveLine = text.split("\n").find((l) => l.includes("req-live")) ?? "";
+      expect(staleLine).toContain("[stale]");
+      expect(liveLine).not.toContain("[stale]");
+    });
+  });
+
+  it("approval_list tags entries with no live stage assigned to me as [stale] (#40)", async () => {
+    await withState(async (state, config) => {
+      state.seedPendingApproval({
+        roleDefinitionId: "role-live",
+        scope: "/subscriptions/sub-a",
+        roleDisplayName: "LiveRole",
+      });
+      const stale = state.seedPendingApproval({
+        roleDefinitionId: "role-stale",
+        scope: "/subscriptions/sub-a",
+        roleDisplayName: "StaleRole",
+        stages: [{ status: "Completed", reviewResult: "Approve", assignedToMe: true }],
+      });
+      const res = await call(pimRoleAzureApprovalListTool, config);
+      const text = res.content[0]?.text ?? "";
+      const staleLine =
+        text.split("\n").find((l) => l.includes(stale.properties.approvalId ?? "")) ?? "";
+      expect(staleLine).toContain("[stale]");
+      expect(text.match(/\[stale\]/g)?.length ?? 0).toBe(1);
+    });
+  });
 });
 
 describe("pim_role_azure list tools error paths", () => {

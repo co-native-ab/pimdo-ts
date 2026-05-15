@@ -172,6 +172,29 @@ export async function listGroupApprovalRequests(
   return listRequests(client, CurrentUserFilter.Approver, signal);
 }
 
+/**
+ * Probe whether the signed-in user still has a live, NotReviewed stage
+ * on the given group approval. Used by the approver-side stale
+ * classifier (#40). Reuses the same scope as the approve flow because
+ * the underlying GET is the same. Returns false when the approval has
+ * no matching stage; throws on transport / auth errors so the
+ * `*_approval_list` tool surfaces them via the standard error path.
+ */
+export async function hasLiveGroupApprovalStageForMe(
+  client: GraphClient,
+  approvalId: string,
+  signal: AbortSignal,
+): Promise<boolean> {
+  await assertScopes(client.credential, APPROVE_GROUP_SCOPES, signal);
+  const approval = await getGroupAssignmentApproval(client, approvalId, signal);
+  return approval.stages.some(
+    (s) =>
+      s.status === ApprovalStageStatus.InProgress &&
+      s.reviewResult === ApprovalStageReviewResult.NotReviewed &&
+      s.assignedToMe === true,
+  );
+}
+
 async function listRequests(
   client: GraphClient,
   on: CurrentUserFilter,

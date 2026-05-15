@@ -37,6 +37,7 @@ import {
   ArmScheduleInfoSchema,
   RoleAzureActiveAssignment,
   RoleAzureActiveAssignmentSchema,
+  RoleAzureApprovalSchema,
   RoleAzureAssignmentRequest,
   RoleAzureAssignmentRequestSchema,
   RoleAzureEligibleAssignment,
@@ -274,6 +275,54 @@ export async function listMyPendingRoleAzureRequests(
 ): Promise<RoleAzureAssignmentRequest[]> {
   const all = await listMyRoleAzureRequests(client, signal);
   return all.filter((r) => r.properties.status === "PendingApproval");
+}
+
+/**
+ * GET role-assignment-schedule requests where the signed-in user is an
+ * approver, filtered client-side to those still `PendingApproval`.
+ *
+ * Mirrors {@link listMyPendingRoleAzureRequests} on the principal side
+ * — see that helper for the rationale (ARM doesn't honour
+ * `$filter=status eq 'PendingApproval'` on this endpoint, so we filter
+ * after the fact).
+ */
+export async function listPendingRoleAzureApprovalRequests(
+  client: ArmClient,
+  signal: AbortSignal,
+): Promise<RoleAzureAssignmentRequest[]> {
+  const all = await listRoleAzureApprovalRequests(client, signal);
+  return all.filter((r) => r.properties.status === "PendingApproval");
+}
+
+/**
+ * Probe whether the signed-in user still has a live, NotReviewed stage
+ * on the given Azure-role approval. Used by the approver-side stale
+ * classifier (#40). The direct GET on `roleAssignmentApprovals/{id}` is
+ * undocumented for delegated tokens — the existing approve flow uses a
+ * `/batch` PUT for that reason — but a delegated GET has been observed
+ * to succeed in practice. If the GET returns an error it is allowed to
+ * propagate so the `*_approval_list` tool surfaces the failure instead
+ * of silently mis-classifying.
+ */
+export async function hasLiveRoleAzureApprovalStageForMe(
+  client: ArmClient,
+  approvalId: string,
+  signal: AbortSignal,
+): Promise<boolean> {
+  await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
+  const uuid = extractApprovalUuid(approvalId);
+  const path =
+    `/providers/${PROVIDER}/roleAssignmentApprovals/${uuid}` +
+    `?api-version=${ARM_APPROVAL_STAGES_API_VERSION}&$expand=stages`;
+  const res = await client.request(HttpMethod.GET, path, signal);
+  const approval = await parseResponse(res, RoleAzureApprovalSchema, "GET", path);
+  const stages = approval.properties.stages ?? [];
+  return stages.some(
+    (s) =>
+      s.properties.status === "InProgress" &&
+      s.properties.reviewResult === "NotReviewed" &&
+      s.properties.assignedToMe === true,
+  );
 }
 
 /**

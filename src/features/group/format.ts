@@ -16,6 +16,7 @@ import {
   justificationTail,
   namedLabel,
   requesterTag,
+  staleTag,
   statusTag,
   type RequesterIdentity,
 } from "../../tools/pim/format-shared.js";
@@ -54,6 +55,7 @@ export function formatActiveAssignmentsText(items: readonly GroupActiveAssignmen
 export function formatRequestsText(
   items: readonly GroupAssignmentRequest[],
   perspective: "mine" | "approver",
+  staleIds: ReadonlySet<string> = new Set(),
 ): string {
   const empty =
     perspective === "mine"
@@ -70,6 +72,6 @@ export function formatRequestsText(
     (it) =>
       `- ${namedLabel(it.groupId, it.group)} [request=${it.id}] action=${it.action ?? "?"}${statusTag(it.status)}${
         perspective === "approver" ? requesterTag(graphRequester(it.principal, it.principalId)) : ""
-      }${createdTag(it.createdDateTime)}${completedTag(it.completedDateTime, it.createdDateTime)}${approvalTag(it.approvalId)}${justificationTail(it.justification)}`,
+      }${createdTag(it.createdDateTime)}${completedTag(it.completedDateTime, it.createdDateTime)}${approvalTag(it.approvalId)}${staleTag(staleIds.has(it.id))}${justificationTail(it.justification)}`,
   );
 }

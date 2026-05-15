@@ -148,6 +148,28 @@ export async function listRoleEntraApprovalRequests(
   return listRequests(client, CurrentUserFilter.Approver, signal);
 }
 
+/**
+ * Probe whether the signed-in user still has a live, NotReviewed step
+ * on the given Entra-role approval (BETA). Used by the approver-side
+ * stale classifier (#40). Returns false when no matching step exists;
+ * throws on transport / auth errors so the `*_approval_list` tool
+ * surfaces them via the standard error path.
+ */
+export async function hasLiveRoleEntraApprovalStepForMe(
+  betaClient: GraphClient,
+  approvalId: string,
+  signal: AbortSignal,
+): Promise<boolean> {
+  await assertScopes(betaClient.credential, APPROVE_ROLE_ENTRA_SCOPES, signal);
+  const approval = await getRoleEntraApproval(betaClient, approvalId, signal);
+  return approval.steps.some(
+    (s) =>
+      s.status === ApprovalStageStatus.InProgress &&
+      s.reviewResult === ApprovalStageReviewResult.NotReviewed &&
+      s.assignedToMe === true,
+  );
+}
+
 async function listRequests(
   client: GraphClient,
   on: CurrentUserFilter,

@@ -47,7 +47,7 @@
     },
     {
       "name": "pim_group_request_list",
-      "description": "List PIM group activation/deactivation requests the signed-in user has submitted that are still pending approval."
+      "description": "List PIM group activation/deactivation requests the signed-in user has submitted that are still pending approval. Stale requests (selfActivate where the user has lost eligibility) are flagged [stale] — they can be retracted via pim_group_request_cancel."
     },
     {
       "name": "pim_group_request",
@@ -63,7 +63,7 @@
     },
     {
       "name": "pim_group_approval_list",
-      "description": "List pending PIM group activation requests where the signed-in user is an approver and has not yet recorded a decision."
+      "description": "List pending PIM group activation requests where the signed-in user is an approver and has not yet recorded a decision. Stale requests (no live stage assigned to the caller) are flagged [stale]."
     },
     {
       "name": "pim_group_approval_review",
@@ -79,7 +79,7 @@
     },
     {
       "name": "pim_role_entra_request_list",
-      "description": "List PIM Entra-role activation/deactivation requests the signed-in user has submitted that are still pending approval."
+      "description": "List PIM Entra-role activation/deactivation requests the signed-in user has submitted that are still pending approval. Stale requests (selfActivate where the user has lost eligibility) are flagged [stale] — they can be retracted via pim_role_entra_request_cancel."
     },
     {
       "name": "pim_role_entra_request",
@@ -95,7 +95,7 @@
     },
     {
       "name": "pim_role_entra_approval_list",
-      "description": "List pending PIM Entra-role activation requests where the signed-in user is an approver and has not yet recorded a decision."
+      "description": "List pending PIM Entra-role activation requests where the signed-in user is an approver and has not yet recorded a decision. Stale requests (no live step assigned to the caller) are flagged [stale]."
     },
     {
       "name": "pim_role_entra_approval_review",
@@ -111,7 +111,7 @@
     },
     {
       "name": "pim_role_azure_request_list",
-      "description": "List PIM Azure-role activation/deactivation requests the signed-in user has submitted. Does not filter by status - surface all visible schedule requests."
+      "description": "List PIM Azure-role activation/deactivation requests the signed-in user has submitted. Does not filter by status - surface all visible schedule requests. Stale pending requests (SelfActivate where the user has lost eligibility) are flagged [stale] — they can be retracted via pim_role_azure_request_cancel."
     },
     {
       "name": "pim_role_azure_request",
@@ -127,7 +127,7 @@
     },
     {
       "name": "pim_role_azure_approval_list",
-      "description": "List PIM Azure-role activation requests where the signed-in user is an approver. Does not filter by status - surface the full approver-side queue."
+      "description": "List PIM Azure-role activation requests where the signed-in user is an approver. Does not filter by status - surface the full approver-side queue. Stale requests (no live stage assigned to the caller) are flagged [stale]."
     },
     {
       "name": "pim_role_azure_approval_review",

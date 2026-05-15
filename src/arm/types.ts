@@ -350,3 +350,63 @@ export const ArmBatchResponsesSchema: z.ZodType<ArmBatchResponses> = z
     responses: z.array(ArmBatchResponseSchema),
   })
   .loose();
+
+// ---------------------------------------------------------------------------
+// Approval stage (used by approver-side stale classification)
+// ---------------------------------------------------------------------------
+
+/**
+ * A single stage on an ARM PIM approval. Mirrors the shape Graph
+ * `assignmentApprovalStage` uses on the group / Entra-role surfaces so
+ * the stale-classification probe can use the same boolean check across
+ * all three surfaces.
+ */
+export interface RoleAzureApprovalStage {
+  id?: string;
+  name?: string;
+  properties: {
+    /** `InProgress`, `Completed`, ... */
+    status?: string;
+    /** `NotReviewed`, `Approved`, `Denied`, ... */
+    reviewResult?: string;
+    /** True when the signed-in user is currently a reviewer on this stage. */
+    assignedToMe?: boolean;
+  };
+}
+
+const RoleAzureApprovalStageSchema: z.ZodType<RoleAzureApprovalStage> = z
+  .object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+    properties: z
+      .object({
+        status: z.string().optional(),
+        reviewResult: z.string().optional(),
+        assignedToMe: z.boolean().optional(),
+      })
+      .loose(),
+  })
+  .loose();
+
+/** ARM PIM approval (`Microsoft.Authorization/roleAssignmentApprovals`). */
+export interface RoleAzureApproval {
+  id?: string;
+  name?: string;
+  type?: string;
+  properties: {
+    stages?: RoleAzureApprovalStage[];
+  };
+}
+
+export const RoleAzureApprovalSchema: z.ZodType<RoleAzureApproval> = z
+  .object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+    type: z.string().optional(),
+    properties: z
+      .object({
+        stages: z.array(RoleAzureApprovalStageSchema).optional(),
+      })
+      .loose(),
+  })
+  .loose();
