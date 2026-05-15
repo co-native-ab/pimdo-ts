@@ -17,7 +17,7 @@ export const pimGroupApprovalReviewTool = buildApprovalReviewTool<GroupAssignmen
     title: "Review PIM group approvals",
     description:
       "Open a browser form for the signed-in user (acting as approver) to " +
-      "Approve, Deny, or Skip pending PIM group activation approvals. Each " +
+      "Approve, Deny or Skip pending PIM group activation approvals. Each " +
       "Approve/Deny PATCHes the live approval stage via Microsoft Graph.",
     requiredScopes: deriveRequiredScopes([APPROVE_GROUP_SCOPES]),
   },

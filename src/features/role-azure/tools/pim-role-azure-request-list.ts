@@ -19,7 +19,7 @@ const def: ToolDef = {
   title: "List my pending PIM Azure-role requests",
   description:
     "List PIM Azure-role activation/deactivation requests the signed-in user " +
-    "has submitted. Does not filter by status — surface " +
+    "has submitted. Does not filter by status - surface " +
     "all visible schedule requests.",
   requiredScopes: deriveRequiredScopes([ROLE_AZURE_SCOPES]),
 };

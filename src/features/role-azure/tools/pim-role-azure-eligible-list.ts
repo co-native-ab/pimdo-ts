@@ -20,7 +20,7 @@ const def: ToolDef = {
   description:
     "List Azure resource roles (subscriptions, resource groups, resources) the " +
     "signed-in user is eligible to activate via PIM. Returns the role display " +
-    "name, role definition id, eligibility id, ARM scope, and any time bounds.",
+    "name, role definition id, eligibility id, ARM scope and any time bounds.",
   requiredScopes: deriveRequiredScopes([ROLE_AZURE_SCOPES]),
 };
 

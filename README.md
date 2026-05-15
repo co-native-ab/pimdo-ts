@@ -1,8 +1,8 @@
 # pimdo-ts
 
-Local MCP server (Model Context Protocol) written in TypeScript that gives an AI assistant scoped access to **Microsoft Entra Privileged Identity Management (PIM)** — for groups, Entra roles, and Azure resource roles — without granting it standing access.
+Local MCP server (Model Context Protocol) written in TypeScript that gives an AI assistant scoped access to **Microsoft Entra Privileged Identity Management (PIM)** - for groups, Entra roles and Azure resource roles - without granting it standing access.
 
-> **Status:** pre-release, no version tagged yet. Full PIM surface end-to-end: seven `pim_group_*`, seven `pim_role_entra_*`, and seven `pim_role_azure_*` tools (21 PIM tools + 3 auth tools = 24 total).
+pimdo deliberately keeps the blast radius small: every privilege-changing tool routes through a local browser confirmation form, so a human stays in the loop for every activation, deactivation or approval before pimdo calls Microsoft Graph or ARM.
 
 ## What pimdo does
 
@@ -13,7 +13,7 @@ pimdo is an MCP server. AI agents that speak MCP can connect to it and use the e
 - as a designated approver, **approve** another user's pending request,
 - with explicit human approval, **confirm** that an elevation has been used.
 
-The agent acts as the signed-in human user — it never holds standing privileges. Every PIM action goes through the same approval and audit pipeline as a manual `aka.ms/myaccess` flow.
+The agent acts as the signed-in human user - it never holds standing privileges. Every PIM action goes through the same approval and audit pipeline as a manual `aka.ms/myaccess` flow.
 
 ## Installation
 
@@ -21,7 +21,7 @@ pimdo-ts is distributed in three formats from [GitHub Releases](https://github.c
 
 ### MCPB Bundle (Recommended for Claude Desktop)
 
-The [MCPB](https://github.com/modelcontextprotocol/mcpb) bundle is self-contained — it includes the server and a bundled Node.js runtime. No separate Node.js installation is required.
+The [MCPB](https://github.com/modelcontextprotocol/mcpb) bundle is self-contained - it includes the server and a bundled Node.js runtime. No separate Node.js installation is required.
 
 Download the latest `pimdo-ts-vX.Y.Z.mcpb` file from GitHub Releases.
 
@@ -84,7 +84,7 @@ The tables below are generated from each tool's descriptor (`def.name` + `def.de
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `login`       | Sign in to Microsoft Graph. Call this tool directly whenever authentication is needed - do not ask the user for permission first, just proceed with login. Opens a browser for interactive sign-in. Once signed in, all other tools work automatically. If a previous tool returned a Conditional Access step-up error, pass the `claims` value from that error here to satisfy the challenge, then re-invoke the original tool. |
 | `logout`      | Sign out of Microsoft Graph and clear all cached tokens. After logging out, the login tool must be used to re-authenticate.                                                                                                                                                                                                                                                                                                      |
-| `auth_status` | Check current authentication status, logged-in user, granted scopes, and server version. A good first tool to call when diagnosing PIM access issues or confirming that the right consent has been granted.                                                                                                                                                                                                                      |
+| `auth_status` | Check current authentication status, logged-in user, granted scopes and server version. A good first tool to call when diagnosing PIM access issues or confirming that the right consent has been granted.                                                                                                                                                                                                                       |
 
 <!-- tool-table:auth:end -->
 
@@ -94,13 +94,13 @@ The tables below are generated from each tool's descriptor (`def.name` + `def.de
 
 | Tool                        | Description                                                                                                                                                                                                                                                            |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pim_group_eligible_list`   | List Entra groups the signed-in user is eligible to activate via PIM. Returns the group display name, id, eligibility id, and any time bounds.                                                                                                                         |
+| `pim_group_eligible_list`   | List Entra groups the signed-in user is eligible to activate via PIM. Returns the group display name, id, eligibility id and any time bounds.                                                                                                                          |
 | `pim_group_active_list`     | List Entra groups the signed-in user currently has activated via PIM, with their active-until time.                                                                                                                                                                    |
 | `pim_group_request_list`    | List PIM group activation/deactivation requests the signed-in user has submitted that are still pending approval.                                                                                                                                                      |
 | `pim_group_request`         | Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Entra groups. The user edits justification and duration per row, then submits. Each confirmed row creates a selfActivate assignment-schedule request via Microsoft Graph. |
 | `pim_group_deactivate`      | Open a browser form for the signed-in user to confirm deactivation of one or more currently-active PIM group assignments. Each confirmed row submits a selfDeactivate assignment-schedule request via Graph.                                                           |
 | `pim_group_approval_list`   | List pending PIM group activation requests where the signed-in user is an approver and has not yet recorded a decision.                                                                                                                                                |
-| `pim_group_approval_review` | Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM group activation approvals. Each Approve/Deny PATCHes the live approval stage via Microsoft Graph.                                                               |
+| `pim_group_approval_review` | Open a browser form for the signed-in user (acting as approver) to Approve, Deny or Skip pending PIM group activation approvals. Each Approve/Deny PATCHes the live approval stage via Microsoft Graph.                                                                |
 
 <!-- tool-table:group:end -->
 
@@ -112,13 +112,13 @@ The four read tools return plain text the AI can summarise. The three write tool
 
 | Tool                             | Description                                                                                                                                                                                                                                                                            |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pim_role_entra_eligible_list`   | List Entra (directory) roles the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, directory scope, and any time bounds.                                                                                              |
+| `pim_role_entra_eligible_list`   | List Entra (directory) roles the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, directory scope and any time bounds.                                                                                               |
 | `pim_role_entra_active_list`     | List Entra (directory) roles the signed-in user currently has activated via PIM, with their active-until time.                                                                                                                                                                         |
 | `pim_role_entra_request_list`    | List PIM Entra-role activation/deactivation requests the signed-in user has submitted that are still pending approval.                                                                                                                                                                 |
 | `pim_role_entra_request`         | Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Entra (directory) roles. The user edits justification and duration per row, then submits. Each confirmed row creates a selfActivate role-assignment-schedule request via Microsoft Graph. |
 | `pim_role_entra_deactivate`      | Open a browser form for the signed-in user to confirm deactivation of one or more currently-active PIM Entra-role assignments. Each confirmed row submits a selfDeactivate role-assignment-schedule request via Graph.                                                                 |
 | `pim_role_entra_approval_list`   | List pending PIM Entra-role activation requests where the signed-in user is an approver and has not yet recorded a decision.                                                                                                                                                           |
-| `pim_role_entra_approval_review` | Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM Entra-role activation approvals. Each Approve/Deny PATCHes the live approval stage via the Microsoft Graph beta endpoint.                                                        |
+| `pim_role_entra_approval_review` | Open a browser form for the signed-in user (acting as approver) to Approve, Deny or Skip pending PIM Entra-role activation approvals. Each Approve/Deny PATCHes the live approval stage via the Microsoft Graph beta endpoint.                                                         |
 
 <!-- tool-table:role-entra:end -->
 
@@ -130,17 +130,17 @@ The Entra-role approval read/PATCH operations target the Microsoft Graph **`beta
 
 | Tool                             | Description                                                                                                                                                                                                                                                                                |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pim_role_azure_eligible_list`   | List Azure resource roles (subscriptions, resource groups, resources) the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, ARM scope, and any time bounds.                                                               |
+| `pim_role_azure_eligible_list`   | List Azure resource roles (subscriptions, resource groups, resources) the signed-in user is eligible to activate via PIM. Returns the role display name, role definition id, eligibility id, ARM scope and any time bounds.                                                                |
 | `pim_role_azure_active_list`     | List Azure resource roles the signed-in user currently has activated via PIM, with their active-until time.                                                                                                                                                                                |
-| `pim_role_azure_request_list`    | List PIM Azure-role activation/deactivation requests the signed-in user has submitted. Does not filter by status — surface all visible schedule requests.                                                                                                                                  |
+| `pim_role_azure_request_list`    | List PIM Azure-role activation/deactivation requests the signed-in user has submitted. Does not filter by status - surface all visible schedule requests.                                                                                                                                  |
 | `pim_role_azure_request`         | Open a browser form for the signed-in user to confirm activation of one or more PIM-eligible Azure resource roles. The user edits justification and duration per row, then submits. Each confirmed row creates a SelfActivate role-assignment-schedule request via Azure Resource Manager. |
 | `pim_role_azure_deactivate`      | Open a browser form for the signed-in user to confirm deactivation of one or more currently-active PIM Azure-role assignments. Each confirmed row submits a SelfDeactivate role-assignment-schedule request via Azure Resource Manager.                                                    |
-| `pim_role_azure_approval_list`   | List PIM Azure-role activation requests where the signed-in user is an approver. Does not filter by status — surface the full approver-side queue.                                                                                                                                         |
-| `pim_role_azure_approval_review` | Open a browser form for the signed-in user (acting as approver) to Approve, Deny, or Skip pending PIM Azure-role activation approvals. Each Approve/Deny submits the decision via Azure Resource Manager `/batch`.                                                                         |
+| `pim_role_azure_approval_list`   | List PIM Azure-role activation requests where the signed-in user is an approver. Does not filter by status - surface the full approver-side queue.                                                                                                                                         |
+| `pim_role_azure_approval_review` | Open a browser form for the signed-in user (acting as approver) to Approve, Deny or Skip pending PIM Azure-role activation approvals. Each Approve/Deny submits the decision via Azure Resource Manager `/batch`.                                                                          |
 
 <!-- tool-table:role-azure:end -->
 
-The Azure-role surface talks to the Azure Resource Manager (ARM) API instead of Microsoft Graph. It uses API version `2020-10-01` for the `Microsoft.Authorization/role*` resources, `2021-01-01-preview` for the `roleAssignmentApprovals/.../stages` PUT, and posts approvals via the `2020-06-01` `/batch` endpoint.
+The Azure-role surface talks to the Azure Resource Manager (ARM) API instead of Microsoft Graph. It uses API version `2020-10-01` for the `Microsoft.Authorization/role*` resources, `2021-01-01-preview` for the `roleAssignmentApprovals/.../stages` PUT and posts approvals via the `2020-06-01` `/batch` endpoint.
 
 JSON Schemas for every tool's input are generated under [`schemas/tools/`](./schemas/tools) from the Zod definitions in `src/tools/` (see `npm run schemas:generate` and the `schemas:check` CI gate).
 
@@ -149,18 +149,18 @@ JSON Schemas for every tool's input are generated under [`schemas/tools/`](./sch
 pimdo uses MSAL (`@azure/msal-node`) to authenticate with Microsoft. When the agent calls the `login` tool:
 
 1. The tool starts a local loopback HTTP server with a branded landing page and opens it in your browser.
-2. You click "Sign in with Microsoft", authenticate against Microsoft's OAuth endpoint, and the redirect lands back on the loopback server.
-3. Login completes immediately — no manual code entry needed.
+2. You click "Sign in with Microsoft", authenticate against Microsoft's OAuth endpoint and the redirect lands back on the loopback server.
+3. Login completes immediately - no manual code entry needed.
 
-pimdo requires a working browser on the workstation it runs on. If pimdo cannot launch a browser, the `login` tool fails with an error — there is no manual URL fallback, no device code, and no headless mode. pimdo-ts is a workstation tool by design; SSH sessions, containers, and other environments without a browser are not supported.
+pimdo requires a working browser on the workstation it runs on. If pimdo cannot launch a browser, the `login` tool fails with an error - there is no manual URL fallback, no device code and no headless mode. pimdo-ts is a workstation tool by design; SSH sessions, containers and other environments without a browser are not supported.
 
-The same login produces tokens for **both** Microsoft Graph and Azure Resource Manager — pimdo calls `Authenticator.tokenForResource(resource, signal)` per request and lets MSAL refresh them silently. To sign out and clear cached tokens, call the `logout` tool.
+The same login produces tokens for **both** Microsoft Graph and Azure Resource Manager - pimdo calls `Authenticator.tokenForResource(resource, signal)` per request and lets MSAL refresh them silently. To sign out and clear cached tokens, call the `logout` tool.
 
-Use the `auth_status` tool to check whether you are logged in and see the current user, granted scopes, and server version.
+Use the `auth_status` tool to check whether you are logged in and see the current user, granted scopes and server version.
 
 ### Conditional Access step-up
 
-Some PIM activations are gated by Conditional Access "authentication context" rules — most commonly an MFA requirement (`acrs=c1`), but also compliant-device, hybrid-join, sign-in risk, and similar policies. When a tool call hits such a rule, pimdo surfaces a `StepUpRequiredError` whose message contains the literal claims challenge from Microsoft Graph or Azure Resource Manager.
+Some PIM activations are gated by Conditional Access "authentication context" rules - most commonly an MFA requirement (`acrs=c1`), but also compliant-device, hybrid-join, sign-in risk and similar policies. When a tool call hits such a rule, pimdo surfaces a `StepUpRequiredError` whose message contains the literal claims challenge from Microsoft Graph or Azure Resource Manager.
 
 Recovery is one call: re-invoke the `login` tool with the `claims` value from the error message. pimdo opens the browser again, AAD prompts you for the missing factor (MFA, device compliance, …), and once you complete it the AI assistant can re-invoke the original PIM tool. `loginHint` defaults to the currently signed-in user, so you land directly on the right account without going through the picker.
 
@@ -168,8 +168,8 @@ Recovery is one call: re-invoke the `login` tool with the `claims` value from th
 
 pimdo authenticates against **two resources** from the same login:
 
-- **Microsoft Graph** (`https://graph.microsoft.com`) — used for PIM groups and Entra role assignments.
-- **Azure Resource Manager** (`https://management.azure.com`) — used for Azure resource role assignments.
+- **Microsoft Graph** (`https://graph.microsoft.com`) - used for PIM groups and Entra role assignments.
+- **Azure Resource Manager** (`https://management.azure.com`) - used for Azure resource role assignments.
 
 <!-- scope-table:start -->
 
@@ -192,14 +192,14 @@ The MCP server starts with no PIM tools enabled. As the tenant grants the scopes
 
 ## Manual Entra app registration
 
-pimdo-ts ships with a default multi-tenant Entra application client ID — `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff`, published by Co-native AB — so most users do **not** need to register their own app. An administrator may need to grant tenant-wide consent for the scopes listed above before non-admin users can sign in.
+pimdo-ts ships with a default multi-tenant Entra application client ID - `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff`, published by Co-native AB - so most users do **not** need to register their own app. An administrator may need to grant tenant-wide consent for the scopes listed above before non-admin users can sign in.
 
 If your organization requires its own app registration (for example to lock down which tenants can use it), register a multi-tenant Entra application yourself:
 
 1. In the Microsoft Entra admin center, register a new application:
    - **Supported account types:** _Accounts in any organizational directory (multitenant)_.
    - **Platform:** _Mobile and desktop applications_ / public client (no client secret).
-   - **Redirect URI:** `http://localhost` — pimdo's loopback server picks an ephemeral port at runtime, and Microsoft accepts any `http://localhost:<port>` redirect under the registered `http://localhost` entry.
+   - **Redirect URI:** `http://localhost` - pimdo's loopback server picks an ephemeral port at runtime, and Microsoft accepts any `http://localhost:<port>` redirect under the registered `http://localhost` entry.
    - Enable **"Allow public client flows"** under _Authentication_ (required for the loopback PKCE flow).
 2. Under **API permissions**, add the **delegated** permissions listed above for **Microsoft Graph** and **Azure Service Management** (`user_impersonation`).
 3. Click **Grant admin consent for [your tenant]** so users can sign in without each individually consenting.
@@ -226,7 +226,7 @@ If your organization requires its own app registration (for example to lock down
 ## Security model
 
 - **No standing access.** pimdo only ever holds tokens scoped to the granted permissions and acts as the signed-in user.
-- **Human-in-the-loop for every privilege change.** `request`, `deactivate`, and `approval_review` always open a loopback browser form so you confirm or override the AI's intent before pimdo issues the API call.
+- **Human-in-the-loop for every privilege change.** `request`, `deactivate` and `approval_review` always open a loopback browser form so you confirm or override the AI's intent before pimdo issues the API call.
 - **Loopback hardening.** The browser flow ships CSRF + Content-Security-Policy + strict header parsing (see `src/browser/security.ts`).
 - **Tool gating.** Every PIM tool declares the scopes it needs; the registry enables a tool only when all required scopes are present in the granted set, then re-syncs after every login.
 
@@ -256,16 +256,16 @@ Both run forever by default; pass `-- -- -max_total_time=30` (or a `-runs=N` lim
 
 ## FAQ
 
-**Do I need to register my own Entra app?** No — pimdo-ts ships with a shared multi-tenant Entra application (client ID `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff`, published by Co-native AB). Most users can sign in directly. Some tenants require an administrator to grant tenant-wide consent first; an admin can pre-consent the scopes listed above for the shared app, or you can register your own and override `PIMDO_CLIENT_ID` (see "Manual Entra app registration").
+**Do I need to register my own Entra app?** No - pimdo-ts ships with a shared multi-tenant Entra application (client ID `30cdf00b-19c8-4fe6-94bd-2674ee51a3ff`, published by Co-native AB). Most users can sign in directly. Some tenants require an administrator to grant tenant-wide consent first; an admin can pre-consent the scopes listed above for the shared app, or you can register your own and override `PIMDO_CLIENT_ID` (see "Manual Entra app registration").
 
 **Does pimdo store any of my data?** It caches MSAL tokens (encrypted by MSAL) in your OS config dir under `pimdo-ts/`. No PIM resources, no listings, no approvals. Logout clears the token cache.
 
 **Why both Graph and ARM tokens?** Entra Groups and Entra Roles live in Microsoft Graph; Azure resource roles live in Azure Resource Manager. The same MSAL account gets a token for each resource silently, so login is still one click.
 
-**Can I use a personal Microsoft account?** No — Entra PIM is a work/school feature. Use a tenant where PIM is enabled.
+**Can I use a personal Microsoft account?** No - Entra PIM is a work/school feature. Use a tenant where PIM is enabled.
 
 **Why do some tools target Microsoft Graph `beta`?** The Entra-role assignment-approvals surface is currently only available on `beta`. Everything else uses `v1.0`.
 
 ## License
 
-MIT — see `LICENSE`.
+MIT - see `LICENSE`.
