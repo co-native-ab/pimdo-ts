@@ -34,10 +34,10 @@ issue unbounded requests in the background.
 
 Microsoft documents two paging contracts:
 
-| Surface | Page-size param | Continuation | Default | Max |
-|---|---|---|---|---|
-| Microsoft Graph (v1.0 + beta) | `$top` | `@odata.nextLink` (absolute, opaque) | varies (~100) | 999 |
-| ARM (`Microsoft.Authorization/2020-10-01`) | `$top` (initial only) | `nextLink` (absolute, opaque, `$skiptoken`-bearing) | server-determined | — |
+| Surface                                    | Page-size param       | Continuation                                        | Default           | Max |
+| ------------------------------------------ | --------------------- | --------------------------------------------------- | ----------------- | --- |
+| Microsoft Graph (v1.0 + beta)              | `$top`                | `@odata.nextLink` (absolute, opaque)                | varies (~100)     | 999 |
+| ARM (`Microsoft.Authorization/2020-10-01`) | `$top` (initial only) | `nextLink` (absolute, opaque, `$skiptoken`-bearing) | server-determined | —   |
 
 For both surfaces, `$top` is sent **only on the initial request**.
 Continuation URLs are followed verbatim — re-adding `$top` (or
@@ -50,8 +50,15 @@ Introduce a single bounded paginator primitive
 ARM:
 
 ```ts
-interface PageOptions  { pageSize?: number; maxPages?: number }
-interface PagedResult<T> { items: T[]; truncated: boolean; pagesFetched: number }
+interface PageOptions {
+  pageSize?: number;
+  maxPages?: number;
+}
+interface PagedResult<T> {
+  items: T[];
+  truncated: boolean;
+  pagesFetched: number;
+}
 ```
 
 - `paginateGraph` and `paginateArm` share the same shape. They inject
