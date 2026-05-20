@@ -100,16 +100,27 @@ function withTop(path: string, pageSize: number): string {
 
 /**
  * Convert an absolute continuation URL into a path that can be passed
- * to `client.request` (which prepends the configured base URL). If
- * `nextLink` is already relative it is returned as-is. Falls back to
- * the original string when URL parsing fails, so the caller fails
- * loudly with a clear error instead of silently truncating.
+ * to `client.request` (which prepends `client.baseUrl`). The Microsoft
+ * Graph `@odata.nextLink` is an absolute URL whose path already
+ * includes the API version segment (e.g. `/v1.0/...`), so we MUST
+ * strip the base-URL's pathname or the request URL ends up doubled
+ * (`/v1.0/v1.0/...`). Falls back to the original string when URL
+ * parsing fails so the caller fails loudly with a clear error instead
+ * of silently truncating.
  */
-function toRelativePath(nextLink: string): string {
+export function toRelativePath(nextLink: string, baseUrl: string): string {
   if (nextLink.startsWith("/")) return nextLink;
   try {
     const u = new URL(nextLink);
-    return `${u.pathname}${u.search}`;
+    const tail = `${u.pathname}${u.search}`;
+    const base = new URL(baseUrl);
+    if (u.origin === base.origin && base.pathname !== "" && base.pathname !== "/") {
+      // Strip the configured base-URL path prefix exactly once.
+      const prefix = base.pathname.replace(/\/+$/, "");
+      if (tail === prefix) return "/";
+      if (tail.startsWith(`${prefix}/`)) return tail.slice(prefix.length);
+    }
+    return tail;
   } catch {
     return nextLink;
   }
@@ -149,7 +160,7 @@ async function paginate<T>(
     const parsed = await parsePage(res, "GET", currentPath);
     items.push(...parsed.value);
     pagesFetched += 1;
-    nextPath = parsed.nextLink ? toRelativePath(parsed.nextLink) : undefined;
+    nextPath = parsed.nextLink ? toRelativePath(parsed.nextLink, client.baseUrl) : undefined;
   }
 
   return { items, truncated: false, pagesFetched };
