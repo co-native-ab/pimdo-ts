@@ -230,7 +230,7 @@ export function isStandardErrorEnvelope(value: unknown): value is ErrorEnvelope 
  * their own override of `request()` to customise the public type signature.
  */
 export class BaseHttpClient {
-  protected readonly baseUrl: string;
+  public readonly baseUrl: string;
   protected readonly timeoutMs: number;
   /**
    * Public so feature client functions can pass it to

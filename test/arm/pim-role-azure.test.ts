@@ -39,8 +39,8 @@ describe("arm/pim-role-azure", () => {
     state.seedEligibility({ roleDefinitionId: "role-1", scope: "/subscriptions/sub-a" });
     state.seedEligibility({ roleDefinitionId: "role-2", scope: "/subscriptions/sub-b" });
     const result = await listEligibleRoleAzureAssignments(client, testSignal());
-    expect(result).toHaveLength(2);
-    expect(result.map((e) => e.properties.roleDefinitionId)).toEqual(["role-1", "role-2"]);
+    expect(result.items).toHaveLength(2);
+    expect(result.items.map((e) => e.properties.roleDefinitionId)).toEqual(["role-1", "role-2"]);
   });
 
   it("listActiveRoleAzureAssignments queries each eligible scope and filters non-User principals", async () => {
@@ -63,8 +63,8 @@ describe("arm/pim-role-azure", () => {
     });
 
     const result = await listActiveRoleAzureAssignments(client, testSignal());
-    expect(result).toHaveLength(1);
-    expect(result[0]?.properties.principalId).toBe("me-id");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.properties.principalId).toBe("me-id");
   });
 
   it("listActiveRoleAzureAssignments filters terminal lifecycle statuses", async () => {
@@ -95,7 +95,7 @@ describe("arm/pim-role-azure", () => {
     });
 
     const result = await listActiveRoleAzureAssignments(client, testSignal());
-    const ids = result.map((r) => r.id);
+    const ids = result.items.map((r) => r.id);
     expect(ids).toContain(
       "/subscriptions/sub-a/providers/Microsoft.Authorization/roleAssignmentScheduleInstances/active-keep",
     );
@@ -112,7 +112,7 @@ describe("arm/pim-role-azure", () => {
 
   it("listActiveRoleAzureAssignments returns [] when no eligibilities", async () => {
     const result = await listActiveRoleAzureAssignments(client, testSignal());
-    expect(result).toEqual([]);
+    expect(result.items).toEqual([]);
   });
 
   it("listMyRoleAzureRequests reads from the asTarget() endpoint", async () => {
@@ -127,15 +127,15 @@ describe("arm/pim-role-azure", () => {
       },
     });
     const result = await listMyRoleAzureRequests(client, testSignal());
-    expect(result).toHaveLength(1);
-    expect(result[0]?.properties.status).toBe("PendingApproval");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.properties.status).toBe("PendingApproval");
   });
 
   it("listRoleAzureApprovalRequests reads from the asApprover() endpoint", async () => {
     state.seedPendingApproval({ roleDefinitionId: "role-1", scope: "/subscriptions/x" });
     const result = await listRoleAzureApprovalRequests(client, testSignal());
-    expect(result).toHaveLength(1);
-    expect(result[0]?.properties.status).toBe("PendingApproval");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.properties.status).toBe("PendingApproval");
   });
 
   it("requestRoleAzureActivation PUTs the expected body to the scoped path", async () => {
@@ -248,10 +248,10 @@ describe("arm/pim-role-azure", () => {
       },
     );
     const result = await listMyPendingRoleAzureRequests(client, testSignal());
-    expect(result.map((r) => r.name)).toEqual(["req-1"]);
+    expect(result.items.map((r) => r.name)).toEqual(["req-1"]);
     // Sanity-check: the unfiltered helper still returns both.
     const unfiltered = await listMyRoleAzureRequests(client, testSignal());
-    expect(unfiltered.map((r) => r.name)).toEqual(["req-1", "req-2"]);
+    expect(unfiltered.items.map((r) => r.name)).toEqual(["req-1", "req-2"]);
   });
 
   it("cancelRoleAzureAssignmentRequest POSTs to the cancel sub-resource at the given scope", async () => {

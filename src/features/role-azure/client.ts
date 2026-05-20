@@ -26,13 +26,10 @@
 
 import { randomUUID } from "node:crypto";
 
-import type { ZodType } from "zod";
-
 import { ArmClient, HttpMethod, parseResponse } from "../../arm/client.js";
 import { OAuthScope } from "../../scopes.js";
 import { assertScopes } from "../../scopes-runtime.js";
 import {
-  armListSchema,
   ArmBatchResponsesSchema,
   ArmScheduleInfoSchema,
   RoleAzureActiveAssignment,
@@ -45,10 +42,11 @@ import {
   type ArmScheduleInfo,
 } from "../../arm/types.js";
 import { ArmScheduleRequestType, type SubmittedApprovalDecision } from "../../enums.js";
+import { armPageParser, mergePaged, paginateArm, type PagedResult } from "../../http/paging.js";
 
-const EligibleListSchema = armListSchema(RoleAzureEligibleAssignmentSchema);
-const ActiveListSchema = armListSchema(RoleAzureActiveAssignmentSchema);
-const RequestListSchema = armListSchema(RoleAzureAssignmentRequestSchema);
+const eligiblePageParser = armPageParser(RoleAzureEligibleAssignmentSchema, parseResponse);
+const activePageParser = armPageParser(RoleAzureActiveAssignmentSchema, parseResponse);
+const requestPageParser = armPageParser(RoleAzureAssignmentRequestSchema, parseResponse);
 
 /** Decision sent to a PIM approval stage. */
 export type ReviewResult = SubmittedApprovalDecision;
@@ -82,13 +80,13 @@ export const ROLE_AZURE_SCOPES: OAuthScope[][] = [[OAuthScope.ArmUserImpersonati
 export async function listEligibleRoleAzureAssignments(
   client: ArmClient,
   signal: AbortSignal,
-): Promise<RoleAzureEligibleAssignment[]> {
+): Promise<PagedResult<RoleAzureEligibleAssignment>> {
   await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
   const filter = encodeURIComponent("asTarget()");
   const path =
     `/providers/${PROVIDER}/roleEligibilityScheduleInstances` +
     `?api-version=${ARM_ROLES_API_VERSION}&$filter=${filter}`;
-  return getAllPages(client, path, EligibleListSchema, signal);
+  return paginateArm(client, path, eligiblePageParser, undefined, signal);
 }
 
 /**
@@ -120,46 +118,61 @@ function isActiveStatus(status: string | undefined): boolean {
  * GET role-assignment-schedule instances where the signed-in user is the
  * principal. ARM rejects an empty-scope listing for active assignments
  * (returns []), so we derive scopes from the eligibility list.
+ *
+ * Truncation propagates from both the eligibility lookup and the
+ * per-scope active queries — the AI surface reports the result as
+ * truncated when *any* underlying page was capped.
  */
 export async function listActiveRoleAzureAssignments(
   client: ArmClient,
   signal: AbortSignal,
-): Promise<RoleAzureActiveAssignment[]> {
+): Promise<PagedResult<RoleAzureActiveAssignment>> {
   await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
-  const eligibilities = await listEligibleRoleAzureAssignments(client, signal);
+  const eligibilityResult = await listEligibleRoleAzureAssignments(client, signal);
   const scopes = new Set<string>();
-  for (const e of eligibilities) {
+  for (const e of eligibilityResult.items) {
     const scope = e.properties.expandedProperties?.scope?.id ?? e.properties.scope;
     if (scope) scopes.add(scope);
   }
-  if (scopes.size === 0) return [];
+  if (scopes.size === 0) {
+    return {
+      items: [],
+      truncated: eligibilityResult.truncated,
+      pagesFetched: eligibilityResult.pagesFetched,
+    };
+  }
 
   const filter = encodeURIComponent("asTarget()");
-  const result: RoleAzureActiveAssignment[] = [];
+  let aggregate: PagedResult<RoleAzureActiveAssignment> = {
+    items: [],
+    truncated: eligibilityResult.truncated,
+    pagesFetched: eligibilityResult.pagesFetched,
+  };
   for (const scope of scopes) {
     const path =
       `/${trimLeadingSlash(scope)}/providers/${PROVIDER}/roleAssignmentScheduleInstances` +
       `?api-version=${ARM_ROLES_API_VERSION}&$filter=${filter}`;
-    const items = await getAllPages(client, path, ActiveListSchema, signal);
-    for (const item of items) {
-      // Only surface user principals.
-      if (item.properties.principalType !== undefined && item.properties.principalType !== "User") {
-        continue;
-      }
-      // Drop terminal lifecycle states (Revoked/Expired/...) so the
-      // active list stays aligned with what's actually usable.
-      if (!isActiveStatus(item.properties.status)) continue;
-      result.push(item);
-    }
+    const page = await paginateArm(client, path, activePageParser, undefined, signal);
+    const filtered: PagedResult<RoleAzureActiveAssignment> = {
+      items: page.items.filter(
+        (item) =>
+          (item.properties.principalType === undefined ||
+            item.properties.principalType === "User") &&
+          isActiveStatus(item.properties.status),
+      ),
+      truncated: page.truncated,
+      pagesFetched: page.pagesFetched,
+    };
+    aggregate = mergePaged(aggregate, filtered);
   }
-  return result;
+  return aggregate;
 }
 
 /** GET role-assignment-schedule requests where the signed-in user is the principal. */
 export async function listMyRoleAzureRequests(
   client: ArmClient,
   signal: AbortSignal,
-): Promise<RoleAzureAssignmentRequest[]> {
+): Promise<PagedResult<RoleAzureAssignmentRequest>> {
   await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
   return listRequests(client, "asTarget()", signal);
 }
@@ -168,7 +181,7 @@ export async function listMyRoleAzureRequests(
 export async function listRoleAzureApprovalRequests(
   client: ArmClient,
   signal: AbortSignal,
-): Promise<RoleAzureAssignmentRequest[]> {
+): Promise<PagedResult<RoleAzureAssignmentRequest>> {
   await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
   return listRequests(client, "asApprover()", signal);
 }
@@ -177,12 +190,12 @@ async function listRequests(
   client: ArmClient,
   filterExpr: "asTarget()" | "asApprover()",
   signal: AbortSignal,
-): Promise<RoleAzureAssignmentRequest[]> {
+): Promise<PagedResult<RoleAzureAssignmentRequest>> {
   const filter = encodeURIComponent(filterExpr);
   const path =
     `/providers/${PROVIDER}/roleAssignmentScheduleRequests` +
     `?api-version=${ARM_ROLES_API_VERSION}&$filter=${filter}`;
-  return getAllPages(client, path, RequestListSchema, signal);
+  return paginateArm(client, path, requestPageParser, undefined, signal);
 }
 
 // ---------------------------------------------------------------------------
@@ -272,9 +285,13 @@ async function putScheduleRequest(
 export async function listMyPendingRoleAzureRequests(
   client: ArmClient,
   signal: AbortSignal,
-): Promise<RoleAzureAssignmentRequest[]> {
+): Promise<PagedResult<RoleAzureAssignmentRequest>> {
   const all = await listMyRoleAzureRequests(client, signal);
-  return all.filter((r) => r.properties.status === "PendingApproval");
+  return {
+    items: all.items.filter((r) => r.properties.status === "PendingApproval"),
+    truncated: all.truncated,
+    pagesFetched: all.pagesFetched,
+  };
 }
 
 /**
@@ -289,9 +306,13 @@ export async function listMyPendingRoleAzureRequests(
 export async function listPendingRoleAzureApprovalRequests(
   client: ArmClient,
   signal: AbortSignal,
-): Promise<RoleAzureAssignmentRequest[]> {
+): Promise<PagedResult<RoleAzureAssignmentRequest>> {
   const all = await listRoleAzureApprovalRequests(client, signal);
-  return all.filter((r) => r.properties.status === "PendingApproval");
+  return {
+    items: all.items.filter((r) => r.properties.status === "PendingApproval"),
+    truncated: all.truncated,
+    pagesFetched: all.pagesFetched,
+  };
 }
 
 /**
@@ -423,44 +444,6 @@ function extractApprovalUuid(approvalId: string): string {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-interface ListPage<T> {
-  value: T[];
-  nextLink?: string;
-}
-
-async function getAllPages<T>(
-  client: ArmClient,
-  initialPath: string,
-  schema: ZodType<ListPage<T>>,
-  signal: AbortSignal,
-): Promise<T[]> {
-  const out: T[] = [];
-  let nextPath: string | undefined = initialPath;
-  while (nextPath !== undefined) {
-    const currentPath: string = nextPath;
-    const res = await client.request(HttpMethod.GET, currentPath, signal);
-    const parsed = await parseResponse(res, schema, "GET", currentPath);
-    out.push(...parsed.value);
-    nextPath = parsed.nextLink ? toRelativePath(parsed.nextLink) : undefined;
-  }
-  return out;
-}
-
-/**
- * ARM `nextLink` values are absolute URLs. The ArmClient is rooted at
- * `https://management.azure.com`, so we strip the origin to use it as a
- * relative path. If the `nextLink` happens to point at a different host
- * we leave it as-is and let the caller fail loudly.
- */
-function toRelativePath(nextLink: string): string {
-  try {
-    const u = new URL(nextLink);
-    return `${u.pathname}${u.search}`;
-  } catch {
-    return nextLink;
-  }
-}
 
 function trimLeadingSlash(value: string): string {
   return value.startsWith("/") ? value.slice(1) : value;

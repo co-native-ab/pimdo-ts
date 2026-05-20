@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { listActiveRoleAzureAssignments } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
+import { truncationWarning } from "../../../http/paging.js";
 import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import { ROLE_AZURE_SCOPES } from "../client.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
@@ -24,10 +25,17 @@ const def: ToolDef = {
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
-  return async (_args, { signal }) => {
+  return async (args, { signal }) => {
     try {
-      const items = await listActiveRoleAzureAssignments(config.armClient, signal);
-      return { content: [{ type: "text", text: formatActiveAssignmentsText(items) }] };
+      const result = await listActiveRoleAzureAssignments(config.armClient, signal);
+      return {
+        content: [
+          {
+            type: "text",
+            text: formatActiveAssignmentsText(result.items) + truncationWarning(result),
+          },
+        ],
+      };
     } catch (error) {
       return formatError(def.name, error);
     }

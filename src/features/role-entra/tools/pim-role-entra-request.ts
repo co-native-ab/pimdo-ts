@@ -45,7 +45,8 @@ export const pimRoleEntraRequestTool = buildRequestTool<RoleEntraEligibleAssignm
   noun: "PIM Entra-role",
   eligibleListToolName: "pim_role_entra_eligible_list",
   emptyStateMessage: "No PIM Entra-role eligibilities are available for activation.",
-  listEligible: (config, signal) => listEligibleRoleEntraAssignments(config.graphClient, signal),
+  listEligible: (config, signal) =>
+    listEligibleRoleEntraAssignments(config.graphClient, signal).then((r) => r.items),
   eligibilityId: (e) => e.id,
   toRow: async (config, e, prefill, signal) => {
     const scopeId = e.directoryScopeId ?? DIRECTORY_SCOPE_ROOT;

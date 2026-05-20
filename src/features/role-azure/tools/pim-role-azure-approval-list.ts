@@ -12,9 +12,12 @@ import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { classifyStaleApproverRequests, includeStaleField } from "../../../tools/pim/stale.js";
 import { staleHiddenTrailer } from "../../../tools/pim/format-shared.js";
+import { truncationWarning } from "../../../http/paging.js";
 import { formatRequestsText } from "../format.js";
 
-const inputSchema = z.object({ includeStale: includeStaleField }).shape;
+const inputSchema = z.object({
+  includeStale: includeStaleField,
+}).shape;
 
 const def: ToolDef = {
   name: "pim_role_azure_approval_list",
@@ -31,7 +34,8 @@ const def: ToolDef = {
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
   return async (args, { signal }) => {
     try {
-      const items = await listRoleAzureApprovalRequests(config.armClient, signal);
+      const result = await listRoleAzureApprovalRequests(config.armClient, signal);
+      const items = result.items;
       const stale = await classifyStaleApproverRequests(
         items,
         {
@@ -44,15 +48,18 @@ function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
         },
         signal,
       );
+      const warning = truncationWarning(result);
       const includeStale = args.includeStale ?? false;
       if (includeStale) {
-        return { content: [{ type: "text", text: formatRequestsText(items, "approver", stale) }] };
+        return {
+          content: [{ type: "text", text: formatRequestsText(items, "approver", stale) + warning }],
+        };
       }
       const visible = items.filter((it) => !stale.has(it.id));
       const body = formatRequestsText(visible, "approver");
       const trailer = staleHiddenTrailer(stale.size);
       return {
-        content: [{ type: "text", text: trailer ? `${body}\n${trailer}` : body }],
+        content: [{ type: "text", text: (trailer ? `${body}\n${trailer}` : body) + warning }],
       };
     } catch (error) {
       return formatError(def.name, error);

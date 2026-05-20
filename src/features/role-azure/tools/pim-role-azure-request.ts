@@ -25,7 +25,8 @@ export const pimRoleAzureRequestTool = buildRequestTool<RoleAzureEligibleAssignm
   noun: "PIM Azure-role",
   eligibleListToolName: "pim_role_azure_eligible_list",
   emptyStateMessage: "No PIM Azure-role eligibilities are available for activation.",
-  listEligible: (config, signal) => listEligibleRoleAzureAssignments(config.armClient, signal),
+  listEligible: (config, signal) =>
+    listEligibleRoleAzureAssignments(config.armClient, signal).then((r) => r.items),
   eligibilityId: (e) => e.id,
   toRow: async (config, e, prefill, signal) => {
     const scope = scopeFromAssignment(e);

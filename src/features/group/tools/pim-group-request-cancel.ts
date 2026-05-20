@@ -29,7 +29,8 @@ export const pimGroupRequestCancelTool = buildCancelTool<GroupAssignmentRequest>
   },
   noun: "PIM group",
   requestListToolName: "pim_group_request_list",
-  listPending: (config, signal) => listMyGroupRequests(config.graphClient, signal),
+  listPending: (config, signal) =>
+    listMyGroupRequests(config.graphClient, signal).then((r) => r.items),
   requestId: (r) => r.id,
   toRow: (r) => ({
     id: r.id,

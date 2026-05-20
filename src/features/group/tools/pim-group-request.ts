@@ -32,7 +32,8 @@ export const pimGroupRequestTool = buildRequestTool<GroupEligibleAssignment>({
   noun: "PIM group",
   eligibleListToolName: "pim_group_eligible_list",
   emptyStateMessage: "No PIM group eligibilities are available for activation.",
-  listEligible: (config, signal) => listEligibleGroupAssignments(config.graphClient, signal),
+  listEligible: (config, signal) =>
+    listEligibleGroupAssignments(config.graphClient, signal).then((r) => r.items),
   eligibilityId: (e) => e.id,
   toRow: async (config, e, prefill, signal) => {
     const max = await getGroupMaxDuration(config.graphClient, e.groupId, signal);

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { LIST_ACTIVE_GROUP_SCOPES, listActiveGroupAssignments } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
+import { truncationWarning } from "../../../http/paging.js";
 import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
@@ -23,11 +24,16 @@ const def: ToolDef = {
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
-  return async (_args, { signal }) => {
+  return async (args, { signal }) => {
     try {
-      const items = await listActiveGroupAssignments(config.graphClient, signal);
+      const result = await listActiveGroupAssignments(config.graphClient, signal);
       return {
-        content: [{ type: "text", text: formatActiveAssignmentsText(items) }],
+        content: [
+          {
+            type: "text",
+            text: formatActiveAssignmentsText(result.items) + truncationWarning(result),
+          },
+        ],
       };
     } catch (error) {
       return formatError(def.name, error);

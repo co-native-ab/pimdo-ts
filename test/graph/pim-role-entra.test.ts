@@ -38,8 +38,8 @@ describe("graph/pim-role-entra", () => {
     state.seedRoleEntraEligibility({ roleDefinitionId: "role-1" });
     state.seedRoleEntraEligibility({ roleDefinitionId: "role-2" });
     const result = await listEligibleRoleEntraAssignments(client, testSignal());
-    expect(result).toHaveLength(2);
-    expect(result.map((e) => e.roleDefinitionId)).toEqual(["role-1", "role-2"]);
+    expect(result.items).toHaveLength(2);
+    expect(result.items.map((e) => e.roleDefinitionId)).toEqual(["role-1", "role-2"]);
   });
 
   it("listActiveRoleEntraAssignments returns active instances", async () => {
@@ -50,8 +50,8 @@ describe("graph/pim-role-entra", () => {
       directoryScopeId: "/",
     });
     const result = await listActiveRoleEntraAssignments(client, testSignal());
-    expect(result).toHaveLength(1);
-    expect(result[0]?.id).toBe("active-1");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.id).toBe("active-1");
   });
 
   it("listMyRoleEntraRequests filters by status='PendingApproval'", async () => {
@@ -72,14 +72,14 @@ describe("graph/pim-role-entra", () => {
       },
     );
     const result = await listMyRoleEntraRequests(client, testSignal());
-    expect(result.map((r) => r.id)).toEqual(["r1"]);
+    expect(result.items.map((r) => r.id)).toEqual(["r1"]);
   });
 
   it("listRoleEntraApprovalRequests returns approver-side pending requests", async () => {
     state.seedRoleEntraPendingApproval({ roleDefinitionId: "role-1" });
     const result = await listRoleEntraApprovalRequests(client, testSignal());
-    expect(result).toHaveLength(1);
-    expect(result[0]?.status).toBe("PendingApproval");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.status).toBe("PendingApproval");
   });
 
   it("requestRoleEntraActivation POSTs the expected body", async () => {

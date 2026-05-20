@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { LIST_ELIGIBLE_ROLE_ENTRA_SCOPES, listEligibleRoleEntraAssignments } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
+import { truncationWarning } from "../../../http/paging.js";
 import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
@@ -23,10 +24,17 @@ const def: ToolDef = {
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
-  return async (_args, { signal }) => {
+  return async (args, { signal }) => {
     try {
-      const items = await listEligibleRoleEntraAssignments(config.graphClient, signal);
-      return { content: [{ type: "text", text: formatEligibleAssignmentsText(items) }] };
+      const result = await listEligibleRoleEntraAssignments(config.graphClient, signal);
+      return {
+        content: [
+          {
+            type: "text",
+            text: formatEligibleAssignmentsText(result.items) + truncationWarning(result),
+          },
+        ],
+      };
     } catch (error) {
       return formatError(def.name, error);
     }

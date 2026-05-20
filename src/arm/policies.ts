@@ -6,14 +6,17 @@
 // `Expiration_EndUser_Assignment` rule. This is the upper bound the
 // requester flow uses to clamp the user's chosen activation duration.
 
-import { ArmClient, HttpMethod, parseResponse } from "./client.js";
+import { ArmClient, parseResponse } from "./client.js";
 import {
-  armListSchema,
   RoleManagementPolicyAssignmentSchema,
   type RoleManagementPolicyAssignment,
 } from "./types.js";
+import { armPageParser, paginateArm } from "../http/paging.js";
 
-const PolicyListSchema = armListSchema(RoleManagementPolicyAssignmentSchema);
+const policyAssignmentPageParser = armPageParser(
+  RoleManagementPolicyAssignmentSchema,
+  parseResponse,
+);
 
 /** Identifier used by ARM for the end-user assignment expiration rule. */
 const END_USER_ASSIGNMENT_RULE_ID = "Expiration_EndUser_Assignment";
@@ -43,10 +46,9 @@ export async function getAzureRoleMaxDuration(
   const path =
     `/${trimLeadingSlash(scope)}/providers/Microsoft.Authorization/roleManagementPolicyAssignments` +
     `?api-version=${ARM_API_VERSION}&$filter=${filter}`;
-  const response = await client.request(HttpMethod.GET, path, signal);
-  const parsed = await parseResponse(response, PolicyListSchema, "GET", path);
+  const response = await paginateArm(client, path, policyAssignmentPageParser, undefined, signal);
 
-  const assignments = parsed.value;
+  const assignments = response.items;
   if (assignments.length === 0) {
     throw new Error(
       `no role-management policy assignment found for ${roleDefinitionId} at scope ${scope}`,

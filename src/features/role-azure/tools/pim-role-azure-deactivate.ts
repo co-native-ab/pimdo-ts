@@ -22,7 +22,8 @@ export const pimRoleAzureDeactivateTool = buildDeactivateTool<RoleAzureActiveAss
   },
   noun: "PIM Azure-role",
   activeListToolName: "pim_role_azure_active_list",
-  listActive: (config, signal) => listActiveRoleAzureAssignments(config.armClient, signal),
+  listActive: (config, signal) =>
+    listActiveRoleAzureAssignments(config.armClient, signal).then((r) => r.items),
   instanceId: (a) => a.id,
   toRow: (a, prefilledReason) => ({
     id: a.id,

@@ -29,7 +29,8 @@ export const pimGroupDeactivateTool = buildDeactivateTool<GroupActiveAssignment>
   },
   noun: "PIM group",
   activeListToolName: "pim_group_active_list",
-  listActive: (config, signal) => listActiveGroupAssignments(config.graphClient, signal),
+  listActive: (config, signal) =>
+    listActiveGroupAssignments(config.graphClient, signal).then((r) => r.items),
   instanceId: (a) => a.id,
   toRow: (a, prefilledReason) => ({
     id: a.id,

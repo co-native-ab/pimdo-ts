@@ -21,7 +21,8 @@ export const pimRoleAzureApprovalReviewTool = buildApprovalReviewTool<RoleAzureA
   },
   noun: "PIM Azure-role",
   approvalListToolName: "pim_role_azure_approval_list",
-  listApprovals: (config, signal) => listRoleAzureApprovalRequests(config.armClient, signal),
+  listApprovals: (config, signal) =>
+    listRoleAzureApprovalRequests(config.armClient, signal).then((r) => r.items),
   approvalId: (r) => r.properties.approvalId,
   toRow: (r, approvalId, prefill) => {
     const expanded = r.properties.expandedProperties;

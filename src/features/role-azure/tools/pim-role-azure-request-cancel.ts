@@ -22,7 +22,8 @@ export const pimRoleAzureRequestCancelTool = buildCancelTool<RoleAzureAssignment
   },
   noun: "PIM Azure-role",
   requestListToolName: "pim_role_azure_request_list",
-  listPending: (config, signal) => listMyPendingRoleAzureRequests(config.armClient, signal),
+  listPending: (config, signal) =>
+    listMyPendingRoleAzureRequests(config.armClient, signal).then((r) => r.items),
   requestId: (r) => r.id,
   toRow: (r) => ({
     id: r.id,
