@@ -30,11 +30,16 @@ import {
   type SubmittedApprovalDecision,
 } from "../../enums.js";
 import { GraphClient, HttpMethod, parseResponse } from "../../graph/client.js";
+import {
+  graphPageParser,
+  paginateGraph,
+  type PageOptions,
+  type PagedResult,
+} from "../../http/paging.js";
 import { OAuthScope } from "../../scopes.js";
 import { assertScopes } from "../../scopes-runtime.js";
 import {
   AssignmentApprovalStage,
-  collectionSchema,
   RoleAssignmentApproval,
   RoleAssignmentApprovalSchema,
   RoleEntraActiveAssignment,
@@ -46,9 +51,9 @@ import {
   ScheduleInfo,
 } from "../../graph/types.js";
 
-const EligibleListSchema = collectionSchema(RoleEntraEligibleAssignmentSchema);
-const ActiveListSchema = collectionSchema(RoleEntraActiveAssignmentSchema);
-const RequestListSchema = collectionSchema(RoleEntraAssignmentRequestSchema);
+const eligiblePageParser = graphPageParser(RoleEntraEligibleAssignmentSchema, parseResponse);
+const activePageParser = graphPageParser(RoleEntraActiveAssignmentSchema, parseResponse);
+const requestPageParser = graphPageParser(RoleEntraAssignmentRequestSchema, parseResponse);
 
 /** Decision sent to a PIM approval step. */
 export type ReviewResult = SubmittedApprovalDecision;
@@ -80,12 +85,11 @@ export const LIST_ELIGIBLE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
 export async function listEligibleRoleEntraAssignments(
   client: GraphClient,
   signal: AbortSignal,
-): Promise<RoleEntraEligibleAssignment[]> {
+  opts?: PageOptions,
+): Promise<PagedResult<RoleEntraEligibleAssignment>> {
   await assertScopes(client.credential, LIST_ELIGIBLE_ROLE_ENTRA_SCOPES, signal);
   const path = `${ROLE_BASE}/roleEligibilitySchedules/filterByCurrentUser(on='principal')?$expand=roleDefinition,principal`;
-  const res = await client.request(HttpMethod.GET, path, signal);
-  const parsed = await parseResponse(res, EligibleListSchema, "GET", path);
-  return parsed.value;
+  return paginateGraph(client, path, eligiblePageParser, opts, signal);
 }
 
 /**
@@ -107,12 +111,11 @@ export const LIST_ACTIVE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
 export async function listActiveRoleEntraAssignments(
   client: GraphClient,
   signal: AbortSignal,
-): Promise<RoleEntraActiveAssignment[]> {
+  opts?: PageOptions,
+): Promise<PagedResult<RoleEntraActiveAssignment>> {
   await assertScopes(client.credential, LIST_ACTIVE_ROLE_ENTRA_SCOPES, signal);
   const path = `${ROLE_BASE}/roleAssignmentScheduleInstances/filterByCurrentUser(on='principal')?$expand=roleDefinition,principal`;
-  const res = await client.request(HttpMethod.GET, path, signal);
-  const parsed = await parseResponse(res, ActiveListSchema, "GET", path);
-  return parsed.value;
+  return paginateGraph(client, path, activePageParser, opts, signal);
 }
 
 /**
@@ -134,18 +137,20 @@ export const LIST_ROLE_ENTRA_REQUESTS_SCOPES: OAuthScope[][] = [
 export async function listMyRoleEntraRequests(
   client: GraphClient,
   signal: AbortSignal,
-): Promise<RoleEntraAssignmentRequest[]> {
+  opts?: PageOptions,
+): Promise<PagedResult<RoleEntraAssignmentRequest>> {
   await assertScopes(client.credential, LIST_ROLE_ENTRA_REQUESTS_SCOPES, signal);
-  return listRequests(client, CurrentUserFilter.Principal, signal);
+  return listRequests(client, CurrentUserFilter.Principal, signal, opts);
 }
 
 /** GET pending-approval role-assignment-schedule requests where I am an approver. */
 export async function listRoleEntraApprovalRequests(
   client: GraphClient,
   signal: AbortSignal,
-): Promise<RoleEntraAssignmentRequest[]> {
+  opts?: PageOptions,
+): Promise<PagedResult<RoleEntraAssignmentRequest>> {
   await assertScopes(client.credential, LIST_ROLE_ENTRA_REQUESTS_SCOPES, signal);
-  return listRequests(client, CurrentUserFilter.Approver, signal);
+  return listRequests(client, CurrentUserFilter.Approver, signal, opts);
 }
 
 /**
@@ -174,12 +179,11 @@ async function listRequests(
   client: GraphClient,
   on: CurrentUserFilter,
   signal: AbortSignal,
-): Promise<RoleEntraAssignmentRequest[]> {
+  opts?: PageOptions,
+): Promise<PagedResult<RoleEntraAssignmentRequest>> {
   const filter = encodeURIComponent("status eq 'PendingApproval'");
   const path = `${ROLE_BASE}/roleAssignmentScheduleRequests/filterByCurrentUser(on='${on}')?$expand=roleDefinition,principal&$filter=${filter}`;
-  const res = await client.request(HttpMethod.GET, path, signal);
-  const parsed = await parseResponse(res, RequestListSchema, "GET", path);
-  return parsed.value;
+  return paginateGraph(client, path, requestPageParser, opts, signal);
 }
 
 // ---------------------------------------------------------------------------

@@ -35,7 +35,8 @@ export const pimRoleEntraDeactivateTool = buildDeactivateTool<RoleEntraActiveAss
   },
   noun: "PIM Entra-role",
   activeListToolName: "pim_role_entra_active_list",
-  listActive: (config, signal) => listActiveRoleEntraAssignments(config.graphClient, signal),
+  listActive: (config, signal) =>
+    listActiveRoleEntraAssignments(config.graphClient, signal).then((r) => r.items),
   instanceId: (a) => a.id,
   toRow: (a, prefilledReason) => ({
     id: a.id,

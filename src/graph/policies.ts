@@ -8,10 +8,11 @@
 
 import { z } from "zod";
 
-import { GraphClient, HttpMethod, parseResponse } from "./client.js";
+import { GraphClient, parseResponse } from "./client.js";
 import { OAuthScope } from "../scopes.js";
 import { assertScopes } from "../scopes-runtime.js";
-import { collectionSchema, UnifiedRoleManagementPolicyExpirationRuleSchema } from "./types.js";
+import { UnifiedRoleManagementPolicyExpirationRuleSchema } from "./types.js";
+import { graphPageParser, paginateGraph } from "../http/paging.js";
 
 const RuleSchema = z
   .object({
@@ -34,7 +35,7 @@ const PolicyAssignmentSchema = z
   })
   .loose();
 
-const PolicyAssignmentsResponseSchema = collectionSchema(PolicyAssignmentSchema);
+const policyAssignmentPageParser = graphPageParser(PolicyAssignmentSchema, parseResponse);
 
 /** Identifier used by Microsoft Graph for the end-user assignment expiration rule. */
 const END_USER_ASSIGNMENT_RULE_ID = "Expiration_EndUser_Assignment";
@@ -70,10 +71,9 @@ export async function getGroupMaxDuration(
   const expand = encodeURIComponent("policy($expand=rules)");
   const path = `/policies/roleManagementPolicyAssignments?$filter=${filter}&$expand=${expand}`;
 
-  const response = await client.request(HttpMethod.GET, path, signal);
-  const parsed = await parseResponse(response, PolicyAssignmentsResponseSchema, "GET", path);
+  const response = await paginateGraph(client, path, policyAssignmentPageParser, undefined, signal);
 
-  const assignments = parsed.value;
+  const assignments = response.items;
   if (assignments.length === 0) {
     throw new Error(`no role-management policy assignment found for group ${groupId}`);
   }
@@ -128,10 +128,9 @@ export async function getDirectoryRoleMaxDuration(
   const expand = encodeURIComponent("policy($expand=rules)");
   const path = `/policies/roleManagementPolicyAssignments?$filter=${filter}&$expand=${expand}`;
 
-  const response = await client.request(HttpMethod.GET, path, signal);
-  const parsed = await parseResponse(response, PolicyAssignmentsResponseSchema, "GET", path);
+  const response = await paginateGraph(client, path, policyAssignmentPageParser, undefined, signal);
 
-  const assignments = parsed.value;
+  const assignments = response.items;
   if (assignments.length === 0) {
     throw new Error(
       `no role-management policy assignment found for directory role ${roleDefinitionId}`,

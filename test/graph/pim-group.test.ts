@@ -38,8 +38,8 @@ describe("graph/pim-group", () => {
     state.seedEligibility({ groupId: "group-1" });
     state.seedEligibility({ groupId: "group-2" });
     const result = await listEligibleGroupAssignments(client, testSignal());
-    expect(result).toHaveLength(2);
-    expect(result.map((e) => e.groupId)).toEqual(["group-1", "group-2"]);
+    expect(result.items).toHaveLength(2);
+    expect(result.items.map((e) => e.groupId)).toEqual(["group-1", "group-2"]);
   });
 
   it("listActiveGroupAssignments returns active instances", async () => {
@@ -50,8 +50,8 @@ describe("graph/pim-group", () => {
       accessId: "member",
     });
     const result = await listActiveGroupAssignments(client, testSignal());
-    expect(result).toHaveLength(1);
-    expect(result[0]?.id).toBe("active-1");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.id).toBe("active-1");
   });
 
   it("listMyGroupRequests filters by status='PendingApproval'", async () => {
@@ -72,14 +72,14 @@ describe("graph/pim-group", () => {
       },
     );
     const result = await listMyGroupRequests(client, testSignal());
-    expect(result.map((r) => r.id)).toEqual(["r1"]);
+    expect(result.items.map((r) => r.id)).toEqual(["r1"]);
   });
 
   it("listGroupApprovalRequests returns approver-side pending requests", async () => {
     state.seedPendingApproval({ groupId: "g1" });
     const result = await listGroupApprovalRequests(client, testSignal());
-    expect(result).toHaveLength(1);
-    expect(result[0]?.status).toBe("PendingApproval");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.status).toBe("PendingApproval");
   });
 
   it("requestGroupActivation POSTs the expected body", async () => {

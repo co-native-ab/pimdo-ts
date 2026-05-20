@@ -39,7 +39,8 @@ export const pimRoleEntraRequestCancelTool = buildCancelTool<RoleEntraAssignment
   },
   noun: "PIM Entra-role",
   requestListToolName: "pim_role_entra_request_list",
-  listPending: (config, signal) => listMyRoleEntraRequests(config.graphClient, signal),
+  listPending: (config, signal) =>
+    listMyRoleEntraRequests(config.graphClient, signal).then((r) => r.items),
   requestId: (r) => r.id,
   toRow: (r) => ({
     id: r.id,

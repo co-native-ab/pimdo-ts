@@ -6,12 +6,13 @@ import { z } from "zod";
 
 import { LIST_ELIGIBLE_GROUP_SCOPES, listEligibleGroupAssignments } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
+import { maxPagesSchema, pageSizeSchema, truncationWarning } from "../../../http/paging.js";
 import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { formatEligibleAssignmentsText } from "../format.js";
 
-const inputSchema = z.object({}).shape;
+const inputSchema = z.object({ pageSize: pageSizeSchema, maxPages: maxPagesSchema }).shape;
 
 const def: ToolDef = {
   name: "pim_group_eligible_list",
@@ -23,11 +24,19 @@ const def: ToolDef = {
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
-  return async (_args, { signal }) => {
+  return async (args, { signal }) => {
     try {
-      const items = await listEligibleGroupAssignments(config.graphClient, signal);
+      const result = await listEligibleGroupAssignments(config.graphClient, signal, {
+        pageSize: args.pageSize,
+        maxPages: args.maxPages,
+      });
       return {
-        content: [{ type: "text", text: formatEligibleAssignmentsText(items) }],
+        content: [
+          {
+            type: "text",
+            text: formatEligibleAssignmentsText(result.items) + truncationWarning(result),
+          },
+        ],
       };
     } catch (error) {
       return formatError(def.name, error);

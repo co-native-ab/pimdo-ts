@@ -6,13 +6,14 @@ import { z } from "zod";
 
 import { listActiveRoleAzureAssignments } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
+import { maxPagesSchema, pageSizeSchema, truncationWarning } from "../../../http/paging.js";
 import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import { ROLE_AZURE_SCOPES } from "../client.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { formatActiveAssignmentsText } from "../format.js";
 
-const inputSchema = z.object({}).shape;
+const inputSchema = z.object({ pageSize: pageSizeSchema, maxPages: maxPagesSchema }).shape;
 
 const def: ToolDef = {
   name: "pim_role_azure_active_list",
@@ -24,10 +25,20 @@ const def: ToolDef = {
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
-  return async (_args, { signal }) => {
+  return async (args, { signal }) => {
     try {
-      const items = await listActiveRoleAzureAssignments(config.armClient, signal);
-      return { content: [{ type: "text", text: formatActiveAssignmentsText(items) }] };
+      const result = await listActiveRoleAzureAssignments(config.armClient, signal, {
+        pageSize: args.pageSize,
+        maxPages: args.maxPages,
+      });
+      return {
+        content: [
+          {
+            type: "text",
+            text: formatActiveAssignmentsText(result.items) + truncationWarning(result),
+          },
+        ],
+      };
     } catch (error) {
       return formatError(def.name, error);
     }

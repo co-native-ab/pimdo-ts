@@ -174,9 +174,8 @@ describe("end-to-end mock enforcement (defence in depth)", () => {
       url,
       bypassCredential([OAuthScope.RoleEligibilityScheduleReadDirectory]),
     );
-    await expect(listEligibleRoleEntraAssignments(client, testSignal())).resolves.toBeInstanceOf(
-      Array,
-    );
+    const result = await listEligibleRoleEntraAssignments(client, testSignal());
+    expect(result.items).toBeInstanceOf(Array);
   });
 
   it("ARM mock returns 403 when bearer scopes miss the user_impersonation scope", async () => {
@@ -188,8 +187,7 @@ describe("end-to-end mock enforcement (defence in depth)", () => {
 
   it("ARM mock accepts a request with user_impersonation granted", async () => {
     const client = new ArmClient(armUrl, bypassCredential([OAuthScope.ArmUserImpersonation]));
-    await expect(listEligibleRoleAzureAssignments(client, testSignal())).resolves.toBeInstanceOf(
-      Array,
-    );
+    const result = await listEligibleRoleAzureAssignments(client, testSignal());
+    expect(result.items).toBeInstanceOf(Array);
   });
 });

@@ -6,12 +6,13 @@ import { z } from "zod";
 
 import { LIST_ACTIVE_GROUP_SCOPES, listActiveGroupAssignments } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
+import { maxPagesSchema, pageSizeSchema, truncationWarning } from "../../../http/paging.js";
 import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { formatActiveAssignmentsText } from "../format.js";
 
-const inputSchema = z.object({}).shape;
+const inputSchema = z.object({ pageSize: pageSizeSchema, maxPages: maxPagesSchema }).shape;
 
 const def: ToolDef = {
   name: "pim_group_active_list",
@@ -23,11 +24,19 @@ const def: ToolDef = {
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
-  return async (_args, { signal }) => {
+  return async (args, { signal }) => {
     try {
-      const items = await listActiveGroupAssignments(config.graphClient, signal);
+      const result = await listActiveGroupAssignments(config.graphClient, signal, {
+        pageSize: args.pageSize,
+        maxPages: args.maxPages,
+      });
       return {
-        content: [{ type: "text", text: formatActiveAssignmentsText(items) }],
+        content: [
+          {
+            type: "text",
+            text: formatActiveAssignmentsText(result.items) + truncationWarning(result),
+          },
+        ],
       };
     } catch (error) {
       return formatError(def.name, error);

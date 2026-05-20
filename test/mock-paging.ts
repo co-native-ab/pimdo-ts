@@ -55,12 +55,7 @@ export function buildPage<T>(
   items: readonly T[],
   req: http.IncomingMessage,
   res: http.ServerResponse,
-  errorResponse: (
-    res: http.ServerResponse,
-    status: number,
-    code: string,
-    message: string,
-  ) => void,
+  errorResponse: (res: http.ServerResponse, status: number, code: string, message: string) => void,
 ): PageResult<T> {
   const rawUrl = req.url ?? "/";
   const parsed = new URL(rawUrl, `http://${req.headers.host ?? "127.0.0.1"}`);
@@ -131,17 +126,12 @@ export function buildPage<T>(
  * and return whether the response was written. Callers `return` after
  * calling so the route handler short-circuits.
  */
-export function respondPaged<T>(
-  items: readonly T[],
+export function respondPaged(
+  items: readonly unknown[],
   req: http.IncomingMessage,
   res: http.ServerResponse,
   nextKey: typeof GRAPH_NEXT_LINK | typeof ARM_NEXT_LINK,
-  errorResponse: (
-    res: http.ServerResponse,
-    status: number,
-    code: string,
-    message: string,
-  ) => void,
+  errorResponse: (res: http.ServerResponse, status: number, code: string, message: string) => void,
 ): void {
   const page = buildPage(items, req, res, errorResponse);
   if (page.errored) return;

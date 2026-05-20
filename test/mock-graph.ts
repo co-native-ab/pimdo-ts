@@ -332,7 +332,13 @@ async function handleRequest(
     pathname === `${PIM}/assignmentScheduleInstances/filterByCurrentUser(on='principal')`
   ) {
     if (!enforceScopes(req, res, LIST_ACTIVE_GROUP_SCOPES, errorResponse)) return;
-    return respondPaged(state.assignmentScheduleInstances, req, res, GRAPH_NEXT_LINK, errorResponse);
+    return respondPaged(
+      state.assignmentScheduleInstances,
+      req,
+      res,
+      GRAPH_NEXT_LINK,
+      errorResponse,
+    );
   }
 
   // assignmentScheduleRequests/filterByCurrentUser(on='principal'|'approver')

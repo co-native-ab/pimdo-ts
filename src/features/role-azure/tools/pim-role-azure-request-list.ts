@@ -12,9 +12,14 @@ import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { classifyStalePrincipalRequests, includeStaleField } from "../../../tools/pim/stale.js";
 import { staleHiddenTrailer } from "../../../tools/pim/format-shared.js";
+import { maxPagesSchema, pageSizeSchema, truncationWarning } from "../../../http/paging.js";
 import { formatRequestsText, scopeFromAssignment } from "../format.js";
 
-const inputSchema = z.object({ includeStale: includeStaleField }).shape;
+const inputSchema = z.object({
+  includeStale: includeStaleField,
+  pageSize: pageSizeSchema,
+  maxPages: maxPagesSchema,
+}).shape;
 
 function azureTargetKey(roleDefinitionId: string, scope: string | undefined): string {
   return `${roleDefinitionId}@${scope ?? ""}`;
@@ -36,7 +41,11 @@ const def: ToolDef = {
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
   return async (args, { signal }) => {
     try {
-      const items = await listMyRoleAzureRequests(config.armClient, signal);
+      const result = await listMyRoleAzureRequests(config.armClient, signal, {
+        pageSize: args.pageSize,
+        maxPages: args.maxPages,
+      });
+      const items = result.items;
       const stale = await classifyStalePrincipalRequests(
         items,
         {
@@ -46,7 +55,7 @@ function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
           liveEligibilityKeys: async (sig) => {
             const eligibilities = await listEligibleRoleAzureAssignments(config.armClient, sig);
             return new Set(
-              eligibilities.map((e) =>
+              eligibilities.items.map((e) =>
                 azureTargetKey(e.properties.roleDefinitionId, scopeFromAssignment(e)),
               ),
             );
@@ -54,15 +63,18 @@ function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
         },
         signal,
       );
+      const warning = truncationWarning(result);
       const includeStale = args.includeStale ?? false;
       if (includeStale) {
-        return { content: [{ type: "text", text: formatRequestsText(items, "mine", stale) }] };
+        return {
+          content: [{ type: "text", text: formatRequestsText(items, "mine", stale) + warning }],
+        };
       }
       const visible = items.filter((it) => !stale.has(it.id));
       const body = formatRequestsText(visible, "mine");
       const trailer = staleHiddenTrailer(stale.size, "pim_role_azure_request_cancel");
       return {
-        content: [{ type: "text", text: trailer ? `${body}\n${trailer}` : body }],
+        content: [{ type: "text", text: (trailer ? `${body}\n${trailer}` : body) + warning }],
       };
     } catch (error) {
       return formatError(def.name, error);

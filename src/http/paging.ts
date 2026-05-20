@@ -272,7 +272,10 @@ export const maxPagesSchema = z
  * to their output when `truncated` is true. Includes both the items-so-far
  * count and a concrete suggestion the assistant can act on.
  */
-export function truncationWarning(result: PagedResult<unknown>, defaultMaxPages = DEFAULT_MAX_PAGES): string {
+export function truncationWarning(
+  result: PagedResult<unknown>,
+  defaultMaxPages = DEFAULT_MAX_PAGES,
+): string {
   if (!result.truncated) return "";
   const suggested = Math.min(MAX_MAX_PAGES, Math.max(defaultMaxPages * 2, result.pagesFetched + 5));
   return (

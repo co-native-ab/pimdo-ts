@@ -24,13 +24,18 @@ import {
   type SubmittedApprovalDecision,
 } from "../../enums.js";
 import { GraphClient, HttpMethod, parseResponse } from "../../graph/client.js";
+import {
+  graphPageParser,
+  paginateGraph,
+  type PageOptions,
+  type PagedResult,
+} from "../../http/paging.js";
 import { OAuthScope } from "../../scopes.js";
 import { assertScopes } from "../../scopes-runtime.js";
 import {
   AssignmentApproval,
   AssignmentApprovalSchema,
   AssignmentApprovalStage,
-  collectionSchema,
   GroupActiveAssignment,
   GroupActiveAssignmentSchema,
   GroupAssignmentRequest,
@@ -40,9 +45,9 @@ import {
   ScheduleInfo,
 } from "../../graph/types.js";
 
-const EligibleListSchema = collectionSchema(GroupEligibleAssignmentSchema);
-const ActiveListSchema = collectionSchema(GroupActiveAssignmentSchema);
-const RequestListSchema = collectionSchema(GroupAssignmentRequestSchema);
+const eligiblePageParser = graphPageParser(GroupEligibleAssignmentSchema, parseResponse);
+const activePageParser = graphPageParser(GroupActiveAssignmentSchema, parseResponse);
+const requestPageParser = graphPageParser(GroupAssignmentRequestSchema, parseResponse);
 
 /** Decision sent to a PIM approval stage. */
 export type ReviewResult = SubmittedApprovalDecision;
@@ -72,12 +77,11 @@ export const LIST_ELIGIBLE_GROUP_SCOPES: OAuthScope[][] = [
 export async function listEligibleGroupAssignments(
   client: GraphClient,
   signal: AbortSignal,
-): Promise<GroupEligibleAssignment[]> {
+  opts?: PageOptions,
+): Promise<PagedResult<GroupEligibleAssignment>> {
   await assertScopes(client.credential, LIST_ELIGIBLE_GROUP_SCOPES, signal);
   const path = `${PRIVILEGED_BASE}/eligibilitySchedules/filterByCurrentUser(on='principal')?$expand=group,principal`;
-  const res = await client.request(HttpMethod.GET, path, signal);
-  const parsed = await parseResponse(res, EligibleListSchema, "GET", path);
-  return parsed.value;
+  return paginateGraph(client, path, eligiblePageParser, opts, signal);
 }
 
 /**
@@ -99,12 +103,11 @@ export const LIST_ACTIVE_GROUP_SCOPES: OAuthScope[][] = [
 export async function listActiveGroupAssignments(
   client: GraphClient,
   signal: AbortSignal,
-): Promise<GroupActiveAssignment[]> {
+  opts?: PageOptions,
+): Promise<PagedResult<GroupActiveAssignment>> {
   await assertScopes(client.credential, LIST_ACTIVE_GROUP_SCOPES, signal);
   const path = `${PRIVILEGED_BASE}/assignmentScheduleInstances/filterByCurrentUser(on='principal')?$expand=group,principal`;
-  const res = await client.request(HttpMethod.GET, path, signal);
-  const parsed = await parseResponse(res, ActiveListSchema, "GET", path);
-  return parsed.value;
+  return paginateGraph(client, path, activePageParser, opts, signal);
 }
 
 /**
@@ -158,18 +161,20 @@ export const APPROVE_GROUP_SCOPES: OAuthScope[][] = [
 export async function listMyGroupRequests(
   client: GraphClient,
   signal: AbortSignal,
-): Promise<GroupAssignmentRequest[]> {
+  opts?: PageOptions,
+): Promise<PagedResult<GroupAssignmentRequest>> {
   await assertScopes(client.credential, LIST_GROUP_REQUESTS_SCOPES, signal);
-  return listRequests(client, CurrentUserFilter.Principal, signal);
+  return listRequests(client, CurrentUserFilter.Principal, signal, opts);
 }
 
 /** GET pending-approval assignment-schedule requests where I am an approver. */
 export async function listGroupApprovalRequests(
   client: GraphClient,
   signal: AbortSignal,
-): Promise<GroupAssignmentRequest[]> {
+  opts?: PageOptions,
+): Promise<PagedResult<GroupAssignmentRequest>> {
   await assertScopes(client.credential, LIST_GROUP_REQUESTS_SCOPES, signal);
-  return listRequests(client, CurrentUserFilter.Approver, signal);
+  return listRequests(client, CurrentUserFilter.Approver, signal, opts);
 }
 
 /**
@@ -199,12 +204,11 @@ async function listRequests(
   client: GraphClient,
   on: CurrentUserFilter,
   signal: AbortSignal,
-): Promise<GroupAssignmentRequest[]> {
+  opts?: PageOptions,
+): Promise<PagedResult<GroupAssignmentRequest>> {
   const filter = encodeURIComponent("status eq 'PendingApproval'");
   const path = `${PRIVILEGED_BASE}/assignmentScheduleRequests/filterByCurrentUser(on='${on}')?$expand=group,principal&$filter=${filter}`;
-  const res = await client.request(HttpMethod.GET, path, signal);
-  const parsed = await parseResponse(res, RequestListSchema, "GET", path);
-  return parsed.value;
+  return paginateGraph(client, path, requestPageParser, opts, signal);
 }
 
 // ---------------------------------------------------------------------------

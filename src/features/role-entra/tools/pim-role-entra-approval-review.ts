@@ -32,7 +32,8 @@ export const pimRoleEntraApprovalReviewTool = buildApprovalReviewTool<RoleEntraA
   },
   noun: "PIM Entra-role",
   approvalListToolName: "pim_role_entra_approval_list",
-  listApprovals: (config, signal) => listRoleEntraApprovalRequests(config.graphClient, signal),
+  listApprovals: (config, signal) =>
+    listRoleEntraApprovalRequests(config.graphClient, signal).then((r) => r.items),
   approvalId: (r) => r.approvalId,
   toRow: (r, approvalId, prefill) => ({
     id: approvalId,

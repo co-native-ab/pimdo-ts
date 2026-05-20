@@ -6,12 +6,13 @@ import { z } from "zod";
 
 import { LIST_ACTIVE_ROLE_ENTRA_SCOPES, listActiveRoleEntraAssignments } from "../client.js";
 import type { ServerConfig } from "../../../server-config.js";
+import { maxPagesSchema, pageSizeSchema, truncationWarning } from "../../../http/paging.js";
 import { deriveRequiredScopes } from "../../../scopes-runtime.js";
 import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { formatActiveAssignmentsText } from "../format.js";
 
-const inputSchema = z.object({}).shape;
+const inputSchema = z.object({ pageSize: pageSizeSchema, maxPages: maxPagesSchema }).shape;
 
 const def: ToolDef = {
   name: "pim_role_entra_active_list",
@@ -23,10 +24,20 @@ const def: ToolDef = {
 };
 
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
-  return async (_args, { signal }) => {
+  return async (args, { signal }) => {
     try {
-      const items = await listActiveRoleEntraAssignments(config.graphClient, signal);
-      return { content: [{ type: "text", text: formatActiveAssignmentsText(items) }] };
+      const result = await listActiveRoleEntraAssignments(config.graphClient, signal, {
+        pageSize: args.pageSize,
+        maxPages: args.maxPages,
+      });
+      return {
+        content: [
+          {
+            type: "text",
+            text: formatActiveAssignmentsText(result.items) + truncationWarning(result),
+          },
+        ],
+      };
     } catch (error) {
       return formatError(def.name, error);
     }
