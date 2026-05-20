@@ -22,6 +22,7 @@
 import http from "node:http";
 
 import { jsonResponse, readJson, startMockServer } from "./mock-server-base.js";
+import { ARM_NEXT_LINK, respondPaged } from "./mock-paging.js";
 import { enforceScopes } from "./mock-scope-enforcement.js";
 import { ROLE_AZURE_SCOPES } from "../src/features/role-azure/client.js";
 import type {
@@ -339,7 +340,7 @@ async function handleRequest(
     arm.scope === "" &&
     arm.resourcePath === "roleEligibilityScheduleInstances"
   ) {
-    return jsonResponse(res, 200, { value: state.eligibilityInstances });
+    return respondPaged(state.eligibilityInstances, req, res, ARM_NEXT_LINK, errorResponse);
   }
 
   // GET roleAssignmentScheduleInstances (per scope) — asTarget()
@@ -349,7 +350,7 @@ async function handleRequest(
     arm.scope !== ""
   ) {
     const items = state.activeInstancesByScope.get(arm.scope) ?? [];
-    return jsonResponse(res, 200, { value: items });
+    return respondPaged(items, req, res, ARM_NEXT_LINK, errorResponse);
   }
 
   // GET roleAssignmentScheduleRequests (tenant) — asTarget()|asApprover()
@@ -359,9 +360,9 @@ async function handleRequest(
     arm.resourcePath === "roleAssignmentScheduleRequests"
   ) {
     if (filter.includes("asApprover")) {
-      return jsonResponse(res, 200, { value: state.approverRequests });
+      return respondPaged(state.approverRequests, req, res, ARM_NEXT_LINK, errorResponse);
     }
-    return jsonResponse(res, 200, { value: state.myRequests });
+    return respondPaged(state.myRequests, req, res, ARM_NEXT_LINK, errorResponse);
   }
 
   // POST roleAssignmentScheduleRequests/{name}/cancel
@@ -424,7 +425,7 @@ async function handleRequest(
         ],
       },
     }));
-    return jsonResponse(res, 200, { value });
+    return respondPaged(value, req, res, ARM_NEXT_LINK, errorResponse);
   }
 
   errorResponse(res, 404, "NotFound", `mock arm: no route for ${method} ${pathname}`);

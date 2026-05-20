@@ -22,6 +22,7 @@
 import http from "node:http";
 
 import { jsonResponse, readJson, startMockServer } from "./mock-server-base.js";
+import { GRAPH_NEXT_LINK, respondPaged } from "./mock-paging.js";
 import { enforceScopes } from "./mock-scope-enforcement.js";
 import {
   APPROVE_GROUP_SCOPES,
@@ -323,7 +324,7 @@ async function handleRequest(
     pathname === `${PIM}/eligibilitySchedules/filterByCurrentUser(on='principal')`
   ) {
     if (!enforceScopes(req, res, LIST_ELIGIBLE_GROUP_SCOPES, errorResponse)) return;
-    return jsonResponse(res, 200, { value: state.eligibilitySchedules });
+    return respondPaged(state.eligibilitySchedules, req, res, GRAPH_NEXT_LINK, errorResponse);
   }
 
   if (
@@ -331,7 +332,7 @@ async function handleRequest(
     pathname === `${PIM}/assignmentScheduleInstances/filterByCurrentUser(on='principal')`
   ) {
     if (!enforceScopes(req, res, LIST_ACTIVE_GROUP_SCOPES, errorResponse)) return;
-    return jsonResponse(res, 200, { value: state.assignmentScheduleInstances });
+    return respondPaged(state.assignmentScheduleInstances, req, res, GRAPH_NEXT_LINK, errorResponse);
   }
 
   // assignmentScheduleRequests/filterByCurrentUser(on='principal'|'approver')
@@ -345,7 +346,7 @@ async function handleRequest(
     const all = on === "principal" ? state.myRequests : state.approverRequests;
     const filter = parsed.searchParams.get("$filter");
     const filtered = applyStatusFilter(all, filter);
-    return jsonResponse(res, 200, { value: filtered });
+    return respondPaged(filtered, req, res, GRAPH_NEXT_LINK, errorResponse);
   }
 
   // POST assignmentScheduleRequests/{id}/cancel
@@ -442,7 +443,7 @@ async function handleRequest(
           ],
         },
       }));
-      return jsonResponse(res, 200, { value });
+      return respondPaged(value, req, res, GRAPH_NEXT_LINK, errorResponse);
     }
     const groupId = extractScopeIdFromPolicyFilter(filter);
     const matches = groupId
@@ -461,7 +462,7 @@ async function handleRequest(
         ],
       },
     }));
-    return jsonResponse(res, 200, { value });
+    return respondPaged(value, req, res, GRAPH_NEXT_LINK, errorResponse);
   }
 
   // ---------------------------------------------------------------------------
@@ -475,7 +476,13 @@ async function handleRequest(
     pathname === `${ROLE}/roleEligibilitySchedules/filterByCurrentUser(on='principal')`
   ) {
     if (!enforceScopes(req, res, LIST_ELIGIBLE_ROLE_ENTRA_SCOPES, errorResponse)) return;
-    return jsonResponse(res, 200, { value: state.roleEntraEligibilitySchedules });
+    return respondPaged(
+      state.roleEntraEligibilitySchedules,
+      req,
+      res,
+      GRAPH_NEXT_LINK,
+      errorResponse,
+    );
   }
 
   if (
@@ -483,7 +490,13 @@ async function handleRequest(
     pathname === `${ROLE}/roleAssignmentScheduleInstances/filterByCurrentUser(on='principal')`
   ) {
     if (!enforceScopes(req, res, LIST_ACTIVE_ROLE_ENTRA_SCOPES, errorResponse)) return;
-    return jsonResponse(res, 200, { value: state.roleEntraAssignmentScheduleInstances });
+    return respondPaged(
+      state.roleEntraAssignmentScheduleInstances,
+      req,
+      res,
+      GRAPH_NEXT_LINK,
+      errorResponse,
+    );
   }
 
   const roleReqListMatch =
@@ -496,7 +509,7 @@ async function handleRequest(
     const all = on === "principal" ? state.roleEntraMyRequests : state.roleEntraApproverRequests;
     const filter = parsed.searchParams.get("$filter");
     const filtered = applyRoleEntraStatusFilter(all, filter);
-    return jsonResponse(res, 200, { value: filtered });
+    return respondPaged(filtered, req, res, GRAPH_NEXT_LINK, errorResponse);
   }
 
   // POST roleAssignmentScheduleRequests/{id}/cancel (Entra role)
