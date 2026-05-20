@@ -68,6 +68,41 @@ export interface PagedResult<T> {
   pagesFetched: number;
 }
 
+/**
+ * Result of an upstream call that cannot be paginated. Used for the
+ * Graph `filterByCurrentUser(on='approver')` endpoints, which are
+ * hard-capped at {@link FILTER_BY_CURRENT_USER_CAP} items by Microsoft
+ * Graph and never emit `@odata.nextLink`. The `cappedAt50` flag mirrors
+ * the heuristic the formatter uses to warn the user: a response of
+ * exactly 50 items is suspicious, and may indicate truncated data.
+ */
+export interface LimitedResult<T> {
+  items: T[];
+  cappedAt50: boolean;
+}
+
+/**
+ * The empirically observed hard cap that real Microsoft Graph applies
+ * to its `filterByCurrentUser(...)` function endpoints. Re-exported
+ * from here so test fixtures and the format helpers can share one
+ * source of truth.
+ */
+export const FILTER_BY_CURRENT_USER_CAP = 50;
+
+/**
+ * Render the heuristic warning printed by approver-side list
+ * formatters when an upstream `filterByCurrentUser` response came
+ * back exactly at the cap. Returns the empty string otherwise so
+ * formatters can unconditionally concatenate the result.
+ */
+export function filterByCurrentUserCapWarning(result: LimitedResult<unknown>): string {
+  if (!result.cappedAt50) return "";
+  return (
+    `\n! Microsoft Graph capped this response at ${String(FILTER_BY_CURRENT_USER_CAP)} item(s) ` +
+    `(filterByCurrentUser has no pagination on the approver side); more pending approvals may exist.`
+  );
+}
+
 function resolveOpts(opts: PageOptions | undefined): {
   pageSize: number;
   maxPages: number;
@@ -256,41 +291,15 @@ export function mergePaged<T>(a: PagedResult<T>, b: PagedResult<T>): PagedResult
   };
 }
 
-/** Zod schema fragment for the tool-input `pageSize` parameter. */
-export const pageSizeSchema = z
-  .number()
-  .int()
-  .min(1)
-  .max(MAX_PAGE_SIZE)
-  .optional()
-  .describe(
-    `Maximum items per page sent to the upstream API (1-${String(MAX_PAGE_SIZE)}, default ${String(DEFAULT_PAGE_SIZE)}). Larger values reduce round-trips on big tenants.`,
-  );
-
-/** Zod schema fragment for the tool-input `maxPages` parameter. */
-export const maxPagesSchema = z
-  .number()
-  .int()
-  .min(1)
-  .max(MAX_MAX_PAGES)
-  .optional()
-  .describe(
-    `Maximum number of pages to fetch before reporting the result truncated (1-${String(MAX_MAX_PAGES)}, default ${String(DEFAULT_MAX_PAGES)}). When truncated, re-run with a higher value or a narrower filter.`,
-  );
-
 /**
  * Render a one-line truncation warning that list-tool formatters append
  * to their output when `truncated` is true. Includes both the items-so-far
  * count and a concrete suggestion the assistant can act on.
  */
-export function truncationWarning(
-  result: PagedResult<unknown>,
-  defaultMaxPages = DEFAULT_MAX_PAGES,
-): string {
+export function truncationWarning(result: PagedResult<unknown>): string {
   if (!result.truncated) return "";
-  const suggested = Math.min(MAX_MAX_PAGES, Math.max(defaultMaxPages * 2, result.pagesFetched + 5));
   return (
     `\n! Truncated: showing ${String(result.items.length)} item(s) after ${String(result.pagesFetched)} page(s); ` +
-    `more results are available. Re-run with maxPages=${String(suggested)} or a narrower filter.`
+    `more results are available. The internal cap of ${String(DEFAULT_PAGE_SIZE * DEFAULT_MAX_PAGES)} items was hit — narrow the query or contact maintainers to raise the cap.`
   );
 }

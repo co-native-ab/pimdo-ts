@@ -139,3 +139,47 @@ export function respondPaged(
   if (page.nextLink !== undefined) body[nextKey] = page.nextLink;
   jsonResponse(res, 200, body);
 }
+
+/**
+ * Hard server-side cap used by real Microsoft Graph `filterByCurrentUser`
+ * functions: at most 50 items, **never** an `@odata.nextLink`. Empirically
+ * the only way to see more is to call the underlying collection with an
+ * explicit `?$filter=principalId eq '<oid>'` (see
+ * microsoftgraph/microsoft-graph-docs#15755).
+ */
+export const FILTER_BY_CURRENT_USER_CAP = 50;
+
+/**
+ * Mirror of the real Graph `filterByCurrentUser` contract for tests:
+ *
+ *   - Reject `$top`, `$skip`, `$skiptoken` with 400 (the real endpoint
+ *     ignores them silently, but a 400 is the strongest signal we can
+ *     emit to lock the contract in tests — the production code MUST NOT
+ *     send any of these to a filterByCurrentUser path).
+ *   - Truncate `items` at {@link FILTER_BY_CURRENT_USER_CAP}.
+ *   - Never emit a continuation URL, even when truncated.
+ *
+ * Returns true when a response (success or 400) was written and the
+ * route handler should `return`.
+ */
+export function respondFilterByCurrentUserCapped(
+  items: readonly unknown[],
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  errorResponse: (res: http.ServerResponse, status: number, code: string, message: string) => void,
+): void {
+  const rawUrl = req.url ?? "/";
+  const parsed = new URL(rawUrl, `http://${req.headers.host ?? "127.0.0.1"}`);
+  for (const forbidden of ["$top", "$skip", "$skiptoken"] as const) {
+    if (parsed.searchParams.has(forbidden)) {
+      errorResponse(
+        res,
+        400,
+        "InvalidPagingRequest",
+        `mock filterByCurrentUser: ${forbidden} is not supported on this endpoint (real Graph caps at ${String(FILTER_BY_CURRENT_USER_CAP)} items with no nextLink; the production client must not send paging params here)`,
+      );
+      return;
+    }
+  }
+  jsonResponse(res, 200, { value: items.slice(0, FILTER_BY_CURRENT_USER_CAP) });
+}

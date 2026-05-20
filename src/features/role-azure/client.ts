@@ -42,13 +42,7 @@ import {
   type ArmScheduleInfo,
 } from "../../arm/types.js";
 import { ArmScheduleRequestType, type SubmittedApprovalDecision } from "../../enums.js";
-import {
-  armPageParser,
-  mergePaged,
-  paginateArm,
-  type PageOptions,
-  type PagedResult,
-} from "../../http/paging.js";
+import { armPageParser, mergePaged, paginateArm, type PagedResult } from "../../http/paging.js";
 
 const eligiblePageParser = armPageParser(RoleAzureEligibleAssignmentSchema, parseResponse);
 const activePageParser = armPageParser(RoleAzureActiveAssignmentSchema, parseResponse);
@@ -86,14 +80,13 @@ export const ROLE_AZURE_SCOPES: OAuthScope[][] = [[OAuthScope.ArmUserImpersonati
 export async function listEligibleRoleAzureAssignments(
   client: ArmClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<RoleAzureEligibleAssignment>> {
   await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
   const filter = encodeURIComponent("asTarget()");
   const path =
     `/providers/${PROVIDER}/roleEligibilityScheduleInstances` +
     `?api-version=${ARM_ROLES_API_VERSION}&$filter=${filter}`;
-  return paginateArm(client, path, eligiblePageParser, opts, signal);
+  return paginateArm(client, path, eligiblePageParser, undefined, signal);
 }
 
 /**
@@ -133,10 +126,9 @@ function isActiveStatus(status: string | undefined): boolean {
 export async function listActiveRoleAzureAssignments(
   client: ArmClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<RoleAzureActiveAssignment>> {
   await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
-  const eligibilityResult = await listEligibleRoleAzureAssignments(client, signal, opts);
+  const eligibilityResult = await listEligibleRoleAzureAssignments(client, signal);
   const scopes = new Set<string>();
   for (const e of eligibilityResult.items) {
     const scope = e.properties.expandedProperties?.scope?.id ?? e.properties.scope;
@@ -160,7 +152,7 @@ export async function listActiveRoleAzureAssignments(
     const path =
       `/${trimLeadingSlash(scope)}/providers/${PROVIDER}/roleAssignmentScheduleInstances` +
       `?api-version=${ARM_ROLES_API_VERSION}&$filter=${filter}`;
-    const page = await paginateArm(client, path, activePageParser, opts, signal);
+    const page = await paginateArm(client, path, activePageParser, undefined, signal);
     const filtered: PagedResult<RoleAzureActiveAssignment> = {
       items: page.items.filter(
         (item) =>
@@ -180,33 +172,30 @@ export async function listActiveRoleAzureAssignments(
 export async function listMyRoleAzureRequests(
   client: ArmClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<RoleAzureAssignmentRequest>> {
   await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
-  return listRequests(client, "asTarget()", signal, opts);
+  return listRequests(client, "asTarget()", signal);
 }
 
 /** GET role-assignment-schedule requests where the signed-in user is an approver. */
 export async function listRoleAzureApprovalRequests(
   client: ArmClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<RoleAzureAssignmentRequest>> {
   await assertScopes(client.credential, ROLE_AZURE_SCOPES, signal);
-  return listRequests(client, "asApprover()", signal, opts);
+  return listRequests(client, "asApprover()", signal);
 }
 
 async function listRequests(
   client: ArmClient,
   filterExpr: "asTarget()" | "asApprover()",
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<RoleAzureAssignmentRequest>> {
   const filter = encodeURIComponent(filterExpr);
   const path =
     `/providers/${PROVIDER}/roleAssignmentScheduleRequests` +
     `?api-version=${ARM_ROLES_API_VERSION}&$filter=${filter}`;
-  return paginateArm(client, path, requestPageParser, opts, signal);
+  return paginateArm(client, path, requestPageParser, undefined, signal);
 }
 
 // ---------------------------------------------------------------------------
@@ -296,9 +285,8 @@ async function putScheduleRequest(
 export async function listMyPendingRoleAzureRequests(
   client: ArmClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<RoleAzureAssignmentRequest>> {
-  const all = await listMyRoleAzureRequests(client, signal, opts);
+  const all = await listMyRoleAzureRequests(client, signal);
   return {
     items: all.items.filter((r) => r.properties.status === "PendingApproval"),
     truncated: all.truncated,
@@ -318,9 +306,8 @@ export async function listMyPendingRoleAzureRequests(
 export async function listPendingRoleAzureApprovalRequests(
   client: ArmClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<RoleAzureAssignmentRequest>> {
-  const all = await listRoleAzureApprovalRequests(client, signal, opts);
+  const all = await listRoleAzureApprovalRequests(client, signal);
   return {
     items: all.items.filter((r) => r.properties.status === "PendingApproval"),
     truncated: all.truncated,

@@ -22,7 +22,7 @@
 import http from "node:http";
 
 import { jsonResponse, readJson, startMockServer } from "./mock-server-base.js";
-import { GRAPH_NEXT_LINK, respondPaged } from "./mock-paging.js";
+import { GRAPH_NEXT_LINK, respondFilterByCurrentUserCapped, respondPaged } from "./mock-paging.js";
 import { enforceScopes } from "./mock-scope-enforcement.js";
 import {
   APPROVE_GROUP_SCOPES,
@@ -154,6 +154,9 @@ export class MockGraphState {
 
   /** Captured cancel calls (assignment-schedule requests). */
   cancelledRequests: { method: "POST"; path: string }[] = [];
+
+  /** Number of times `GET /me` has been served (for cache-invariant tests). */
+  meCallCount = 0;
 
   private nextId = 1;
 
@@ -313,18 +316,62 @@ async function handleRequest(
   // GET /me
   if (method === "GET" && pathname === "/me") {
     if (!enforceScopes(req, res, GET_MY_OBJECT_ID_SCOPES, errorResponse)) return;
+    state.meCallCount += 1;
     return jsonResponse(res, 200, state.me);
   }
 
   // /identityGovernance/privilegedAccess/group/...
   const PIM = "/identityGovernance/privilegedAccess/group";
 
+  // ---------------------------------------------------------------------------
+  // Principal-side reads: pimdo issues these against the **unfiltered**
+  // collection with `?$filter=principalId eq '<my-oid>'` because the real
+  // Graph `filterByCurrentUser` functions are hard-capped at 50 items and
+  // never emit `@odata.nextLink` (microsoftgraph/microsoft-graph-docs#15755).
+  // The mock honours `$top` + emits `@odata.nextLink` on these paths so
+  // the production paginator is exercised end-to-end.
+  // ---------------------------------------------------------------------------
+
+  if (method === "GET" && pathname === `${PIM}/eligibilitySchedules`) {
+    if (!enforceScopes(req, res, LIST_ELIGIBLE_GROUP_SCOPES, errorResponse)) return;
+    const items = applyPrincipalIdFilter(
+      state.eligibilitySchedules,
+      parsed.searchParams.get("$filter"),
+      (e) => e.principalId,
+    );
+    return respondPaged(items, req, res, GRAPH_NEXT_LINK, errorResponse);
+  }
+
+  if (method === "GET" && pathname === `${PIM}/assignmentScheduleInstances`) {
+    if (!enforceScopes(req, res, LIST_ACTIVE_GROUP_SCOPES, errorResponse)) return;
+    const items = applyPrincipalIdFilter(
+      state.assignmentScheduleInstances,
+      parsed.searchParams.get("$filter"),
+      (e) => e.principalId,
+    );
+    return respondPaged(items, req, res, GRAPH_NEXT_LINK, errorResponse);
+  }
+
+  if (method === "GET" && pathname === `${PIM}/assignmentScheduleRequests`) {
+    if (!enforceScopes(req, res, LIST_GROUP_REQUESTS_SCOPES, errorResponse)) return;
+    const filter = parsed.searchParams.get("$filter");
+    const byPrincipal = applyPrincipalIdFilter(state.myRequests, filter, (e) => e.principalId);
+    const filtered = applyStatusFilter(byPrincipal, filter);
+    return respondPaged(filtered, req, res, GRAPH_NEXT_LINK, errorResponse);
+  }
+
+  // ---------------------------------------------------------------------------
+  // filterByCurrentUser routes — locked to the real-Graph 50-cap with
+  // NO continuation. The production code now only ever uses these on the
+  // approver side, where no OData-`$filter` substitute exists.
+  // ---------------------------------------------------------------------------
+
   if (
     method === "GET" &&
     pathname === `${PIM}/eligibilitySchedules/filterByCurrentUser(on='principal')`
   ) {
     if (!enforceScopes(req, res, LIST_ELIGIBLE_GROUP_SCOPES, errorResponse)) return;
-    return respondPaged(state.eligibilitySchedules, req, res, GRAPH_NEXT_LINK, errorResponse);
+    return respondFilterByCurrentUserCapped(state.eligibilitySchedules, req, res, errorResponse);
   }
 
   if (
@@ -332,11 +379,10 @@ async function handleRequest(
     pathname === `${PIM}/assignmentScheduleInstances/filterByCurrentUser(on='principal')`
   ) {
     if (!enforceScopes(req, res, LIST_ACTIVE_GROUP_SCOPES, errorResponse)) return;
-    return respondPaged(
+    return respondFilterByCurrentUserCapped(
       state.assignmentScheduleInstances,
       req,
       res,
-      GRAPH_NEXT_LINK,
       errorResponse,
     );
   }
@@ -352,7 +398,7 @@ async function handleRequest(
     const all = on === "principal" ? state.myRequests : state.approverRequests;
     const filter = parsed.searchParams.get("$filter");
     const filtered = applyStatusFilter(all, filter);
-    return respondPaged(filtered, req, res, GRAPH_NEXT_LINK, errorResponse);
+    return respondFilterByCurrentUserCapped(filtered, req, res, errorResponse);
   }
 
   // POST assignmentScheduleRequests/{id}/cancel
@@ -477,16 +523,52 @@ async function handleRequest(
 
   const ROLE = "/roleManagement/directory";
 
+  // ---------------------------------------------------------------------------
+  // Role-entra principal-side reads via unfiltered collection +
+  // `?$filter=principalId eq '<my-oid>'`, mirroring the group surface.
+  // ---------------------------------------------------------------------------
+
+  if (method === "GET" && pathname === `${ROLE}/roleEligibilitySchedules`) {
+    if (!enforceScopes(req, res, LIST_ELIGIBLE_ROLE_ENTRA_SCOPES, errorResponse)) return;
+    const items = applyPrincipalIdFilter(
+      state.roleEntraEligibilitySchedules,
+      parsed.searchParams.get("$filter"),
+      (e) => e.principalId,
+    );
+    return respondPaged(items, req, res, GRAPH_NEXT_LINK, errorResponse);
+  }
+
+  if (method === "GET" && pathname === `${ROLE}/roleAssignmentScheduleInstances`) {
+    if (!enforceScopes(req, res, LIST_ACTIVE_ROLE_ENTRA_SCOPES, errorResponse)) return;
+    const items = applyPrincipalIdFilter(
+      state.roleEntraAssignmentScheduleInstances,
+      parsed.searchParams.get("$filter"),
+      (e) => e.principalId,
+    );
+    return respondPaged(items, req, res, GRAPH_NEXT_LINK, errorResponse);
+  }
+
+  if (method === "GET" && pathname === `${ROLE}/roleAssignmentScheduleRequests`) {
+    if (!enforceScopes(req, res, LIST_ROLE_ENTRA_REQUESTS_SCOPES, errorResponse)) return;
+    const filter = parsed.searchParams.get("$filter");
+    const byPrincipal = applyPrincipalIdFilter(
+      state.roleEntraMyRequests,
+      filter,
+      (e) => e.principalId,
+    );
+    const filtered = applyRoleEntraStatusFilter(byPrincipal, filter);
+    return respondPaged(filtered, req, res, GRAPH_NEXT_LINK, errorResponse);
+  }
+
   if (
     method === "GET" &&
     pathname === `${ROLE}/roleEligibilitySchedules/filterByCurrentUser(on='principal')`
   ) {
     if (!enforceScopes(req, res, LIST_ELIGIBLE_ROLE_ENTRA_SCOPES, errorResponse)) return;
-    return respondPaged(
+    return respondFilterByCurrentUserCapped(
       state.roleEntraEligibilitySchedules,
       req,
       res,
-      GRAPH_NEXT_LINK,
       errorResponse,
     );
   }
@@ -496,11 +578,10 @@ async function handleRequest(
     pathname === `${ROLE}/roleAssignmentScheduleInstances/filterByCurrentUser(on='principal')`
   ) {
     if (!enforceScopes(req, res, LIST_ACTIVE_ROLE_ENTRA_SCOPES, errorResponse)) return;
-    return respondPaged(
+    return respondFilterByCurrentUserCapped(
       state.roleEntraAssignmentScheduleInstances,
       req,
       res,
-      GRAPH_NEXT_LINK,
       errorResponse,
     );
   }
@@ -515,7 +596,7 @@ async function handleRequest(
     const all = on === "principal" ? state.roleEntraMyRequests : state.roleEntraApproverRequests;
     const filter = parsed.searchParams.get("$filter");
     const filtered = applyRoleEntraStatusFilter(all, filter);
-    return respondPaged(filtered, req, res, GRAPH_NEXT_LINK, errorResponse);
+    return respondFilterByCurrentUserCapped(filtered, req, res, errorResponse);
   }
 
   // POST roleAssignmentScheduleRequests/{id}/cancel (Entra role)
@@ -609,7 +690,7 @@ function applyStatusFilter(
   filter: string | null,
 ): GroupAssignmentRequest[] {
   if (!filter) return items;
-  const m = /^status eq '([^']+)'$/.exec(filter);
+  const m = /status eq '([^']+)'/.exec(filter);
   if (!m) return items;
   return items.filter((r) => r.status === m[1]);
 }
@@ -619,9 +700,29 @@ function applyRoleEntraStatusFilter(
   filter: string | null,
 ): RoleEntraAssignmentRequest[] {
   if (!filter) return items;
-  const m = /^status eq '([^']+)'$/.exec(filter);
+  const m = /status eq '([^']+)'/.exec(filter);
   if (!m) return items;
   return items.filter((r) => r.status === m[1]);
+}
+
+/**
+ * Apply a `principalId eq '<oid>'` clause from an OData `$filter`. Used
+ * by the principal-side reads on the unfiltered collection endpoints.
+ * A request with no `principalId` clause returns all items (so other
+ * filter clauses like `status eq 'PendingApproval'` still work in
+ * isolation when tests want them to). The clause may appear anywhere in
+ * a compound `... and ... and ...` filter.
+ */
+function applyPrincipalIdFilter<T>(
+  items: readonly T[],
+  filter: string | null,
+  getPrincipalId: (item: T) => string | undefined,
+): T[] {
+  if (!filter) return [...items];
+  const m = /principalId eq '([^']+)'/.exec(filter);
+  if (!m) return [...items];
+  const expected = m[1];
+  return items.filter((it) => getPrincipalId(it) === expected);
 }
 
 /** Extract `<scopeId>` from `scopeId eq '<scopeId>' and ...`. */

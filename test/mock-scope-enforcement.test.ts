@@ -172,7 +172,7 @@ describe("end-to-end mock enforcement (defence in depth)", () => {
   it("Graph mock allows a downgraded Read variant of the eligibility scope", async () => {
     const client = new GraphClient(
       url,
-      bypassCredential([OAuthScope.RoleEligibilityScheduleReadDirectory]),
+      bypassCredential([OAuthScope.RoleEligibilityScheduleReadDirectory, OAuthScope.UserRead]),
     );
     const result = await listEligibleRoleEntraAssignments(client, testSignal());
     expect(result.items).toBeInstanceOf(Array);

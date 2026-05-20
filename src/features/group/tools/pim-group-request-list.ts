@@ -16,13 +16,11 @@ import type { Tool, ToolDef } from "../../../tool-registry.js";
 import { formatError } from "../../../tools/shared.js";
 import { classifyStalePrincipalRequests, includeStaleField } from "../../../tools/pim/stale.js";
 import { staleHiddenTrailer } from "../../../tools/pim/format-shared.js";
-import { maxPagesSchema, pageSizeSchema, truncationWarning } from "../../../http/paging.js";
+import { truncationWarning } from "../../../http/paging.js";
 import { formatRequestsText } from "../format.js";
 
 const inputSchema = z.object({
   includeStale: includeStaleField,
-  pageSize: pageSizeSchema,
-  maxPages: maxPagesSchema,
 }).shape;
 
 const def: ToolDef = {
@@ -40,10 +38,7 @@ const def: ToolDef = {
 function handler(config: ServerConfig): ToolCallback<typeof inputSchema> {
   return async (args, { signal }) => {
     try {
-      const result = await listMyGroupRequests(config.graphClient, signal, {
-        pageSize: args.pageSize,
-        maxPages: args.maxPages,
-      });
+      const result = await listMyGroupRequests(config.graphClient, signal);
       const items = result.items;
       const stale = await classifyStalePrincipalRequests(
         items,

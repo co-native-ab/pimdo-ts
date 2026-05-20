@@ -1,19 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "properties": {
-    "pageSize": {
-      "description": "Maximum items per page sent to the upstream API (1-999, default 100). Larger values reduce round-trips on big tenants.",
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 999
-    },
-    "maxPages": {
-      "description": "Maximum number of pages to fetch before reporting the result truncated (1-100, default 10). When truncated, re-run with a higher value or a narrower filter.",
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 100
-    }
-  },
+  "properties": {},
   "additionalProperties": false
 }

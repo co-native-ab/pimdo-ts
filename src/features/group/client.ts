@@ -24,10 +24,12 @@ import {
   type SubmittedApprovalDecision,
 } from "../../enums.js";
 import { GraphClient, HttpMethod, parseResponse } from "../../graph/client.js";
+import { getMyObjectId } from "../../graph/me.js";
 import {
+  FILTER_BY_CURRENT_USER_CAP,
   graphPageParser,
+  type LimitedResult,
   paginateGraph,
-  type PageOptions,
   type PagedResult,
 } from "../../http/paging.js";
 import { OAuthScope } from "../../scopes.js";
@@ -70,18 +72,29 @@ const PRIVILEGED_BASE = "/identityGovernance/privilegedAccess/group";
  * @see https://learn.microsoft.com/en-us/graph/api/privilegedaccessgroupeligibilityschedule-filterbycurrentuser?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ELIGIBLE_GROUP_SCOPES: OAuthScope[][] = [
-  [OAuthScope.PrivilegedEligibilityScheduleReadAzureADGroup],
+  [OAuthScope.PrivilegedEligibilityScheduleReadAzureADGroup, OAuthScope.UserRead],
 ];
+
+/**
+ * Build the OData `$filter` clause used by every principal-side list:
+ * `principalId eq '<oid>'` joined with any caller-supplied extra
+ * clause(s) via ` and `. The result is `encodeURIComponent`-ed so it
+ * is safe to append after `&$filter=`.
+ */
+function buildPrincipalFilter(oid: string, extra?: string): string {
+  const expr = extra ? `principalId eq '${oid}' and ${extra}` : `principalId eq '${oid}'`;
+  return encodeURIComponent(expr);
+}
 
 /** GET eligibility schedules where the signed-in user is the principal. */
 export async function listEligibleGroupAssignments(
   client: GraphClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<GroupEligibleAssignment>> {
   await assertScopes(client.credential, LIST_ELIGIBLE_GROUP_SCOPES, signal);
-  const path = `${PRIVILEGED_BASE}/eligibilitySchedules/filterByCurrentUser(on='principal')?$expand=group,principal`;
-  return paginateGraph(client, path, eligiblePageParser, opts, signal);
+  const oid = await getMyObjectId(client, signal);
+  const path = `${PRIVILEGED_BASE}/eligibilitySchedules?$expand=group,principal&$filter=${buildPrincipalFilter(oid)}`;
+  return paginateGraph(client, path, eligiblePageParser, undefined, signal);
 }
 
 /**
@@ -96,18 +109,18 @@ export async function listEligibleGroupAssignments(
  * @see https://learn.microsoft.com/en-us/graph/api/privilegedaccessgroupassignmentscheduleinstance-filterbycurrentuser?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ACTIVE_GROUP_SCOPES: OAuthScope[][] = [
-  [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup],
+  [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup, OAuthScope.UserRead],
 ];
 
 /** GET assignment-schedule instances where the signed-in user is the principal. */
 export async function listActiveGroupAssignments(
   client: GraphClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<GroupActiveAssignment>> {
   await assertScopes(client.credential, LIST_ACTIVE_GROUP_SCOPES, signal);
-  const path = `${PRIVILEGED_BASE}/assignmentScheduleInstances/filterByCurrentUser(on='principal')?$expand=group,principal`;
-  return paginateGraph(client, path, activePageParser, opts, signal);
+  const oid = await getMyObjectId(client, signal);
+  const path = `${PRIVILEGED_BASE}/assignmentScheduleInstances?$expand=group,principal&$filter=${buildPrincipalFilter(oid)}`;
+  return paginateGraph(client, path, activePageParser, undefined, signal);
 }
 
 /**
@@ -124,7 +137,7 @@ export async function listActiveGroupAssignments(
  * @see https://learn.microsoft.com/en-us/graph/api/privilegedaccessgroupassignmentschedulerequest-filterbycurrentuser?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_GROUP_REQUESTS_SCOPES: OAuthScope[][] = [
-  [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup],
+  [OAuthScope.PrivilegedAssignmentScheduleReadWriteAzureADGroup, OAuthScope.UserRead],
 ];
 
 /**
@@ -161,20 +174,33 @@ export const APPROVE_GROUP_SCOPES: OAuthScope[][] = [
 export async function listMyGroupRequests(
   client: GraphClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<GroupAssignmentRequest>> {
   await assertScopes(client.credential, LIST_GROUP_REQUESTS_SCOPES, signal);
-  return listRequests(client, CurrentUserFilter.Principal, signal, opts);
+  const oid = await getMyObjectId(client, signal);
+  const path = `${PRIVILEGED_BASE}/assignmentScheduleRequests?$expand=group,principal&$filter=${buildPrincipalFilter(oid, "status eq 'PendingApproval'")}`;
+  return paginateGraph(client, path, requestPageParser, undefined, signal);
 }
 
-/** GET pending-approval assignment-schedule requests where I am an approver. */
+/**
+ * GET pending-approval assignment-schedule requests where I am an
+ * approver.
+ *
+ * **Known Microsoft Graph limitation.** Unlike the principal-side
+ * lists, there is no OData `$filter` equivalent for "I am an approver
+ * of this request" — the relationship is policy-derived rather than a
+ * column on the request entity. We therefore have to use the
+ * `filterByCurrentUser(on='approver')` function endpoint, which Graph
+ * hard-caps at 50 items and never accompanies with `@odata.nextLink`
+ * (microsoftgraph/microsoft-graph-docs#15755). The helper surfaces
+ * `cappedAt50: true` when the returned page is exactly 50 items so
+ * the formatter can warn the user that more approvals may exist.
+ */
 export async function listGroupApprovalRequests(
   client: GraphClient,
   signal: AbortSignal,
-  opts?: PageOptions,
-): Promise<PagedResult<GroupAssignmentRequest>> {
+): Promise<LimitedResult<GroupAssignmentRequest>> {
   await assertScopes(client.credential, LIST_GROUP_REQUESTS_SCOPES, signal);
-  return listRequests(client, CurrentUserFilter.Approver, signal, opts);
+  return listApproverRequestsCapped(client, signal);
 }
 
 /**
@@ -200,15 +226,17 @@ export async function hasLiveGroupApprovalStageForMe(
   );
 }
 
-async function listRequests(
+async function listApproverRequestsCapped(
   client: GraphClient,
-  on: CurrentUserFilter,
   signal: AbortSignal,
-  opts?: PageOptions,
-): Promise<PagedResult<GroupAssignmentRequest>> {
+): Promise<LimitedResult<GroupAssignmentRequest>> {
   const filter = encodeURIComponent("status eq 'PendingApproval'");
-  const path = `${PRIVILEGED_BASE}/assignmentScheduleRequests/filterByCurrentUser(on='${on}')?$expand=group,principal&$filter=${filter}`;
-  return paginateGraph(client, path, requestPageParser, opts, signal);
+  const path = `${PRIVILEGED_BASE}/assignmentScheduleRequests/filterByCurrentUser(on='${CurrentUserFilter.Approver}')?$expand=group,principal&$filter=${filter}`;
+  // No `$top`, no `paginateGraph` — the upstream contract ignores both
+  // and never emits `@odata.nextLink`. See {@link listGroupApprovalRequests}.
+  const res = await client.request(HttpMethod.GET, path, signal);
+  const { value } = await requestPageParser(res, "GET", path);
+  return { items: value, cappedAt50: value.length >= FILTER_BY_CURRENT_USER_CAP };
 }
 
 // ---------------------------------------------------------------------------

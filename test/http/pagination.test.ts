@@ -1,17 +1,27 @@
 // End-to-end pagination tests covering every PIM list endpoint.
 //
-// Seeds the mock servers with enough items to exceed the mock's default
-// page size (50, matching the empirically observed Microsoft Graph
-// default for filterByCurrentUser endpoints) and asserts that:
+// Two contracts are exercised:
 //
-//   1. The client follows @odata.nextLink / nextLink until exhausted
-//      (no silent 50-item cap, which is the bug this work fixes).
-//   2. The truncation signal is surfaced when maxPages is hit.
-//   3. The client never re-adds $top to a continuation URL (enforced
-//      by the mock returning 400 on that combination).
+//   1. Principal-side Graph list helpers query the unfiltered
+//      collection with `?$filter=principalId eq '<my-oid>'` and follow
+//      `@odata.nextLink` until exhausted. This bypasses the Microsoft
+//      Graph `filterByCurrentUser` 50-item cap (see
+//      microsoftgraph/microsoft-graph-docs#15755).
 //
-// Each test seeds 250 items so we get five pages at pageSize=50 and
-// two pages at pageSize=100. Both branches are exercised.
+//   2. Approver-side Graph list helpers continue to use
+//      `filterByCurrentUser(on='approver')` because there is no clean
+//      OData substitute. They issue a single request, never send
+//      `$top`, and return a `LimitedResult` that flags `cappedAt50`
+//      when exactly 50 items come back.
+//
+// ARM list helpers paginate via real OData `$filter=asTarget()` /
+// `asApprover()` and follow `nextLink` until exhausted; they were
+// never affected by the Graph cap.
+//
+// The mock-graph routes back this contract: `filterByCurrentUser`
+// paths reject `$top`/`$skip` and never emit a nextLink, while the
+// unfiltered collections honour `$filter=principalId eq …` + `$top`
+// + `@odata.nextLink` per the mock paging helper.
 
 import { describe, it, expect } from "vitest";
 
@@ -37,11 +47,14 @@ import {
 } from "../../src/features/role-azure/client.js";
 import { getGroupMaxDuration, getDirectoryRoleMaxDuration } from "../../src/graph/policies.js";
 import { getAzureRoleMaxDuration } from "../../src/arm/policies.js";
+import { FILTER_BY_CURRENT_USER_CAP } from "../../src/http/paging.js";
 
 import { MockGraphState, createMockGraphServer } from "../mock-graph.js";
 import { MockArmState, createMockArmServer } from "../mock-arm.js";
 import { testSignal } from "../helpers.js";
 
+// Above the mock default page size (100) and above the
+// filterByCurrentUser cap (50) so both contracts are exercised.
 const TOTAL = 250;
 
 async function withGraph(
@@ -181,7 +194,7 @@ function seedArmRequests(state: MockArmState, n: number, side: "mine" | "approve
 }
 
 describe("pagination — Graph group list endpoints", () => {
-  it("eligible: follows @odata.nextLink until exhausted", async () => {
+  it("eligible (principal): follows @odata.nextLink past the 50-item cap", async () => {
     await withGraph(async (state, client) => {
       seedGroupEligibilities(state, TOTAL);
       const result = await listEligibleGroupAssignments(client, testSignal());
@@ -191,20 +204,7 @@ describe("pagination — Graph group list endpoints", () => {
     });
   });
 
-  it("eligible: reports truncated when maxPages is hit", async () => {
-    await withGraph(async (state, client) => {
-      seedGroupEligibilities(state, TOTAL);
-      const result = await listEligibleGroupAssignments(client, testSignal(), {
-        pageSize: 50,
-        maxPages: 2,
-      });
-      expect(result.items).toHaveLength(100);
-      expect(result.truncated).toBe(true);
-      expect(result.pagesFetched).toBe(2);
-    });
-  });
-
-  it("active: follows continuation", async () => {
+  it("active (principal): follows continuation past the 50-item cap", async () => {
     await withGraph(async (state, client) => {
       seedGroupActives(state, TOTAL);
       const result = await listActiveGroupAssignments(client, testSignal());
@@ -212,20 +212,47 @@ describe("pagination — Graph group list endpoints", () => {
     });
   });
 
-  it("requests (mine + approver): both sides paginate", async () => {
+  it("requests (mine, principal): follows continuation past the 50-item cap", async () => {
     await withGraph(async (state, client) => {
       seedGroupRequests(state, TOTAL, "mine");
-      seedGroupRequests(state, TOTAL, "approver");
       const mine = await listMyGroupRequests(client, testSignal());
-      const approver = await listGroupApprovalRequests(client, testSignal());
       expect(mine.items).toHaveLength(TOTAL);
-      expect(approver.items).toHaveLength(TOTAL);
+    });
+  });
+
+  it("approval (approver): single request, caps at 50, flags cappedAt50", async () => {
+    await withGraph(async (state, client) => {
+      seedGroupRequests(state, TOTAL, "approver");
+      const approver = await listGroupApprovalRequests(client, testSignal());
+      expect(approver.items).toHaveLength(FILTER_BY_CURRENT_USER_CAP);
+      expect(approver.cappedAt50).toBe(true);
+    });
+  });
+
+  it("approval (approver): below the cap → cappedAt50 false", async () => {
+    await withGraph(async (state, client) => {
+      seedGroupRequests(state, 7, "approver");
+      const approver = await listGroupApprovalRequests(client, testSignal());
+      expect(approver.items).toHaveLength(7);
+      expect(approver.cappedAt50).toBe(false);
+    });
+  });
+
+  it("principal-side helpers resolve my object id only once across calls", async () => {
+    await withGraph(async (state, client) => {
+      seedGroupEligibilities(state, 10);
+      seedGroupActives(state, 10);
+      seedGroupRequests(state, 10, "mine");
+      await listEligibleGroupAssignments(client, testSignal());
+      await listActiveGroupAssignments(client, testSignal());
+      await listMyGroupRequests(client, testSignal());
+      expect(state.meCallCount).toBe(1);
     });
   });
 });
 
 describe("pagination — Graph role-entra list endpoints", () => {
-  it("eligible: follows continuation", async () => {
+  it("eligible (principal): follows continuation past the 50-item cap", async () => {
     await withGraph(async (state, client) => {
       seedRoleEntraEligibilities(state, TOTAL);
       const result = await listEligibleRoleEntraAssignments(client, testSignal());
@@ -233,7 +260,7 @@ describe("pagination — Graph role-entra list endpoints", () => {
     });
   });
 
-  it("active: follows continuation", async () => {
+  it("active (principal): follows continuation past the 50-item cap", async () => {
     await withGraph(async (state, client) => {
       seedRoleEntraActives(state, TOTAL);
       const result = await listActiveRoleEntraAssignments(client, testSignal());
@@ -241,14 +268,20 @@ describe("pagination — Graph role-entra list endpoints", () => {
     });
   });
 
-  it("requests (mine + approver): both sides paginate", async () => {
+  it("requests (mine, principal): follows continuation past the 50-item cap", async () => {
     await withGraph(async (state, client) => {
       seedRoleEntraRequests(state, TOTAL, "mine");
-      seedRoleEntraRequests(state, TOTAL, "approver");
       const mine = await listMyRoleEntraRequests(client, testSignal());
-      const approver = await listRoleEntraApprovalRequests(client, testSignal());
       expect(mine.items).toHaveLength(TOTAL);
-      expect(approver.items).toHaveLength(TOTAL);
+    });
+  });
+
+  it("approval (approver): single request, caps at 50, flags cappedAt50", async () => {
+    await withGraph(async (state, client) => {
+      seedRoleEntraRequests(state, TOTAL, "approver");
+      const approver = await listRoleEntraApprovalRequests(client, testSignal());
+      expect(approver.items).toHaveLength(FILTER_BY_CURRENT_USER_CAP);
+      expect(approver.cappedAt50).toBe(true);
     });
   });
 });
@@ -264,8 +297,6 @@ describe("pagination — ARM role-azure list endpoints", () => {
 
   it("active: aggregates pages across scopes", async () => {
     await withArm(async (state, client) => {
-      // listActiveRoleAzureAssignments derives scopes from eligibilities,
-      // then issues one paginated call per scope.
       seedArmEligibilities(state, 1, "/subscriptions/sub-1");
       seedArmActives(state, TOTAL, "/subscriptions/sub-1");
       const result = await listActiveRoleAzureAssignments(client, testSignal());

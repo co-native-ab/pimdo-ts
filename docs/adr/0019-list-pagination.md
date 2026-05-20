@@ -118,3 +118,61 @@ number of stages. In practice PIM approvals have 1–2 stages, so we
 leave a `TODO` comment near each `$expand=…` GET and have not
 paginated those paths. If a real-world tenant ever surfaces an
 approval with truncated stages we will revisit.
+
+## Addendum (2026-05-21): `filterByCurrentUser` 50-cap workaround
+
+After deploying the generic paginator, real-tenant testing showed
+that `pim_group_eligible_list` still returned exactly 50 groups.
+Microsoft Graph's `filterByCurrentUser(...)` function endpoints on
+the PIM surface (group + directory-role) are **hard-capped at 50
+items and never emit `@odata.nextLink`**. `$top` / `$skip` /
+`$orderby` / `$filter` are ignored. The behaviour is documented in
+microsoftgraph/microsoft-graph-docs#15755 and confirmed
+empirically.
+
+### Resolution
+
+- **Principal-side lists** (eligibilities, active instances,
+  pending-approval requests submitted by me, for both group and
+  Entra-role surfaces) switched to the **unfiltered collection** with
+  `?$filter=principalId eq '<my-oid>'`. The unfiltered endpoints
+  honour `$top` + `@odata.nextLink` correctly. The signed-in user's
+  object id is resolved once per `GraphClient` via a `WeakMap` cache
+  in `src/graph/me.ts` so the extra `/me` round-trip happens at most
+  once per session.
+- **Approver-side lists** (group + Entra-role approvals assigned to
+  me) have no clean OData substitute — "I am an approver of X" is
+  policy-derived, not a column. They continue to call
+  `filterByCurrentUser(on='approver')` but now return a new
+  `LimitedResult<T>` (in `src/http/paging.ts`) carrying a
+  `cappedAt50: boolean` flag set whenever the response is exactly 50
+  items. `filterByCurrentUserCapWarning()` surfaces this as a one-line
+  warning in the tool output. There is no client-side way to retrieve
+  the next page; users with more than 50 pending approvals must clear
+  the queue, switch tenants, or wait for Microsoft to fix the
+  endpoint.
+- **`pageSize` / `maxPages` tool inputs were removed** from every
+  `pim_*_list` tool. They were a workaround for the wrong layer (they
+  could not lift the 50-cap on `filterByCurrentUser`, and the new
+  `$filter=principalId` path doesn't need them). Internal defaults
+  (100 items × 10 pages = 1 000 items) remain in `paginateGraph` /
+  `paginateArm`; tenants with more than 1 000 eligible PIM
+  assignments would hit the internal cap and see a clear warning.
+- **The mock Graph server was tightened** to mirror the real
+  contract: `filterByCurrentUser` routes reject `$top` / `$skip` /
+  `$skiptoken` with HTTP 400 (stricter than real Graph, which
+  silently ignores them) and cap responses at 50 items with no
+  `@odata.nextLink`. This locks in the rule that pimdo's principal-
+  side code must **never** route through `filterByCurrentUser`.
+- **Scope requirements** for principal-side list endpoints were
+  widened to include `User.Read` since they now call `GET /me`.
+  `User.Read` is in MSAL's base scope set, so this does not require
+  any additional consent in practice.
+
+### References
+
+- microsoftgraph/microsoft-graph-docs#15755 — community report of
+  the `filterByCurrentUser` 50-item cap with no `nextLink`.
+- https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleeligibilityschedules
+  — confirms the underlying unfiltered collection supports `$filter`
+  + `$top` + `@odata.nextLink`.

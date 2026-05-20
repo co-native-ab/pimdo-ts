@@ -30,10 +30,12 @@ import {
   type SubmittedApprovalDecision,
 } from "../../enums.js";
 import { GraphClient, HttpMethod, parseResponse } from "../../graph/client.js";
+import { getMyObjectId } from "../../graph/me.js";
 import {
+  FILTER_BY_CURRENT_USER_CAP,
   graphPageParser,
+  type LimitedResult,
   paginateGraph,
-  type PageOptions,
   type PagedResult,
 } from "../../http/paging.js";
 import { OAuthScope } from "../../scopes.js";
@@ -78,18 +80,23 @@ export const DIRECTORY_SCOPE_ROOT = "/";
  * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleeligibilityschedules?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ELIGIBLE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
-  [OAuthScope.RoleEligibilityScheduleReadDirectory],
+  [OAuthScope.RoleEligibilityScheduleReadDirectory, OAuthScope.UserRead],
 ];
+
+function buildPrincipalFilter(oid: string, extra?: string): string {
+  const expr = extra ? `principalId eq '${oid}' and ${extra}` : `principalId eq '${oid}'`;
+  return encodeURIComponent(expr);
+}
 
 /** GET eligibility schedules where the signed-in user is the principal. */
 export async function listEligibleRoleEntraAssignments(
   client: GraphClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<RoleEntraEligibleAssignment>> {
   await assertScopes(client.credential, LIST_ELIGIBLE_ROLE_ENTRA_SCOPES, signal);
-  const path = `${ROLE_BASE}/roleEligibilitySchedules/filterByCurrentUser(on='principal')?$expand=roleDefinition,principal`;
-  return paginateGraph(client, path, eligiblePageParser, opts, signal);
+  const oid = await getMyObjectId(client, signal);
+  const path = `${ROLE_BASE}/roleEligibilitySchedules?$expand=roleDefinition,principal&$filter=${buildPrincipalFilter(oid)}`;
+  return paginateGraph(client, path, eligiblePageParser, undefined, signal);
 }
 
 /**
@@ -104,18 +111,18 @@ export async function listEligibleRoleEntraAssignments(
  * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleassignmentscheduleinstances?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ACTIVE_ROLE_ENTRA_SCOPES: OAuthScope[][] = [
-  [OAuthScope.RoleAssignmentScheduleReadWriteDirectory],
+  [OAuthScope.RoleAssignmentScheduleReadWriteDirectory, OAuthScope.UserRead],
 ];
 
 /** GET role-assignment-schedule instances where the signed-in user is the principal. */
 export async function listActiveRoleEntraAssignments(
   client: GraphClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<RoleEntraActiveAssignment>> {
   await assertScopes(client.credential, LIST_ACTIVE_ROLE_ENTRA_SCOPES, signal);
-  const path = `${ROLE_BASE}/roleAssignmentScheduleInstances/filterByCurrentUser(on='principal')?$expand=roleDefinition,principal`;
-  return paginateGraph(client, path, activePageParser, opts, signal);
+  const oid = await getMyObjectId(client, signal);
+  const path = `${ROLE_BASE}/roleAssignmentScheduleInstances?$expand=roleDefinition,principal&$filter=${buildPrincipalFilter(oid)}`;
+  return paginateGraph(client, path, activePageParser, undefined, signal);
 }
 
 /**
@@ -130,27 +137,38 @@ export async function listActiveRoleEntraAssignments(
  * @see https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleassignmentschedulerequests?view=graph-rest-1.0&tabs=http#permissions
  */
 export const LIST_ROLE_ENTRA_REQUESTS_SCOPES: OAuthScope[][] = [
-  [OAuthScope.RoleAssignmentScheduleReadWriteDirectory],
+  [OAuthScope.RoleAssignmentScheduleReadWriteDirectory, OAuthScope.UserRead],
 ];
 
 /** GET pending-approval role-assignment-schedule requests submitted by me. */
 export async function listMyRoleEntraRequests(
   client: GraphClient,
   signal: AbortSignal,
-  opts?: PageOptions,
 ): Promise<PagedResult<RoleEntraAssignmentRequest>> {
   await assertScopes(client.credential, LIST_ROLE_ENTRA_REQUESTS_SCOPES, signal);
-  return listRequests(client, CurrentUserFilter.Principal, signal, opts);
+  const oid = await getMyObjectId(client, signal);
+  const path = `${ROLE_BASE}/roleAssignmentScheduleRequests?$expand=roleDefinition,principal&$filter=${buildPrincipalFilter(oid, "status eq 'PendingApproval'")}`;
+  return paginateGraph(client, path, requestPageParser, undefined, signal);
 }
 
-/** GET pending-approval role-assignment-schedule requests where I am an approver. */
+/**
+ * GET pending-approval role-assignment-schedule requests where I am
+ * an approver.
+ *
+ * **Known Microsoft Graph limitation.** Mirrors the group surface:
+ * the approver relationship is policy-derived and has no OData
+ * `$filter` equivalent, so we must use the
+ * `filterByCurrentUser(on='approver')` function endpoint. Graph
+ * hard-caps it at 50 items and never emits `@odata.nextLink`
+ * (microsoftgraph/microsoft-graph-docs#15755). The helper surfaces
+ * `cappedAt50: true` when the response is exactly 50 items.
+ */
 export async function listRoleEntraApprovalRequests(
   client: GraphClient,
   signal: AbortSignal,
-  opts?: PageOptions,
-): Promise<PagedResult<RoleEntraAssignmentRequest>> {
+): Promise<LimitedResult<RoleEntraAssignmentRequest>> {
   await assertScopes(client.credential, LIST_ROLE_ENTRA_REQUESTS_SCOPES, signal);
-  return listRequests(client, CurrentUserFilter.Approver, signal, opts);
+  return listApproverRequestsCapped(client, signal);
 }
 
 /**
@@ -175,15 +193,15 @@ export async function hasLiveRoleEntraApprovalStepForMe(
   );
 }
 
-async function listRequests(
+async function listApproverRequestsCapped(
   client: GraphClient,
-  on: CurrentUserFilter,
   signal: AbortSignal,
-  opts?: PageOptions,
-): Promise<PagedResult<RoleEntraAssignmentRequest>> {
+): Promise<LimitedResult<RoleEntraAssignmentRequest>> {
   const filter = encodeURIComponent("status eq 'PendingApproval'");
-  const path = `${ROLE_BASE}/roleAssignmentScheduleRequests/filterByCurrentUser(on='${on}')?$expand=roleDefinition,principal&$filter=${filter}`;
-  return paginateGraph(client, path, requestPageParser, opts, signal);
+  const path = `${ROLE_BASE}/roleAssignmentScheduleRequests/filterByCurrentUser(on='${CurrentUserFilter.Approver}')?$expand=roleDefinition,principal&$filter=${filter}`;
+  const res = await client.request(HttpMethod.GET, path, signal);
+  const { value } = await requestPageParser(res, "GET", path);
+  return { items: value, cappedAt50: value.length >= FILTER_BY_CURRENT_USER_CAP };
 }
 
 // ---------------------------------------------------------------------------
