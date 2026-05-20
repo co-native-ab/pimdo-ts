@@ -1,0 +1,282 @@
+// Bounded, truncatable pagination over Microsoft Graph + Azure Resource
+// Manager list endpoints.
+//
+// Both surfaces follow the same wire contract:
+//
+//   - Initial request may pass `$top=<pageSize>` as a hint.
+//   - Response carries the page in `value: T[]`.
+//   - When more pages exist, the response carries a continuation URL —
+//     `@odata.nextLink` (Graph) or `nextLink` (ARM). The URL is opaque
+//     and absolute; clients must follow it verbatim and must NOT append
+//     `$top` to it.
+//
+// Differences:
+//
+//   - Graph caps `$top` at 999; we ship 100 as the default to match
+//     historical behaviour.
+//   - ARM uses an opaque `$skiptoken` inside the `nextLink`. The server
+//     decides the page size after the first request.
+//
+// Both pageSize and maxPages are caller-configurable so tools can expose
+// them to the AI assistant. When the cap is hit we surface
+// `truncated: true` rather than throwing — truncation is a *signal*,
+// not a transport error.
+//
+// References:
+//   - https://learn.microsoft.com/en-us/graph/paging
+//   - https://learn.microsoft.com/en-us/rest/api/azure/paging-overview
+
+import { z, type ZodType } from "zod";
+
+import { HttpMethod, type BaseHttpClient } from "./base-client.js";
+
+/** Default items requested per page (both Graph and ARM). */
+export const DEFAULT_PAGE_SIZE = 100;
+
+/** Default maximum number of pages fetched before truncating the result. */
+export const DEFAULT_MAX_PAGES = 10;
+
+/** Microsoft Graph's documented `$top` ceiling. */
+export const MAX_PAGE_SIZE_GRAPH = 999;
+
+/** Upper bound exposed via tool inputs. ARM does not document a ceiling. */
+export const MAX_PAGE_SIZE = 999;
+
+/** Upper bound exposed via tool inputs for the page cap. */
+export const MAX_MAX_PAGES = 100;
+
+/**
+ * Caller-tunable knobs for a paginated read. Both fields are optional;
+ * tools that don't surface them to users get the defaults above.
+ */
+export interface PageOptions {
+  /** Items per page. Must be 1..MAX_PAGE_SIZE. */
+  pageSize?: number;
+  /** Maximum pages to fetch before reporting truncated. Must be 1..MAX_MAX_PAGES. */
+  maxPages?: number;
+}
+
+/**
+ * Result of a paginated read. Callers that don't care about truncation
+ * can read `.items`; tools surface a warning when `truncated` is true so
+ * the AI assistant can either re-run with a higher `maxPages` or
+ * narrow the filter.
+ */
+export interface PagedResult<T> {
+  items: T[];
+  truncated: boolean;
+  pagesFetched: number;
+}
+
+function resolveOpts(opts: PageOptions | undefined): {
+  pageSize: number;
+  maxPages: number;
+} {
+  const pageSize = opts?.pageSize ?? DEFAULT_PAGE_SIZE;
+  const maxPages = opts?.maxPages ?? DEFAULT_MAX_PAGES;
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
+    throw new Error(
+      `pageSize must be an integer in 1..${String(MAX_PAGE_SIZE)} (got ${String(pageSize)})`,
+    );
+  }
+  if (!Number.isInteger(maxPages) || maxPages < 1 || maxPages > MAX_MAX_PAGES) {
+    throw new Error(
+      `maxPages must be an integer in 1..${String(MAX_MAX_PAGES)} (got ${String(maxPages)})`,
+    );
+  }
+  return { pageSize, maxPages };
+}
+
+/**
+ * Inject `$top=<pageSize>` into a path that may already carry a query
+ * string. Leaves the path untouched if `$top` is already present so
+ * callers can opt out per-endpoint.
+ */
+function withTop(path: string, pageSize: number): string {
+  if (/(\?|&)\$top=/.test(path)) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}$top=${String(pageSize)}`;
+}
+
+/**
+ * Convert an absolute continuation URL into a path that can be passed
+ * to `client.request` (which prepends the configured base URL). If
+ * `nextLink` is already relative it is returned as-is. Falls back to
+ * the original string when URL parsing fails, so the caller fails
+ * loudly with a clear error instead of silently truncating.
+ */
+function toRelativePath(nextLink: string): string {
+  if (nextLink.startsWith("/")) return nextLink;
+  try {
+    const u = new URL(nextLink);
+    return `${u.pathname}${u.search}`;
+  } catch {
+    return nextLink;
+  }
+}
+
+/**
+ * Page-envelope parser. Receives the raw `Response`, validates the
+ * page-level wire shape, and returns the items plus the continuation
+ * URL. Each surface plugs in its own implementation so the per-client
+ * `ResponseParseError` is preserved end-to-end.
+ */
+export type PageParser<T> = (
+  response: Response,
+  method: string,
+  path: string,
+) => Promise<{ value: T[]; nextLink?: string }>;
+
+async function paginate<T>(
+  client: BaseHttpClient,
+  initialPath: string,
+  parsePage: PageParser<T>,
+  opts: PageOptions | undefined,
+  signal: AbortSignal,
+): Promise<PagedResult<T>> {
+  const { pageSize, maxPages } = resolveOpts(opts);
+
+  const items: T[] = [];
+  let nextPath: string | undefined = withTop(initialPath, pageSize);
+  let pagesFetched = 0;
+
+  while (nextPath !== undefined) {
+    if (pagesFetched >= maxPages) {
+      return { items, truncated: true, pagesFetched };
+    }
+    const currentPath: string = nextPath;
+    const res = await client.request(HttpMethod.GET, currentPath, signal);
+    const parsed = await parsePage(res, "GET", currentPath);
+    items.push(...parsed.value);
+    pagesFetched += 1;
+    nextPath = parsed.nextLink ? toRelativePath(parsed.nextLink) : undefined;
+  }
+
+  return { items, truncated: false, pagesFetched };
+}
+
+/**
+ * Paginate a Microsoft Graph list endpoint. Sends `$top=pageSize` on
+ * the initial request only and follows `@odata.nextLink` until
+ * exhausted or `maxPages` is reached.
+ */
+export function paginateGraph<T>(
+  client: BaseHttpClient,
+  initialPath: string,
+  parsePage: PageParser<T>,
+  opts: PageOptions | undefined,
+  signal: AbortSignal,
+): Promise<PagedResult<T>> {
+  return paginate(client, initialPath, parsePage, opts, signal);
+}
+
+/**
+ * Paginate an Azure Resource Manager list endpoint. Sends `$top=pageSize`
+ * on the initial request only and follows `nextLink` until exhausted
+ * or `maxPages` is reached.
+ */
+export function paginateArm<T>(
+  client: BaseHttpClient,
+  initialPath: string,
+  parsePage: PageParser<T>,
+  opts: PageOptions | undefined,
+  signal: AbortSignal,
+): Promise<PagedResult<T>> {
+  return paginate(client, initialPath, parsePage, opts, signal);
+}
+
+/**
+ * Build a {@link PageParser} from an item schema and a per-resource
+ * `parseResponse` (the Graph or ARM client's). The page envelope
+ * schema is the same shape on both surfaces aside from the continuation
+ * key.
+ */
+export function graphPageParser<T>(
+  itemSchema: ZodType<T>,
+  parseResponse: <U>(
+    response: Response,
+    schema: ZodType<U>,
+    method?: string,
+    path?: string,
+  ) => Promise<U>,
+): PageParser<T> {
+  const schema = z.object({
+    value: z.array(itemSchema),
+    "@odata.nextLink": z.string().optional(),
+  });
+  return async (response, method, path) => {
+    const parsed = await parseResponse(response, schema, method, path);
+    return { value: parsed.value, nextLink: parsed["@odata.nextLink"] };
+  };
+}
+
+/** ARM page parser. See {@link graphPageParser}. */
+export function armPageParser<T>(
+  itemSchema: ZodType<T>,
+  parseResponse: <U>(
+    response: Response,
+    schema: ZodType<U>,
+    method?: string,
+    path?: string,
+  ) => Promise<U>,
+): PageParser<T> {
+  const schema = z.object({
+    value: z.array(itemSchema),
+    nextLink: z.string().optional(),
+  });
+  return async (response, method, path) => {
+    const parsed = await parseResponse(response, schema, method, path);
+    return { value: parsed.value, nextLink: parsed.nextLink };
+  };
+}
+
+/**
+ * Combine two `PagedResult`s as if their `items` were concatenated.
+ * `truncated` is OR'd and `pagesFetched` is summed. Used by helpers
+ * that issue multiple paginated calls (e.g. ARM active assignments
+ * per scope) and need to roll the truncation signal up to the tool
+ * layer.
+ */
+export function mergePaged<T>(a: PagedResult<T>, b: PagedResult<T>): PagedResult<T> {
+  return {
+    items: [...a.items, ...b.items],
+    truncated: a.truncated || b.truncated,
+    pagesFetched: a.pagesFetched + b.pagesFetched,
+  };
+}
+
+/** Zod schema fragment for the tool-input `pageSize` parameter. */
+export const pageSizeSchema = z
+  .number()
+  .int()
+  .min(1)
+  .max(MAX_PAGE_SIZE)
+  .optional()
+  .describe(
+    `Maximum items per page sent to the upstream API (1-${String(MAX_PAGE_SIZE)}, default ${String(DEFAULT_PAGE_SIZE)}). Larger values reduce round-trips on big tenants.`,
+  );
+
+/** Zod schema fragment for the tool-input `maxPages` parameter. */
+export const maxPagesSchema = z
+  .number()
+  .int()
+  .min(1)
+  .max(MAX_MAX_PAGES)
+  .optional()
+  .describe(
+    `Maximum number of pages to fetch before reporting the result truncated (1-${String(MAX_MAX_PAGES)}, default ${String(DEFAULT_MAX_PAGES)}). When truncated, re-run with a higher value or a narrower filter.`,
+  );
+
+/**
+ * Render a one-line truncation warning that list-tool formatters append
+ * to their output when `truncated` is true. Includes both the items-so-far
+ * count and a concrete suggestion the assistant can act on.
+ */
+export function truncationWarning(result: PagedResult<unknown>, defaultMaxPages = DEFAULT_MAX_PAGES): string {
+  if (!result.truncated) return "";
+  const suggested = Math.min(MAX_MAX_PAGES, Math.max(defaultMaxPages * 2, result.pagesFetched + 5));
+  return (
+    `\n! Truncated: showing ${String(result.items.length)} item(s) after ${String(result.pagesFetched)} page(s); ` +
+    `more results are available. Re-run with maxPages=${String(suggested)} or a narrower filter.`
+  );
+}
