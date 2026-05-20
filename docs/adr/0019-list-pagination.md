@@ -175,4 +175,4 @@ empirically.
   the `filterByCurrentUser` 50-item cap with no `nextLink`.
 - https://learn.microsoft.com/en-us/graph/api/rbacapplication-list-roleeligibilityschedules
   — confirms the underlying unfiltered collection supports `$filter`
-  + `$top` + `@odata.nextLink`.
+  - `$top` + `@odata.nextLink`.
