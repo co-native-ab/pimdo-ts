@@ -1,0 +1,10 @@
+{
+  "view": "logout",
+  "family": "Auth",
+  "scenario": "confirm",
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "generator": "scripts/preview/generate.ts"
+}
