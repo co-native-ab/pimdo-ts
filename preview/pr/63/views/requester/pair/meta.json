@@ -1,0 +1,10 @@
+{
+  "view": "requester",
+  "family": "Group",
+  "scenario": "pair",
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "generator": "scripts/preview/generate.ts"
+}
